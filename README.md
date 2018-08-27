@@ -48,6 +48,42 @@ without contacting you personally.
 
 Refer to [`.circleci/config.yml`][ci-config] for full building instructions.
 
+### tools/builder.sh
+
+There's [tool](tools/builder.sh) that could build everything from scratch in
+parallel for you, just run:
+
+```bash
+tools/builder.sh -p all
+```
+
+Or get detailed usage info of this tool to be able to run particular tasks with
+different options:
+
+```bash
+tools/builder.sh --help
+```
+
+#### Production release
+
+If your next release doesn't require to apply any migrations, to create or
+update any configs then your production release could be built by this command:
+
+```bash
+tools/builder.sh -p --production --soft-clean all
+```
+
+If your server setup implies **CaRMa**'s binaries to be presented in
+`~/.local/bin/` then you should run after that:
+
+```bash
+stack install
+```
+
+And restart proper **CaRMa** services.
+
+*P.S. You could find instructions about how to apply database migrations below.*
+
 ### Backend (Haskell)
 
 #### Generic
