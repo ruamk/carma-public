@@ -46,6 +46,13 @@ import Carma.Backoffice.DSL.Types ( Eff
                                   )
 
 
+isProgramPSA :: (Backoffice impl) => impl Bool
+isProgramPSA = caseField Case.program `oneOf` [ Program.peugeot
+                                              , Program.citroen
+                                              , Program.opel
+                                              ]
+
+
 toBack :: Entry
 toBack =
     Entry
@@ -97,7 +104,7 @@ messageToGenser =
 messageToPSA :: Backoffice bk => bk (Eff m)
 messageToPSA =
     when
-    ((caseField Case.program `oneOf` [Program.peugeot, Program.citroen]) &&
+    (isProgramPSA &&
      (serviceField Service.svcType `oneOf` [ST.towage, ST.tech, ST.consultation]) &&
      (serviceField Service.payType == just PT.ruamc ||
       serviceField Service.payType == just PT.mixed)
@@ -108,7 +115,7 @@ messageToPSA =
 messageToDealer :: Backoffice bk => bk (Eff m)
 messageToDealer =
     when
-    ((caseField Case.program `oneOf` [Program.peugeot, Program.citroen]) &&
+    (isProgramPSA &&
      (serviceField Service.svcType == const ST.towage) &&
      (serviceField Service.payType == just PT.ruamc ||
       serviceField Service.payType == just PT.refund ||
@@ -376,8 +383,7 @@ orderServiceAnalyst =
     )
     [ (AResult.serviceOrderedAnalyst,
        switch
-       [ ( (serviceField svcType == const ST.rent) &&
-           caseField Case.program `oneOf` [Program.peugeot, Program.citroen]
+       [ ( (serviceField svcType == const ST.rent) && isProgramPSA
          , setServiceStatus SS.inProgress *>
            proceed [AType.checkEndOfService, AType.addBill]
          )
@@ -476,8 +482,7 @@ checkEndOfService =
        messageToDealer *>
        messageToGenser *>
        setServiceStatus SS.ok *>
-       ite (caseField Case.program `oneOf`
-            [Program.peugeot, Program.citroen, Program.vw])
+       ite isProgramPSA
        (proceed [AType.closeCase, AType.getDealerInfo])
        (proceed [AType.closeCase]))
     , (AResult.defer, defer)
@@ -505,8 +510,7 @@ getDealerInfo =
     (const bo_dealer)
     nobody
     (ite
-     ((serviceField svcType == const ST.rent) &&
-      caseField Case.program `oneOf` [Program.peugeot, Program.citroen])
+     ((serviceField svcType == const ST.rent) && isProgramPSA)
      ((5 * minutes) `since` req (serviceField times_expectedServiceEnd))
      ((14 * days) `since` req (serviceField times_expectedServiceEnd)))
     [ (AResult.gotInfo, messageToPSA *> finish)

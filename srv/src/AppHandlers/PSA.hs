@@ -34,8 +34,9 @@ psaCasesHandler = do
   let pids = case program of
                Just "citroen" -> [Program.citroen]
                Just "peugeot" -> [Program.peugeot]
-               Just _         -> error "Program must be citroen or peugeot"
-               Nothing        -> [Program.citroen, Program.peugeot]
+               Just "opel"    -> [Program.opel]
+               Just _         -> error "Program must be citroen, peugeot or opel"
+               Nothing        -> [Program.citroen, Program.peugeot, Program.opel]
   rows <- query psaQuery (Only $ V.fromList pids)
   writeJSON (map head rows :: [Int])
 

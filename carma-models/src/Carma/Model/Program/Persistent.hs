@@ -33,7 +33,7 @@ Program sql=Program
 
 
 -- | @Program@ predefined IDs.
-arc, atlant, avilon, b2c, citroen, euro, ford, genser, gm, nz :: ProgramId
+arc, atlant, avilon, b2c, citroen, euro, ford, genser, gm, nz, opel :: ProgramId
 mapfre, peugeot, ramc, ruslan, unicredit, vnukovo, vtb24, vw, alarm :: ProgramId
 arc = toSqlKey 30
 atlant = toSqlKey 11
@@ -54,3 +54,4 @@ vnukovo = toSqlKey 19
 vtb24 = toSqlKey 2
 vw = toSqlKey 3
 alarm = toSqlKey 5
+opel = toSqlKey 284

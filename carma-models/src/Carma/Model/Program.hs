@@ -55,6 +55,7 @@ mkIdents [t|Program|]
  , ("vtb24", 2)
  , ("vw", 3)
  , ("alarm", 5)
+ , ("opel", 284)
  ]
 
 
