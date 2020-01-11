@@ -89,6 +89,7 @@ getMsgData con svcId = uncurry (PG.query con)
         case c.program
           when $(Program.peugeot)$ then 'RUMC01R'
           when $(Program.citroen)$ then 'FRRM01R'
+          when $(Program.opel)$    then 'RU00010'
         end,
       'Country Code',         '2', 'RU',
       'Task Id',              '9', 'M' || lpad(c.id::text, 8, '0'),
@@ -97,6 +98,7 @@ getMsgData con svcId = uncurry (PG.query con)
         case c.program
           when $(Program.peugeot)$ then 'PEU'
           when $(Program.citroen)$ then 'CIT'
+          when $(Program.opel)$    then 'OPL'
         end,
       'Model',               '13', car_model.label,
       'Energie',              '1',
