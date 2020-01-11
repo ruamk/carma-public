@@ -23,8 +23,8 @@ import AppHandlers.Util
 import Application
 
 
--- | Read program name from @program@ request parameter (citroen
--- or peugeot), serve JSON list of case numbers for that program to
+-- | Read program name from @program@ request parameter (citroen, peugeot
+-- or opel), serve JSON list of case numbers for that program to
 -- be exported to SAGAI, as selected by 'psaQuery'. If @program@ is
 -- not present, serve list of all exportable case numbers according to
 -- 'psaQuery0'.
