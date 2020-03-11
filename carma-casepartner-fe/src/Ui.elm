@@ -1,5 +1,6 @@
 module Ui exposing
     ( activeTabStyle
+    , addressCell
     , button
     , casesTableStyle
     , cell
@@ -12,6 +13,8 @@ module Ui exposing
     , inactiveTabStyle
     , mainMenu
     , page
+    , pageButtonStyle
+    , pageIndicatorStyle
     )
 
 import Element exposing (..)
@@ -19,23 +22,8 @@ import Element.Background as Bg
 import Element.Border as Bd
 import Element.Font as Font
 import Element.Input as Input
-import Html.Attributes as Attr
 import Html
-
-
-
-{-
-   colors :
-       { green : Element.Color
-       , white : Element.Color
-       , black : Element.Color
-       , red : Element.Color
-       , gray : Element.Color
-       , darkgray : Element.Color
-       , lightgray : Element.Color
-       , lightblue : Element.Color
-       }
--}
+import Html.Attributes as Attr
 
 
 colors =
@@ -90,41 +78,55 @@ transition duration properties =
             )
 
 
-
-
 page : String -> List (Element msg) -> Element msg -> Element msg
 page username buttons content =
     column
         [ centerX
-        --, alignTop
-        , spacing 0
-        , padding 0
         , width fill
         , scrollbarY
         , height fill
         ]
         [ mainMenu username buttons
-        , el [centerX, alignTop, height fill ] content
+        , el [ centerX, alignTop, height fill ] content
         ]
 
 
 mainMenu : String -> List (Element msg) -> Element msg
 mainMenu username buttons =
     row
-        [ spacingXY 32 8
-        , paddingXY 16 16
-        , width fill
+        [ width fill
         , alignTop
         , Bg.color colors.menuBg
         ]
-        ([ el [ Font.color colors.white ] <| text "CaRMa"
-         , el [ width fill ] <| none
-         ]
-            ++ buttons
-            ++ [ el [ width fill ] <| none
-               , el [ Font.color colors.white ] <| text username
-               ]
-        )
+        [ el [ Font.color colors.white, paddingXY 16 16 ] <| text "CaRMa"
+        , el [ width fill ] <| none
+        , row [ height fill, paddingXY 16 0 ] buttons
+        , el [ width fill ] <| none
+        , el [ Font.color colors.white, paddingXY 16 16 ] <| text username
+        ]
+
+
+tabStyle =
+    [ paddingXY 32 0 ]
+
+
+activeTabStyle =
+    tabStyle
+        ++ [ Font.semiBold
+           , Font.color colors.blue
+           , Bg.color colors.white
+           , width fill
+           , height fill
+           ]
+
+
+inactiveTabStyle =
+    tabStyle
+        ++ [ Font.underline
+           , Font.color colors.gray
+           , width fill
+           , height fill
+           ]
 
 
 casesTableStyle : List (Attribute msg)
@@ -139,6 +141,7 @@ casesTableStyle =
 headerCellAttrs : List (Attribute msg)
 headerCellAttrs =
     [ paddingXY 8 8
+    , centerY
     , width fill
     , Font.semiBold
     , Bd.width 1
@@ -150,6 +153,7 @@ cellAttrs : List (Attribute msg)
 cellAttrs =
     [ paddingXY 8 8
     , centerX
+    , width fill
     , Bd.width 1
     , Bd.color colors.gray
     ]
@@ -168,8 +172,7 @@ cell t =
 idCell msg t =
     Input.button
         (cellAttrs
-            ++ [ Font.underline
-               , Font.semiBold
+            ++ [ Font.semiBold
                , Font.color colors.lightblue
                ]
         )
@@ -178,15 +181,24 @@ idCell msg t =
         }
 
 
-
---tabs : List (String, msg) -> Element msg
---tabs buttons =
---    List.maps
+addressCell t =
+    el ([ clip ] ++ cellAttrs) <| text t
 
 
-activeTabStyle =
-    [ Font.semiBold, Font.color colors.white ]
+pageButtonStyle : List (Attribute msg)
+pageButtonStyle =
+    [ Bd.color colors.menuBg
+    , Bd.rounded 16
+    , Bd.width 1
+    , Font.color colors.menuBg
+    , Font.size 16
+    , paddingXY 8 4
+    ]
 
 
-inactiveTabStyle =
-    [ Font.underline, Font.color colors.gray ]
+pageIndicatorStyle : List (Attribute msg)
+pageIndicatorStyle =
+    [ Font.size 18
+    , Font.color colors.menuBg
+    , Font.semiBold
+    ]

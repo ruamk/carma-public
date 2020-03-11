@@ -10,36 +10,52 @@ module Site
   ) where
 
 ------------------------------------------------------------------------------
-import           Control.Applicative
-import           Control.Monad.IO.Class
+-- import           Control.Applicative
+-- import           Control.Monad.IO.Class
 import           Data.ByteString (ByteString)
-import           Data.Map (Map)
-import qualified Data.Map as Map
-import           Data.Map.Syntax ((##))
-import           Data.Maybe (fromMaybe)
-import           Data.Text (Text)
-import qualified Data.Text as T
+--import           Data.List (intercalate)
+-- import           Data.Map (Map)
+-- import qualified Data.Map as Map
+-- import           Data.Text (Text)
+-- import qualified Data.Text as T
 import           Database.PostgreSQL.Simple.SqlQQ
 import           Snap.Core
 import           Snap.Snaplet
 import           Snap.Snaplet.Auth
 import           Snap.Snaplet.Auth.Backends.PostgresqlSimple
-import           Snap.Snaplet.PostgresqlSimple (pgsInit, query_, withPG, Postgres)
+import           Snap.Snaplet.PostgresqlSimple
+                 ( pgsInit
+                 , query
+                 , In (..)
+                 )
 import           Snap.Snaplet.Session.Backends.CookieSession
 import           Snap.Util.FileServe
 ------------------------------------------------------------------------------
 import           Application
 import           AppHandlers.Util
 -- import           AppHandlers.Users
+import qualified Carma.Model.ServiceStatus as SS
+import           Data.Model
+--import           Data.Model.Utils.LegacyModel (identToRawFieldValue)
 
+
+data LatestCases = Current
+                 | Closing
+
+
+casesLimit :: Int
+casesLimit = 1000
 
 apiLogin, apiLogout :: ByteString
 apiLogin  = "/api/v1/login"
 apiLogout = "/api/v1/logout"
 
-apiGetLastestCases :: ByteString
-apiGetLastestCases = "/api/v1/getLatestCases"
+apiGetLatestCurrentCases :: ByteString
+apiGetLatestCurrentCases = "/api/v1/getLatestCases/current"
 
+apiGetLatestClosingCases :: ByteString
+apiGetLatestClosingCases = "/api/v1/getLatestCases/closing"
+                            
                      
 -- | Handle login API
 handleApiLogin :: Handler App (AuthManager App) ()
@@ -55,12 +71,16 @@ handleApiLogout = logout >> redirect apiLogin
 
 
 -- | Handle get latest cases
-handleApiGetLatestCases :: AppHandler ()
-handleApiGetLatestCases = do
-  rows <- query_ $ [sql|
+handleApiGetLatestCases :: LatestCases -> AppHandler ()
+handleApiGetLatestCases caseType = do
+  let statuses = case caseType of
+                     Current -> [SS.ordered, SS.delayed, SS.inProgress]
+                     Closing -> [SS.ok]
+
+  rows <- query [sql|
     SELECT                   
       servicetbl.id::text,
-      date_trunc('second', createTime::timestamp)::text,
+      date_trunc('second', createTime::timestamp)::text as cTime,
       st.label,
       ss.label,
       date_trunc('second', times_expectedservicestart::timestamp)::text,
@@ -74,8 +94,13 @@ handleApiGetLatestCases = do
     LEFT OUTER JOIN casetbl ct ON ct.id = parentid
     LEFT OUTER JOIN "CarMake" cma ON cma.id = ct.car_make
     LEFT OUTER JOIN "CarModel" cmo ON cmo.id = ct.car_model
-    LIMIT 120
-  |]
+    WHERE (servicetbl.status in ?) and (createTime is not null)
+    ORDER BY cTime DESC
+    LIMIT ?
+  |] ( In $ map (\(Ident i) -> i)  statuses :: In [Int]
+     , casesLimit :: Int
+     )
+
   writeJSON $ mkMap ["id", "callDate", "typeOfService", "status"
                     , "accordTime", "breakdownPlace", "makeModel", "payType"
                     ] rows
@@ -86,7 +111,8 @@ handleApiGetLatestCases = do
 routes :: [(ByteString, Handler App App ())]
 routes = [ (apiLogin,  with auth handleApiLogin)
          , (apiLogout, with auth handleApiLogout)
-         , (apiGetLastestCases, handleApiGetLatestCases)
+         , (apiGetLatestCurrentCases, handleApiGetLatestCases Current)
+         , (apiGetLatestClosingCases, handleApiGetLatestCases Closing)
          , ("/login",  redirect "/")
          , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
@@ -95,7 +121,7 @@ routes = [ (apiLogin,  with auth handleApiLogin)
 ------------------------------------------------------------------------------
 -- | The application initializer.
 app :: SnapletInit App App
-app = makeSnaplet "app" "An snaplet example application." Nothing $ do
+app = makeSnaplet "app" "Case partner manager application." Nothing $ do
     s <- nestSnaplet "sess" sess $
            initCookieSessionManager "site_key.txt" "sess" Nothing (Just 3600)
 

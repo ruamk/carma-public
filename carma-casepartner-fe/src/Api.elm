@@ -1,4 +1,8 @@
-module Api exposing (getLatestCases, login)
+module Api exposing
+    ( getLatestClosingCases
+    , getLatestCurrentCases
+    , login
+    )
 
 import Http
 import HttpBuilder
@@ -24,9 +28,14 @@ apiLogout =
     "/api/v1/logout"
 
 
-apiGetLatestCases : String
-apiGetLatestCases =
-    "/api/v1/getLatestCases"
+apiGetLatestCurrentCases : String
+apiGetLatestCurrentCases =
+    "/api/v1/getLatestCases/current"
+
+
+apiGetLatestClosingCases : String
+apiGetLatestClosingCases =
+    "/api/v1/getLatestCases/closing"
 
 
 login : String -> String -> (Result Http.Error Int -> msg) -> Cmd msg
@@ -83,8 +92,15 @@ decodeTheCase =
         |> optional "payType" string "default payType"
 
 
-getLatestCases : (Result Http.Error (List TheCase) -> msg) -> Cmd msg
-getLatestCases message =
-    HttpBuilder.post apiGetLatestCases
+getLatestCurrentCases : (Result Http.Error (List TheCase) -> msg) -> Cmd msg
+getLatestCurrentCases message =
+    HttpBuilder.post apiGetLatestCurrentCases
+        |> HttpBuilder.withExpect (Http.expectJson message latestCasesDecoder)
+        |> HttpBuilder.request
+
+
+getLatestClosingCases : (Result Http.Error (List TheCase) -> msg) -> Cmd msg
+getLatestClosingCases message =
+    HttpBuilder.post apiGetLatestClosingCases
         |> HttpBuilder.withExpect (Http.expectJson message latestCasesDecoder)
         |> HttpBuilder.request

@@ -40,8 +40,7 @@ init commands _ =
       , caseId = ""
       }
     , Cmd.none
-      -- , commands.navigate routes.login
-    , commands.navigate routes.cases
+    , commands.navigate routes.login
     )
 
 

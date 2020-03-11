@@ -41,7 +41,6 @@ type alias Model =
     , currentCasesPage : Int
     , closingCases : List TheCase
     , closingCasesPage : Int
-    , latestCases : List TheCase
     }
 
 
@@ -51,9 +50,8 @@ init context _ =
       , currentCasesPage = 1
       , closingCases = []
       , closingCasesPage = 1
-      , latestCases = []
       }
-    , Api.getLatestCases GetCases
+    , Api.getLatestCurrentCases GetCurrentCases
     , Cmd.none
     )
 
@@ -71,7 +69,8 @@ type Msg
     = CurrentCase String
     | ClosingCase String
     | SearchCases
-    | GetCases (Result Http.Error (List TheCase))
+    | GetCurrentCases (Result Http.Error (List TheCase))
+    | GetClosingCases (Result Http.Error (List TheCase))
     | CasesPrevPage CasesType
     | CasesNextPage CasesType
 
@@ -97,20 +96,34 @@ update context msg model =
             , Spa.Page.send Global.SearchCases
             )
 
-        GetCases result ->
+        GetCurrentCases result ->
             case result of
                 Err _ ->
                     ( model
-                    , Ports.log "Error get latest cases"
+                    , Ports.log "Error get current latest cases"
                     , Cmd.none
                     )
 
-                Ok cases ->
+                Ok currentCases ->
                     ( { model
-                        | latestCases = cases
-                        , currentCases = List.take pageSize cases
+                        | currentCases = currentCases
                         , currentCasesPage = 1
-                        , closingCases = List.take pageSize cases
+                      }
+                    , Api.getLatestClosingCases GetClosingCases
+                    , Cmd.none
+                    )
+
+        GetClosingCases result ->
+            case result of
+                Err _ ->
+                    ( model
+                    , Ports.log "Error get closing latest cases"
+                    , Cmd.none
+                    )
+
+                Ok closingCases ->
+                    ( { model
+                        | closingCases = closingCases
                         , closingCasesPage = 1
                       }
                     , Cmd.none
@@ -127,14 +140,9 @@ update context msg model =
 
                             else
                                 1
-
-                        currentCases =
-                            List.take pageSize <|
-                                List.drop ((currentCasesPage - 1) * pageSize) model.latestCases
                     in
                     ( { model
                         | currentCasesPage = currentCasesPage
-                        , currentCases = currentCases
                       }
                     , Cmd.none
                     , Cmd.none
@@ -148,14 +156,9 @@ update context msg model =
 
                             else
                                 1
-
-                        closingCases =
-                            List.take pageSize <|
-                                List.drop ((closingCasesPage - 1) * pageSize) model.latestCases
                     in
                     ( { model
                         | closingCasesPage = closingCasesPage
-                        , closingCases = closingCases
                       }
                     , Cmd.none
                     , Cmd.none
@@ -166,19 +169,14 @@ update context msg model =
                 Current ->
                     let
                         currentCasesPage =
-                            if model.currentCasesPage < List.length model.latestCases // pageSize then
+                            if model.currentCasesPage < List.length model.currentCases // pageSize then
                                 model.currentCasesPage + 1
 
                             else
                                 model.currentCasesPage
-
-                        currentCases =
-                            List.take pageSize <|
-                                List.drop ((currentCasesPage - 1) * pageSize) model.latestCases
                     in
                     ( { model
                         | currentCasesPage = currentCasesPage
-                        , currentCases = currentCases
                       }
                     , Cmd.none
                     , Cmd.none
@@ -187,19 +185,14 @@ update context msg model =
                 Closing ->
                     let
                         closingCasesPage =
-                            if model.closingCasesPage < List.length model.latestCases // pageSize then
+                            if model.closingCasesPage < List.length model.closingCases // pageSize then
                                 model.closingCasesPage + 1
 
                             else
                                 model.closingCasesPage
-
-                        closingCases =
-                            List.take pageSize <|
-                                List.drop ((closingCasesPage - 1) * pageSize) model.latestCases
                     in
                     ( { model
                         | closingCasesPage = closingCasesPage
-                        , closingCases = closingCases
                       }
                     , Cmd.none
                     , Cmd.none
@@ -222,11 +215,11 @@ subscriptions model =
 view : PageContext -> Model -> Element Msg
 view context model =
     Ui.page context.global.username
-        [ button [ Font.semiBold, Font.color Ui.colors.white ]
+        [ button Ui.activeTabStyle
             { label = text "Текущие заявки"
             , onPress = Nothing
             }
-        , button [ Font.underline, Font.color Ui.colors.gray ]
+        , button Ui.inactiveTabStyle
             { label = text "Поиск заявок"
             , onPress = Just SearchCases
             }
@@ -245,126 +238,128 @@ viewCasesTitle title pageNumber caseType =
         [ el [] <| text title
         , el [ width (px 32) ] <| none
         , el [ padding 8 ] <|
-            button []
+            button Ui.pageButtonStyle
                 { label = text "<"
                 , onPress = Just <| CasesPrevPage caseType
                 }
         , el [ padding 8 ] <|
-            button []
-                { label = text <| String.fromInt pageNumber
-                , onPress = Nothing
-                }
-        , el [ padding 8 ] <|
-            button []
+            button Ui.pageButtonStyle
                 { label = text ">"
                 , onPress = Just <| CasesNextPage caseType
+                }
+        , el [ padding 8 ] <|
+            button Ui.pageIndicatorStyle
+                { label = text <| String.fromInt pageNumber
+                , onPress = Nothing
                 }
         ]
 
 
 viewCurrentCases : Model -> Element Msg
 viewCurrentCases model =
-    column []
+    column [ width fill, paddingXY 100 0 ]
         [ viewCasesTitle "Текущие заявки" model.currentCasesPage Current
-        , row []
-            [ table Ui.casesTableStyle
-                { data = model.currentCases
-                , columns =
-                    [ { header = Ui.headerCell "Заявка"
-                      , width = shrink
-                      , view = \theCase -> Ui.idCell CurrentCase theCase.id
-                      }
-                    , { header = Ui.headerCell "Дата"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.callDate
-                      }
-                    , { header = Ui.headerCell "Тип услуги"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.typeOfService
-                      }
-                    , { header = Ui.headerCell "Статус"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.status
-                      }
-                    , { header = Ui.headerCell "ОВНОУ (п)"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.accordTime
-                      }
-                    , { header = Ui.headerCell "Остаток времени (таймер)"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.remainTime
-                      }
-                    , { header = Ui.headerCell "Изменить статус"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.status
-                      }
-                    , { header = Ui.headerCell "Марка/Модель"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.makeModel
-                      }
-                    , { header = Ui.headerCell "Адрес места поломки"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.breakdownPlace
-                      }
-                    , { header = Ui.headerCell "Тип оплаты"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.payType
-                      }
-                    ]
-                }
-            ]
+        , table Ui.casesTableStyle
+            { data =
+                model.currentCases
+                    |> List.drop ((model.currentCasesPage - 1) * pageSize)
+                    |> List.take pageSize
+            , columns =
+                [ { header = Ui.headerCell "Заявка"
+                  , width = fill
+                  , view = \theCase -> Ui.idCell CurrentCase theCase.id
+                  }
+                , { header = Ui.headerCell "Дата"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.callDate
+                  }
+                , { header = Ui.headerCell "Тип услуги"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.typeOfService
+                  }
+                , { header = Ui.headerCell "Статус"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.status
+                  }
+                , { header = Ui.headerCell "ОВНОУ (п)"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.accordTime
+                  }
+                , { header = Ui.headerCell "Остаток времени (таймер)"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.remainTime
+                  }
+                , { header = Ui.headerCell "Изменить статус"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.status
+                  }
+                , { header = Ui.headerCell "Марка/Модель"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.makeModel
+                  }
+                , { header = Ui.headerCell "Адрес места поломки"
+                  , width = fill
+                  , view = \theCase -> Ui.addressCell theCase.breakdownPlace
+                  }
+                , { header = Ui.headerCell "Тип оплаты"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.payType
+                  }
+                ]
+            }
         ]
 
 
 viewClosingCases : Model -> Element Msg
 viewClosingCases model =
-    column []
+    column [ width fill, paddingXY 100 0 ]
         [ viewCasesTitle "Закрытие заявок" model.closingCasesPage Closing
-        , row []
-            [ table Ui.casesTableStyle
-                { data = model.closingCases
-                , columns =
-                    [ { header = Ui.headerCell "Заявка"
-                      , width = shrink
-                      , view = \theCase -> Ui.idCell ClosingCase theCase.id
-                      }
-                    , { header = Ui.headerCell "Дата"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.callDate
-                      }
-                    , { header = Ui.headerCell "Тип услуги"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.typeOfService
-                      }
-                    , { header = Ui.headerCell "Статус"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.status
-                      }
-                    , { header = Ui.headerCell "ОВНОУ (п)"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.accordTime
-                      }
-                    , { header = Ui.headerCell "Остаток времени (таймер)"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.remainTime
-                      }
-                    , { header = Ui.headerCell "Изменить статус"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.status
-                      }
-                    , { header = Ui.headerCell "Марка/Модель"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.makeModel
-                      }
-                    , { header = Ui.headerCell "Адрес места поломки"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.breakdownPlace
-                      }
-                    , { header = Ui.headerCell "Тип оплаты"
-                      , width = shrink
-                      , view = \theCase -> Ui.cell theCase.payType
-                      }
-                    ]
-                }
-            ]
+        , table Ui.casesTableStyle
+            { data =
+                model.closingCases
+                    |> List.drop ((model.closingCasesPage - 1) * pageSize)
+                    |> List.take pageSize
+            , columns =
+                [ { header = Ui.headerCell "Заявка"
+                  , width = fill
+                  , view = \theCase -> Ui.idCell ClosingCase theCase.id
+                  }
+                , { header = Ui.headerCell "Дата"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.callDate
+                  }
+                , { header = Ui.headerCell "Тип услуги"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.typeOfService
+                  }
+                , { header = Ui.headerCell "Статус"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.status
+                  }
+                , { header = Ui.headerCell "ОВНОУ (п)"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.accordTime
+                  }
+                , { header = Ui.headerCell "Остаток времени (таймер)"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.remainTime
+                  }
+                , { header = Ui.headerCell "Изменить статус"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.status
+                  }
+                , { header = Ui.headerCell "Марка/Модель"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.makeModel
+                  }
+                , { header = Ui.headerCell "Адрес места поломки"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.breakdownPlace
+                  }
+                , { header = Ui.headerCell "Тип оплаты"
+                  , width = fill
+                  , view = \theCase -> Ui.cell theCase.payType
+                  }
+                ]
+            }
         ]

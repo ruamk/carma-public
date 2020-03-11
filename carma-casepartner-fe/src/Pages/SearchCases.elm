@@ -177,11 +177,11 @@ subscriptions model =
 view : PageContext -> Model -> Element Msg
 view context model =
     Ui.page context.global.username
-        [ button [ Font.underline, Font.color Ui.colors.gray ]
+        [ button Ui.inactiveTabStyle
             { label = text "Текущие заявки"
             , onPress = Just Cases
             }
-        , button [ Font.semiBold, Font.color Ui.colors.white ]
+        , button Ui.activeTabStyle
             { label = text "Поиск заявок"
             , onPress = Nothing
             }
