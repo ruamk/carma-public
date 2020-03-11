@@ -1,0 +1,67 @@
+name: carma-casepartner-us
+version: 0.1
+license: BSD3
+author: Alexander Danilov
+maintainer: alexander.a.danilov@gmail.com
+category: web
+synopsis: Case partner manager microservice
+
+description:
+  Case partner manager application backend.
+
+dependencies:
+  - aeson
+  - attoparsec
+  - base
+  - basic-prelude
+  - bytestring
+  - carma-models
+  - carma-model-utils
+  - containers
+  - hsyslog
+  - lens
+  - lifted-base
+  - map-syntax
+  - monad-control
+  - mtl
+  - pg-simple-qq-alt
+  - postgresql-simple
+  - snap
+  - snap-core
+  - snap-loader-static
+  - snap-server
+  - snaplet-postgresql-simple
+  - text
+  - time
+  - unordered-containers
+  - vector
+  - xmlhtml
+
+default-extensions:
+  - FlexibleContexts
+  - FlexibleInstances
+  - LambdaCase
+  - MultiParamTypeClasses
+  - NamedFieldPuns
+  - OverloadedStrings
+  - QuasiQuotes
+  
+ghc-options:
+  - -O2
+  - -Wall
+  - -Werror
+  - -fno-warn-orphans
+  - -fno-warn-unused-do-bind
+  - -funbox-strict-fields
+  - -fwarn-tabs
+
+library:
+  source-dirs: src
+
+executables:
+  carma-casepartner-us:
+    source-dirs: src
+    main: Main.hs
+    dependencies: [carma-casepartner-us]
+    ghc-options: [-threaded]
+

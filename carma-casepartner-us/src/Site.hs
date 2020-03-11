@@ -10,14 +10,7 @@ module Site
   ) where
 
 ------------------------------------------------------------------------------
--- import           Control.Applicative
--- import           Control.Monad.IO.Class
 import           Data.ByteString (ByteString)
---import           Data.List (intercalate)
--- import           Data.Map (Map)
--- import qualified Data.Map as Map
--- import           Data.Text (Text)
--- import qualified Data.Text as T
 import           Database.PostgreSQL.Simple.SqlQQ
 import           Snap.Core
 import           Snap.Snaplet
@@ -33,10 +26,8 @@ import           Snap.Util.FileServe
 ------------------------------------------------------------------------------
 import           Application
 import           AppHandlers.Util
--- import           AppHandlers.Users
 import qualified Carma.Model.ServiceStatus as SS
 import           Data.Model
---import           Data.Model.Utils.LegacyModel (identToRawFieldValue)
 
 
 data LatestCases = Current
