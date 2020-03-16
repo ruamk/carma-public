@@ -93,7 +93,7 @@ handleApiGetLatestCases caseType = checkAuthCasePartner $ do
       st.label,
       ss.label,
       date_trunc('second', times_expectedservicestart::timestamp)::text,
-      contractor_address,
+      ct.caseaddress_address,
       cma.label || ' / ' || cmo.label,
       pt.label 
     FROM servicetbl
