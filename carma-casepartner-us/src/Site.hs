@@ -88,7 +88,7 @@ handleApiGetLatestCases caseType = checkAuthCasePartner $ do
 
   rows <- query [sql|
     SELECT                   
-      servicetbl.id::text,
+      servicetbl.parentid::text,
       date_trunc('second', createTime::timestamp)::text as cTime,
       st.label,
       ss.label,
