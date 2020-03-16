@@ -169,7 +169,13 @@ update context msg model =
                 Current ->
                     let
                         currentCasesPage =
-                            if model.currentCasesPage < List.length model.currentCases // pageSize then
+                            if
+                                model.currentCasesPage
+                                    < ceiling
+                                        (toFloat (List.length model.currentCases)
+                                            / toFloat pageSize
+                                        )
+                            then
                                 model.currentCasesPage + 1
 
                             else
@@ -185,7 +191,13 @@ update context msg model =
                 Closing ->
                     let
                         closingCasesPage =
-                            if model.closingCasesPage < List.length model.closingCases // pageSize then
+                            if
+                                model.closingCasesPage
+                                    < ceiling
+                                        (toFloat (List.length model.closingCases)
+                                            / toFloat pageSize
+                                        )
+                            then
                                 model.closingCasesPage + 1
 
                             else
@@ -232,7 +244,7 @@ view context model =
             ]
 
 
-viewCasesTitle : String -> Int -> CasesType -> Element Msg
+viewCasesTitle : String -> String -> CasesType -> Element Msg
 viewCasesTitle title pageNumber caseType =
     row [ spacingXY 0 24 ]
         [ el [] <| text title
@@ -247,18 +259,24 @@ viewCasesTitle title pageNumber caseType =
                 { label = text ">"
                 , onPress = Just <| CasesNextPage caseType
                 }
-        , el [ padding 8 ] <|
-            button Ui.pageIndicatorStyle
-                { label = text <| String.fromInt pageNumber
-                , onPress = Nothing
-                }
+        , el [ padding 8 ] <| text pageNumber
         ]
 
 
 viewCurrentCases : Model -> Element Msg
 viewCurrentCases model =
     column [ width fill, paddingXY 100 0 ]
-        [ viewCasesTitle "Текущие заявки" model.currentCasesPage Current
+        [ viewCasesTitle "Текущие заявки"
+            (String.fromInt model.currentCasesPage
+                ++ " / "
+                ++ String.fromInt
+                    (ceiling
+                        (toFloat (List.length model.currentCases)
+                            / toFloat pageSize
+                        )
+                    )
+            )
+            Current
         , table Ui.casesTableStyle
             { data =
                 model.currentCases
@@ -313,7 +331,12 @@ viewCurrentCases model =
 viewClosingCases : Model -> Element Msg
 viewClosingCases model =
     column [ width fill, paddingXY 100 0 ]
-        [ viewCasesTitle "Закрытие заявок" model.closingCasesPage Closing
+        [ viewCasesTitle "Закрытие заявок"
+            (String.fromInt model.closingCasesPage
+                ++ " / "
+                ++ String.fromInt (ceiling (toFloat (List.length model.closingCases) / toFloat pageSize))
+            )
+            Closing
         , table Ui.casesTableStyle
             { data =
                 model.closingCases
