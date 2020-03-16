@@ -363,10 +363,6 @@ viewClosingCases model =
                   , width = fill
                   , view = \theCase -> Ui.cell theCase.accordTime
                   }
-                , { header = Ui.headerCell "Остаток времени (таймер)"
-                  , width = fill
-                  , view = \theCase -> Ui.cell theCase.remainTime
-                  }
                 , { header = Ui.headerCell "Изменить статус"
                   , width = fill
                   , view = \theCase -> Ui.cell theCase.status
