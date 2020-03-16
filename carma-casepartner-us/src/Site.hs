@@ -11,6 +11,8 @@ module Site
 
 ------------------------------------------------------------------------------
 import           Data.ByteString (ByteString)
+import           Data.Maybe (fromMaybe, isJust)
+import qualified Data.Text.Encoding as T
 import           Database.PostgreSQL.Simple.SqlQQ
 import           Snap.Core
 import           Snap.Snaplet
@@ -25,8 +27,10 @@ import           Snap.Snaplet.Session.Backends.CookieSession
 import           Snap.Util.FileServe
 ------------------------------------------------------------------------------
 import           Application
+import           AppHandlers.Users
 import           AppHandlers.Util
 import qualified Carma.Model.ServiceStatus as SS
+import           Carma.Model.Role as Role
 import           Data.Model
 
 
@@ -46,24 +50,38 @@ apiGetLatestCurrentCases = "/api/v1/getLatestCases/current"
 
 apiGetLatestClosingCases :: ByteString
 apiGetLatestClosingCases = "/api/v1/getLatestCases/closing"
-                            
+
+
+checkAuthCasePartner :: AppHandler () -> AppHandler ()
+checkAuthCasePartner m = do
+  chkUserActiveness
+  chkAuthRoles (hasAnyOfRoles [Role.casePartner]) m
+
                      
 -- | Handle login API
-handleApiLogin :: Handler App (AuthManager App) ()
-handleApiLogin = do
-  loginUser "login" "password" Nothing
-              (\_ -> redirect' apiLogin 401) -- login again
-              (finishWith emptyResponse)
+handleApiLogin :: AppHandler ()
+handleApiLogin = ifTop $ do
+  l <- fromMaybe "" <$> getParam "login"
+  p <- fromMaybe "" <$> getParam "password"
+  r <- isJust <$> getParam "remember"
+  res <- with auth $ loginByUsername (T.decodeUtf8 l) (ClearText p) r
+  case res of
+    Left _  -> redirect' apiLogin 401 -- login again
+    Right _ -> checkAuthCasePartner $ redirect "/"
 
 
 -- | Handle logout API
-handleApiLogout :: Handler App (AuthManager App) ()
-handleApiLogout = logout >> redirect apiLogin
+handleApiLogout :: AppHandler ()
+handleApiLogout = ifTop $ do
+  with auth logout
+  redirect apiLogin
 
 
 -- | Handle get latest cases
 handleApiGetLatestCases :: LatestCases -> AppHandler ()
-handleApiGetLatestCases caseType = do
+handleApiGetLatestCases caseType = checkAuthCasePartner $ do
+  user <- fromMaybe (error "No current user") <$> with auth currentUser
+  let UserId uid = fromMaybe (error "no uid") $ userId user  
   let statuses = case caseType of
                      Current -> [SS.ordered, SS.delayed, SS.inProgress]
                      Closing -> [SS.ok]
@@ -85,10 +103,14 @@ handleApiGetLatestCases caseType = do
     LEFT OUTER JOIN casetbl ct ON ct.id = parentid
     LEFT OUTER JOIN "CarMake" cma ON cma.id = ct.car_make
     LEFT OUTER JOIN "CarModel" cmo ON cmo.id = ct.car_model
-    WHERE (servicetbl.status in ?) and (createTime is not null)
+    LEFT OUTER JOIN "CasePartner" cp ON cp.partner = servicetbl.contractor_partnerid
+    WHERE (servicetbl.status in ?)
+      and (createTime is not null)
+      and cp.uid = ?
     ORDER BY cTime DESC
     LIMIT ?
   |] ( In $ map (\(Ident i) -> i)  statuses :: In [Int]
+     , uid
      , casesLimit :: Int
      )
 
@@ -100,11 +122,10 @@ handleApiGetLatestCases caseType = do
 ------------------------------------------------------------------------------
 -- | The application's routes.
 routes :: [(ByteString, Handler App App ())]
-routes = [ (apiLogin,  with auth handleApiLogin)
-         , (apiLogout, with auth handleApiLogout)
+routes = [ (apiLogin,  method POST $ handleApiLogin)
+         , (apiLogout, method POST $ handleApiLogout)
          , (apiGetLatestCurrentCases, handleApiGetLatestCases Current)
          , (apiGetLatestClosingCases, handleApiGetLatestCases Closing)
-         , ("/login",  redirect "/")
          , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
 

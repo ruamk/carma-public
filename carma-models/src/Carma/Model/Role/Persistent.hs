@@ -70,3 +70,4 @@ bo_orderRefs      :: RoleId ; bo_orderRefs      = toSqlKey 64
 bo_orderAvarcom   :: RoleId ; bo_orderAvarcom   = toSqlKey 65
 bo_controlRefs    :: RoleId ; bo_controlRefs    = toSqlKey 66
 bo_controlAvarcom :: RoleId ; bo_controlAvarcom = toSqlKey 67
+casePartner       :: RoleId ; casePartner       = toSqlKey 68
