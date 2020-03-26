@@ -13,6 +13,7 @@ module AppHandlers.Users
     , chkAuthLocal
     , chkAuthAdmin
     , chkAuthPartner
+    , checkAuthCasePartner
 
     , chkUserActiveness
 
@@ -98,6 +99,11 @@ chkAuthPartner m = do
   where
     isPartnerAccess = hasAnyOfRoles [Role.partner, Role.head, Role.supervisor]
 
+
+checkAuthCasePartner :: AppHandler () -> AppHandler ()
+checkAuthCasePartner m = do
+  chkUserActiveness
+  chkAuthRoles (hasAnyOfRoles [Role.casePartner]) m
 
 ------------------------------------------------------------------------------
 -- | A predicate for a list of user roles.
