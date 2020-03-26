@@ -7,7 +7,7 @@ import Generated.Params as Params
 import Global
 import Ports
 import Spa.Page
-import Types exposing (TheCase)
+import Types exposing (CaseInfo)
 import Ui
 import Utils.Spa exposing (Page, PageContext)
 
@@ -28,7 +28,7 @@ page =
 
 
 type alias SearchForm =
-    { caseId : String
+    { caseId : Int
     , plateNumber : String
     , callDateStart : String
     , callDateEnd : String
@@ -40,7 +40,7 @@ type alias SearchForm =
 
 
 type alias Model =
-    { cases : List TheCase
+    { cases : List CaseInfo
     , search_caseId : String
     , search_plateNumber : String
     , search_callDateStart : String
@@ -55,7 +55,8 @@ type alias Model =
 init : PageContext -> Params.SearchCases -> ( Model, Cmd Msg, Cmd Global.Msg )
 init context _ =
     ( { cases =
-            [ { id = "654765/1"
+            [ { id = 654765
+              , services = 1
               , callDate = "16.02.2020"
               , typeOfService = "Эвакуатор"
               , status = "Услуга оказана"
@@ -85,7 +86,7 @@ init context _ =
 
 
 type Msg
-    = Case String
+    = Case Int
     | Cases
     | CaseId String -- номер кейса
     | PlateNumber String -- госномер
@@ -102,7 +103,7 @@ update context msg model =
     case msg of
         Case caseId ->
             ( model
-            , Ports.log <| "SearchCases Case " ++ caseId
+            , Ports.log <| "SearchCases Case " ++ String.fromInt caseId
             , Spa.Page.send <| Global.ShowCase caseId
             )
 
@@ -193,7 +194,7 @@ view context model =
             ]
 
 
-viewCases : List TheCase -> Element Msg
+viewCases : List CaseInfo -> Element Msg
 viewCases data =
     el [ alignTop ] <|
         table Ui.casesTableStyle
@@ -201,7 +202,7 @@ viewCases data =
             , columns =
                 [ { header = Ui.headerCell "Заявка"
                   , width = shrink
-                  , view = \theCase -> Ui.idCell Case theCase.id
+                  , view = \theCase -> Ui.idCell Case theCase.id theCase.services
                   }
                 , { header = Ui.headerCell "Дата"
                   , width = shrink

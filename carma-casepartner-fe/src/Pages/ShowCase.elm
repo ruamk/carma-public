@@ -1,5 +1,7 @@
 module Pages.ShowCase exposing (Model, Msg, page)
 
+import Api
+import Debug
 import Element exposing (..)
 import Element.Background as Bg
 import Element.Border as Bd
@@ -7,8 +9,10 @@ import Element.Font as Font
 import Element.Input as Input exposing (button, labelLeft)
 import Generated.Params as Params
 import Global
+import Http
+import Ports
 import Spa.Page
-import Types exposing (TheCase)
+import Types exposing (CaseDescription, CaseInfo)
 import Ui
 import Utils.Spa exposing (Page, PageContext)
 
@@ -43,8 +47,8 @@ type alias Comment =
 
 
 type alias Model =
-    { cases : List TheCase
-    , theCase : TheCase
+    { cases : List CaseInfo
+    , caseDescription : CaseDescription
     , closing1 : String
     , closing2 : String
     , closing3 : String
@@ -57,209 +61,23 @@ type alias Model =
 
 
 init : PageContext -> Params.ShowCase -> ( Model, Cmd Msg, Cmd Global.Msg )
-init context _ =
-    ( { cases =
-            [ { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            , { id = "654765/1"
-              , callDate ="16.02.2020"
-              , typeOfService = "Эвакуатор"
-              , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
-              , makeModel = "Ford/Mondeo"
-              , breakdownPlace = "Новосибирск, Красный проспект 10"
-              , payType = "РАМК"
-              }
-            ]
-      , theCase =
-            { id = "654765/1"
-            , callDate ="16.02.2020"
-            , typeOfService = "Эвакуатор"
-            , status = "Услуга оказана"
-            , accordTime = "11.11.2019 17:07:14"
-            , remainTime = "01:15:03"
-            , makeModel = "Ford/Mondeo"
-            , breakdownPlace = "Новосибирск, Красный проспект 10"
-            , payType = "РАМК"
+init context params =
+    ( { cases = []
+      , caseDescription =
+            { caseId = 0
+            , services = 0
+            , serviceType = ""
+            , client = ""
+            , clientPhone = ""
+            , firstAddress = ""
+            , lastAddress = ""
+            , expectedServiceStart = ""
+            , factServiceStart = ""
+            , factServiceEnd = ""
+            , makeModel = ""
+            , plateNumber = ""
+            , loadingDifficulty = ""
+            , suburbanMilage = ""
             }
       , closing1 = ""
       , closing2 = ""
@@ -267,41 +85,10 @@ init context _ =
       , closing4 = ""
       , inputComment = ""
       , commentFileName = ""
-      , comments =
-            [ { author = "Заполянская Ольга +74952550780"
-              , action = "Передана заявка"
-              , date = "15.01.2020 14:50:21"
-              , result = "Перевод действия"
-              , service = "Эвакуатор"
-              }
-            , { author = "Заполянская Ольга +74952550780"
-              , action = "Передана заявка"
-              , date = "15.01.2020 14:50:21"
-              , result = "Перевод действия"
-              , service = "Эвакуатор"
-              }
-            , { author = "Заполянская Ольга +74952550780"
-              , action = "Передана заявка"
-              , date = "15.01.2020 14:50:21"
-              , result = "Перевод действия"
-              , service = "Эвакуатор"
-              }
-            , { author = "Заполянская Ольга +74952550780"
-              , action = "Передана заявка"
-              , date = "15.01.2020 14:50:21"
-              , result = "Перевод действия"
-              , service = "Эвакуатор"
-              }
-            , { author = "Заполянская Ольга +74952550780"
-              , action = "Передана заявка"
-              , date = "15.01.2020 14:50:21"
-              , result = "Перевод действия"
-              , service = "Эвакуатор"
-              }
-            ]
+      , comments = []
       , caseStatus = Nothing
       }
-    , Cmd.none
+    , Api.getCase context.global.caseId CaseDescriptionArrived
     , Cmd.none
     )
 
@@ -320,6 +107,7 @@ type Msg
     | InputComment String
     | CommentFileName String
     | SelectStatus (Maybe CaseStatus)
+    | CaseDescriptionArrived (Result Http.Error CaseDescription)
 
 
 update : PageContext -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
@@ -379,15 +167,28 @@ update context msg model =
             , Cmd.none
             )
 
+        CaseDescriptionArrived result ->
+            case result of
+                Err e ->
+                    ( model
+                    , Ports.log <|
+                        "Error get case "
+                            ++ String.fromInt context.global.caseId
+                            ++ ": "
+                            ++ Debug.toString e
+                    , Cmd.none
+                    )
+
+                Ok caseDescription ->
+                    ( { model
+                        | caseDescription = caseDescription
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
 
 
-{-
-   _ ->
-       ( model
-       , Cmd.none
-       , Cmd.none
-       )
--}
+
 -- SUBSCRIPTIONS
 
 
@@ -414,30 +215,33 @@ view context model =
         ]
     <|
         row [ height fill, width fill ]
-            [ viewCases model.cases
-            , viewCasePanel model
+            [ --viewCases model.cases
+              viewCasePanel model
             ]
 
 
-viewCases : List TheCase -> Element msg
-viewCases cases =
-    column
-        [ width (px 200)
-        , height fill
-        , scrollbarY
-        , paddingXY 8 16
-        , spacing 4
-        ]
-    <|
-        List.map viewCase cases
+
+{-
+   viewCases : List CaseInfo -> Element msg
+   viewCases cases =
+       column
+           [ width (px 200)
+           , height fill
+           , scrollbarY
+           , paddingXY 8 16
+           , spacing 4
+           ]
+       <|
+           List.map viewCase cases
+-}
 
 
 nameStyle =
-    [ Font.size 14, Font.semiBold ]
+    [ Font.size 18, Font.semiBold ]
 
 
 valueStyle =
-    [ Font.size 14 ]
+    [ Font.size 18 ]
 
 
 name t =
@@ -455,57 +259,74 @@ field n v =
         ]
 
 
-viewCase : TheCase -> Element msg
-viewCase theCase =
-    let
-        columnStyle =
-            [ spacing 4
-            , padding 4
-            , width fill
-            , Bd.width 1
-            , Bd.rounded 8
-            , Bd.color Ui.colors.darkgray
-            ]
-    in
-    column columnStyle
-        [ field "заявка" theCase.id
-        , field "тип услуги" theCase.typeOfService
-        , field "статус" theCase.status
-        ]
+
+{-
+   viewCase : CaseDescription -> Element msg
+   viewCase theCase =
+       let
+           columnStyle =
+               [ spacing 4
+               , padding 4
+               , width fill
+               , Bd.width 1
+               , Bd.rounded 8
+               , Bd.color Ui.colors.darkgray
+               ]
+       in
+       column columnStyle
+           [ field "заявка" theCase.id
+           , field "тип услуги" theCase.typeOfService
+           , field "статус" theCase.status
+           ]
+-}
 
 
 viewCasePanel : Model -> Element Msg
 viewCasePanel model =
     column [ alignTop, width fill ]
         [ viewCaseVerbose model
-        , Ui.horizontalLine
-        , viewCaseStatus model
-        , Ui.horizontalLine
-        , viewCaseClosing model
-        , Ui.horizontalLine
-        , viewCaseCommentsPanel model
+
+        --, Ui.horizontalLine
+        --, viewCaseStatus model
+        --, Ui.horizontalLine
+        --, viewCaseClosing model
+        --, Ui.horizontalLine
+        --, viewCaseCommentsPanel model
         ]
 
 
 viewCaseVerbose : Model -> Element msg
 viewCaseVerbose model =
+    let
+        c =
+            model.caseDescription
+
+        caseId =
+            String.fromInt c.caseId
+                ++ (if c.services > 1 then
+                        " / " ++ String.fromInt c.services
+
+                    else
+                        ""
+                   )
+    in
     row []
-        [ column [ padding 16, alignTop ]
-            [ field "Номер заявки" model.theCase.id
-            , field "Вид помощи" model.theCase.typeOfService
-            , field "Клиент" ""
-            , field "Телефон клиента" ""
-            , field "Адрес начала работы" ""
+        [ column [ alignTop, spacingXY 8 16, padding 16 ]
+            [ field "Номер заявки" caseId
+            , field "Вид помощи" c.serviceType
+            , field "Клиент" c.client
+            , field "Телефон клиента" c.clientPhone
+            , field "Адрес начала работы" c.firstAddress
             , field "Адрес окончания работы" ""
-            , field "Желаемая дата оказания услуг" ""
-            , field "Факт. время оказания услуг" ""
-            , field "Время окончания работы" ""
+            , field "Желаемая дата оказания услуг" c.expectedServiceStart
+            , field "Факт. время оказания услуг" c.factServiceStart
+            , field "Время окончания работы" c.factServiceEnd
             ]
-        , column [ padding 16, alignTop ]
-            [ field "Марка и модель авто" <| model.theCase.makeModel
-            , field "Гос. номер" "не указан"
-            , field "Сложность погрузки" ""
-            , field "Перепробег за МКАД" ""
+        , column [ alignTop, spacingXY 8 16, padding 16 ]
+            [ field "Марка и модель авто" c.makeModel
+            , field "Гос. номер" c.plateNumber
+            , field "Сложность погрузки" c.loadingDifficulty
+            , field "Перепробег за МКАД" c.suburbanMilage
             , field "Простой" ""
             , field "Переадресация" ""
             , field "Стоимость услуги" ""

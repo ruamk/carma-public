@@ -1,15 +1,16 @@
 module Api exposing
-    ( getLatestClosingCases
+    ( getCase
+    , getLatestClosingCases
     , getLatestCurrentCases
     , login
     )
 
 import Http
 import HttpBuilder
-import Json.Decode exposing (Decoder, list, string, succeed)
+import Json.Decode exposing (Decoder, list, string, int, succeed)
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as JE
-import Types exposing (TheCase)
+import Types exposing (CaseDescription, CaseInfo)
 import Url.Builder as UB
 
 
@@ -38,69 +39,100 @@ apiGetLatestClosingCases =
     "/api/v1/getLatestCases/closing"
 
 
+apiGetCase : String
+apiGetCase =
+    "/api/v1/getCase/"
+
+
 login : String -> String -> (Result Http.Error Int -> msg) -> Cmd msg
 login name password message =
     let
-        body =
+        postBody =
             [ ( "login", name )
             , ( "password", password )
             ]
+
+        loginExpect : (Result Http.Error Int -> msg) -> Http.Expect msg
+        loginExpect toMsg =
+            Http.expectStringResponse toMsg <|
+                \response ->
+                    case response of
+                        Http.BadUrl_ url ->
+                            Err (Http.BadUrl url)
+
+                        Http.Timeout_ ->
+                            Err Http.Timeout
+
+                        Http.NetworkError_ ->
+                            Err Http.NetworkError
+
+                        Http.BadStatus_ metadata body ->
+                            Ok metadata.statusCode
+
+                        Http.GoodStatus_ metadata body ->
+                            Ok metadata.statusCode
     in
     HttpBuilder.post apiLogin
-        |> HttpBuilder.withUrlEncodedBody body
+        |> HttpBuilder.withUrlEncodedBody postBody
         |> HttpBuilder.withExpect (loginExpect message)
         |> HttpBuilder.request
 
 
-loginExpect : (Result Http.Error Int -> msg) -> Http.Expect msg
-loginExpect toMsg =
-    Http.expectStringResponse toMsg <|
-        \response ->
-            case response of
-                Http.BadUrl_ url ->
-                    Err (Http.BadUrl url)
-
-                Http.Timeout_ ->
-                    Err Http.Timeout
-
-                Http.NetworkError_ ->
-                    Err Http.NetworkError
-
-                Http.BadStatus_ metadata body ->
-                    Ok metadata.statusCode
-
-                Http.GoodStatus_ metadata body ->
-                    Ok metadata.statusCode
-
-
-latestCasesDecoder : Decoder (List TheCase)
+latestCasesDecoder : Decoder (List CaseInfo)
 latestCasesDecoder =
-    list decodeTheCase
+    let
+        decodeCaseInfo : Decoder CaseInfo
+        decodeCaseInfo =
+            succeed CaseInfo
+                |> required "caseId" int
+                |> optional "services" int 0
+                |> optional "callDate" string ""
+                |> optional "typeOfService" string ""
+                |> optional "status" string ""
+                |> optional "accordTime" string ""
+                |> optional "remainTime" string ""
+                |> optional "makeModel" string ""
+                |> optional "breakdownPlace" string ""
+                |> optional "payType" string ""
+    in
+    list decodeCaseInfo
 
 
-decodeTheCase : Decoder TheCase
-decodeTheCase =
-    succeed TheCase
-        |> required "id" string
-        |> optional "callDate" string "default callDate"
-        |> optional "typeOfService" string "default typeOfService"
-        |> optional "status" string "default status"
-        |> optional "accordTime" string "default accordTime"
-        |> optional "remainTime" string "01:00"
-        |> optional "makeModel" string "default makeModel"
-        |> optional "breakdownPlace" string "default breakdownPlace"
-        |> optional "payType" string "default payType"
-
-
-getLatestCurrentCases : (Result Http.Error (List TheCase) -> msg) -> Cmd msg
+getLatestCurrentCases : (Result Http.Error (List CaseInfo) -> msg) -> Cmd msg
 getLatestCurrentCases message =
     HttpBuilder.post apiGetLatestCurrentCases
         |> HttpBuilder.withExpect (Http.expectJson message latestCasesDecoder)
         |> HttpBuilder.request
 
 
-getLatestClosingCases : (Result Http.Error (List TheCase) -> msg) -> Cmd msg
+getLatestClosingCases : (Result Http.Error (List CaseInfo) -> msg) -> Cmd msg
 getLatestClosingCases message =
     HttpBuilder.post apiGetLatestClosingCases
         |> HttpBuilder.withExpect (Http.expectJson message latestCasesDecoder)
+        |> HttpBuilder.request
+
+
+getCase : Int -> (Result Http.Error CaseDescription -> msg) -> Cmd msg
+getCase caseId message =
+    let
+        getCaseDecoder : Decoder CaseDescription
+        getCaseDecoder =
+            succeed CaseDescription
+                |> required "caseId" int
+                |> optional "services" int 0
+                |> optional "serviceType" string ""
+                |> optional "client" string ""
+                |> optional "clientPhone" string ""
+                |> optional "firstAddress" string ""
+                |> optional "lastAddress" string ""
+                |> optional "expectedServiceStart" string ""
+                |> optional "factServiceStart" string ""
+                |> optional "factServiceEnd" string ""
+                |> optional "makeModel" string ""
+                |> optional "plateNumber" string ""
+                |> optional "loadingDifficulty" string ""
+                |> optional "suburbanMilage" string ""
+    in
+    HttpBuilder.get (apiGetCase ++ String.fromInt caseId)
+        |> HttpBuilder.withExpect (Http.expectJson message getCaseDecoder)
         |> HttpBuilder.request

@@ -11,7 +11,7 @@ import Global
 import Http
 import Ports
 import Spa.Page
-import Types exposing (TheCase)
+import Types exposing (CaseInfo)
 import Ui
 import Utils.Spa exposing (Page, PageContext)
 
@@ -37,9 +37,9 @@ pageSize =
 
 
 type alias Model =
-    { currentCases : List TheCase
+    { currentCases : List CaseInfo
     , currentCasesPage : Int
-    , closingCases : List TheCase
+    , closingCases : List CaseInfo
     , closingCasesPage : Int
     }
 
@@ -66,11 +66,11 @@ type CasesType
 
 
 type Msg
-    = CurrentCase String
-    | ClosingCase String
+    = CurrentCase Int
+    | ClosingCase Int
     | SearchCases
-    | GetCurrentCases (Result Http.Error (List TheCase))
-    | GetClosingCases (Result Http.Error (List TheCase))
+    | GetCurrentCases (Result Http.Error (List CaseInfo))
+    | GetClosingCases (Result Http.Error (List CaseInfo))
     | CasesPrevPage CasesType
     | CasesNextPage CasesType
 
@@ -80,13 +80,13 @@ update context msg model =
     case msg of
         CurrentCase caseId ->
             ( model
-            , Ports.log <| "CurrentCase " ++ caseId
+            , Ports.log <| "CurrentCase " ++ String.fromInt caseId
             , Spa.Page.send <| Global.ShowCase caseId
             )
 
         ClosingCase caseId ->
             ( model
-            , Ports.log <| "ClosingCase " ++ caseId
+            , Ports.log <| "ClosingCase " ++ String.fromInt caseId
             , Spa.Page.send <| Global.ShowCase caseId
             )
 
@@ -98,9 +98,9 @@ update context msg model =
 
         GetCurrentCases result ->
             case result of
-                Err _ ->
+                Err e ->
                     ( model
-                    , Ports.log "Error get current latest cases"
+                    , Ports.log <| "Error get current latest cases" ++ Debug.toString e
                     , Cmd.none
                     )
 
@@ -285,7 +285,7 @@ viewCurrentCases model =
             , columns =
                 [ { header = Ui.headerCell "Заявка"
                   , width = fill
-                  , view = \theCase -> Ui.idCell CurrentCase theCase.id
+                  , view = \theCase -> Ui.idCell CurrentCase theCase.id theCase.services
                   }
                 , { header = Ui.headerCell "Дата"
                   , width = fill
@@ -345,7 +345,7 @@ viewClosingCases model =
             , columns =
                 [ { header = Ui.headerCell "Заявка"
                   , width = fill
-                  , view = \theCase -> Ui.idCell ClosingCase theCase.id
+                  , view = \theCase -> Ui.idCell ClosingCase theCase.id theCase.services
                   }
                 , { header = Ui.headerCell "Дата"
                   , width = fill

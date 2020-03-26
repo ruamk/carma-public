@@ -17,7 +17,7 @@ type alias Flags =
 
 type alias Model =
     { username : String
-    , caseId : String
+    , caseId : Int
     }
 
 
@@ -26,7 +26,7 @@ type Msg
     | Logout
     | Cases String
     | SearchCases
-    | ShowCase String
+    | ShowCase Int
 
 
 type alias Commands msg =
@@ -37,7 +37,7 @@ type alias Commands msg =
 init : Commands msg -> Flags -> ( Model, Cmd Msg, Cmd msg )
 init commands _ =
     ( { username = ""
-      , caseId = ""
+      , caseId = 0
       }
     , Cmd.none
     , commands.navigate routes.login

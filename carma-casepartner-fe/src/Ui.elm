@@ -169,15 +169,23 @@ cell t =
     el cellAttrs <| text t
 
 
-idCell msg t =
+idCell msg caseId services =
     Input.button
         (cellAttrs
             ++ [ Font.semiBold
                , Font.color colors.lightblue
                ]
         )
-        { label = text t
-        , onPress = Just <| msg t
+        { label =
+            text <|
+                String.fromInt caseId
+                    ++ (if services > 1 then
+                            " / " ++ String.fromInt services
+
+                        else
+                            ""
+                       )
+        , onPress = Just <| msg caseId
         }
 
 
