@@ -186,8 +186,6 @@ update context msg model =
                     , Ports.log <|
                         "Error get case "
                             ++ String.fromInt context.global.caseId
-                            ++ ": "
-                            ++ Debug.toString e
                     , Cmd.none
                     )
 

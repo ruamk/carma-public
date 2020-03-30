@@ -117,7 +117,7 @@ update context msg model =
             case result of
                 Err e ->
                     ( model
-                    , Ports.log <| "Error get current latest cases" ++ Debug.toString e
+                    , Ports.log <| "Error get current latest cases"
                     , Cmd.none
                     )
 
