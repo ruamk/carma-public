@@ -18,30 +18,33 @@ type Msg
     = Login
     | Logout
 
+-- |  In production should be empty, for elm-live with hot reload
+prefix : String
+prefix = ""
 
 apiLogin : String
 apiLogin =
-    "/api/v1/login"
+    prefix ++"/api/v1/login"
 
 
 apiLogout : String
 apiLogout =
-    "/api/v1/logout"
+    prefix ++ "/api/v1/logout"
 
 
 apiGetLatestCurrentCases : String
 apiGetLatestCurrentCases =
-    "/api/v1/getLatestCases/current"
+    prefix ++ "/api/v1/getLatestCases/current"
 
 
 apiGetLatestClosingCases : String
 apiGetLatestClosingCases =
-    "/api/v1/getLatestCases/closing"
+    prefix ++ "/api/v1/getLatestCases/closing"
 
 
 apiGetCase : String
 apiGetCase =
-    "/api/v1/getCase/"
+    prefix ++ "/api/v1/getCase/"
 
 
 login : String -> String -> (Result Http.Error Int -> msg) -> Cmd msg
