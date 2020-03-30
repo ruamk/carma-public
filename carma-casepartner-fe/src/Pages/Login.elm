@@ -5,6 +5,7 @@ import Bootstrap.Button as Button
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
 import Bootstrap.Grid as Grid
+import Bootstrap.Utilities.Size as Size
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Navbar as Navbar
@@ -145,7 +146,7 @@ subscriptions model =
 
 view : PageContext -> Model -> Html Msg
 view _ model =
-    Grid.row [ Row.centerXs ]
+    Grid.row [ Row.centerXs, Row.attrs [ style "height" "100vh"] ]
         [ Grid.col [ Col.sm2, Col.attrs [ Flex.alignSelfCenter ] ]
             [ div []
                 [ img
@@ -153,7 +154,8 @@ view _ model =
                     ]
                     []
                 ]
-            , div
+            , div [style "height" "2rem"] []
+            , h3
                 []
                 [ text "Вход в систему"
                 ]
