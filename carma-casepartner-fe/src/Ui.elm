@@ -54,7 +54,15 @@ mainMenu msg state username buttons =
     Navbar.config msg
         |> Navbar.withAnimation
         |> Navbar.info
-        |> Navbar.brand [] [ text "CaRMa" ]
+        |> Navbar.brand []
+            [ img
+                [ Attrs.src "/logo.png"
+                , Attrs.class "d-inline-block align-middle"
+                , Attrs.style "width" "60px"
+                ]
+                []
+            , text "CaRMa"
+            ]
         |> Navbar.items
             (List.map
                 (\( active, itemMsg, label ) ->
