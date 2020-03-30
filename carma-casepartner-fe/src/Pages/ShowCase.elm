@@ -6,6 +6,8 @@ import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Navbar as Navbar
+import Bootstrap.Spinner as Spinner
+import Bootstrap.Text as Text
 import Bootstrap.Utilities.Border as Border
 import Bootstrap.Utilities.Spacing as Spacing
 import Debug
@@ -277,27 +279,44 @@ viewCaseVerbose model =
                    )
     in
     Grid.row [ Row.attrs [ Spacing.p5 ] ]
-        [ Grid.col [] []
-        , Grid.col [ Col.attrs [ Attrs.style "background-color" Ui.colors.casesBg ], Col.sm5 ]
-            [ field "Номер заявки" caseId
-            , field "Вид помощи" c.serviceType
-            , field "Клиент" c.client
-            , field "Телефон клиента" c.clientPhone
-            , field "Адрес начала работы" c.firstAddress
-            , field "Адрес окончания работы" ""
-            , field "Желаемая дата оказания услуг" c.expectedServiceStart
-            , field "Факт. время оказания услуг" c.factServiceStart
-            , field "Время окончания работы" c.factServiceEnd
-            ]
-        , Grid.col [ Col.attrs [ Attrs.style "background-color" Ui.colors.casesBg ], Col.sm5 ]
-            [ field "Марка и модель авто" c.makeModel
-            , field "Гос. номер" c.plateNumber
-            , field "Сложность погрузки" c.loadingDifficulty
-            , field "Перепробег за МКАД" c.suburbanMilage
-            , field "Простой" ""
-            , field "Переадресация" ""
-            , field "Стоимость услуги" ""
-            , field "KPI" ""
-            ]
-        , Grid.col [] []
-        ]
+        ([ Grid.col [] []
+         ]
+            ++ (if model.caseDescription.caseId == 0 then
+                    [ Grid.col [ Col.textAlign Text.alignXsCenter]
+                        [ Spinner.spinner
+                            [ Spinner.attrs
+                                [ Attrs.style "width" "10rem"
+                                , Attrs.style "height" "10rem"
+                                ]
+                            ]
+                            []
+                        ]
+                    ]
+
+                else
+                    [ Grid.col [ Col.attrs [ Attrs.style "background-color" Ui.colors.casesBg ], Col.sm5 ]
+                        [ field "Номер заявки" caseId
+                        , field "Вид помощи" c.serviceType
+                        , field "Клиент" c.client
+                        , field "Телефон клиента" c.clientPhone
+                        , field "Адрес начала работы" c.firstAddress
+                        , field "Адрес окончания работы" ""
+                        , field "Желаемая дата оказания услуг" c.expectedServiceStart
+                        , field "Факт. время оказания услуг" c.factServiceStart
+                        , field "Время окончания работы" c.factServiceEnd
+                        ]
+                    , Grid.col [ Col.attrs [ Attrs.style "background-color" Ui.colors.casesBg ], Col.sm5 ]
+                        [ field "Марка и модель авто" c.makeModel
+                        , field "Гос. номер" c.plateNumber
+                        , field "Сложность погрузки" c.loadingDifficulty
+                        , field "Перепробег за МКАД" c.suburbanMilage
+                        , field "Простой" ""
+                        , field "Переадресация" ""
+                        , field "Стоимость услуги" ""
+                        , field "KPI" ""
+                        ]
+                    ]
+               )
+            ++ [ Grid.col [] []
+               ]
+        )
