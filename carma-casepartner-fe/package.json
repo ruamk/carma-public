@@ -4,13 +4,15 @@
   "description": "learn more at https://elm-spa.dev",
   "scripts": {
     "start": "npm install && npm run dev",
-    "dev": "npm run elm:spa:build && npm run build:watch",
-    "build": "npm run elm:spa:build && npm run elm:compile",
+    "dev": "npm run debug:on && npm run elm:spa:build && npm run build:watch",
+    "build": "npm run debug:off && npm run elm:spa:build && npm run elm:compile",
     "build:watch": "concurrently --kill-others \"npm run elm:spa:watch\" \"npm run elm:live\"",
     "elm:compile": "elm make src/Main.elm --output=public/dist/elm.compiled.js --optimize",
     "elm:live": "elm-live src/Main.elm --dir=public --start-page=index.html --open --pushstate --port=1234 -x /elm-live -y http://localhost:9009 -- --output=public/dist/elm.compiled.js --debug",
     "elm:spa:build": "elm-spa build .",
-    "elm:spa:watch": "chokidar src/Pages -c \"npm run elm:spa:build\""
+    "elm:spa:watch": "chokidar src/Pages -c \"npm run elm:spa:build\"",
+    "debug:on":  "sed -i -e 's#^prefix =.*$#prefix = \"/elm-live\"#' src/Api.elm",
+    "debug:off": "sed -i -e 's#^prefix =.*$#prefix = \"\"#' src/Api.elm"
   },
   "keywords": [],
   "author": "",
