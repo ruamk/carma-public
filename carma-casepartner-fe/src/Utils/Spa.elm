@@ -11,7 +11,7 @@ module Utils.Spa exposing
     , recipe
     )
 
-import Element exposing (Element)
+import Html exposing (Html)
 import Generated.Routes as Routes exposing (Route)
 import Global
 import Spa.Page
@@ -19,11 +19,11 @@ import Spa.Types
 
 
 type alias Page params model msg layoutModel layoutMsg appMsg =
-    Spa.Types.Page Route params model msg (Element msg) layoutModel layoutMsg (Element layoutMsg) Global.Model Global.Msg appMsg (Element appMsg)
+    Spa.Types.Page Route params model msg (Html msg) layoutModel layoutMsg (Html layoutMsg) Global.Model Global.Msg appMsg (Html appMsg)
 
 
 type alias Recipe params model msg layoutModel layoutMsg appMsg =
-    Spa.Types.Recipe Route params model msg layoutModel layoutMsg (Element layoutMsg) Global.Model Global.Msg appMsg (Element appMsg)
+    Spa.Types.Recipe Route params model msg layoutModel layoutMsg (Html layoutMsg) Global.Model Global.Msg appMsg (Html appMsg)
 
 
 type alias Init model msg =
@@ -35,11 +35,11 @@ type alias Update model msg =
 
 
 type alias Bundle msg appMsg =
-    Spa.Types.Bundle Route msg (Element msg) Global.Model Global.Msg appMsg (Element appMsg)
+    Spa.Types.Bundle Route msg (Html msg) Global.Model Global.Msg appMsg (Html appMsg)
 
 
 type alias LayoutContext msg =
-    Spa.Types.LayoutContext Route msg (Element msg) Global.Model Global.Msg
+    Spa.Types.LayoutContext Route msg (Html msg) Global.Model Global.Msg
 
 
 type alias PageContext =
@@ -47,26 +47,26 @@ type alias PageContext =
 
 
 type alias Layout params model msg appMsg =
-    Spa.Types.Layout Route params model msg (Element msg) Global.Model Global.Msg appMsg (Element appMsg)
+    Spa.Types.Layout Route params model msg (Html msg) Global.Model Global.Msg appMsg (Html appMsg)
 
 
 layout :
     Layout params model msg appMsg
     -> Page params model msg layoutModel layoutMsg appMsg
 layout =
-    Spa.Page.layout Element.map
+    Spa.Page.layout Html.map
 
 
 type alias Upgrade params model msg layoutModel layoutMsg appMsg =
-    Spa.Types.Upgrade Route params model msg (Element msg) layoutModel layoutMsg (Element layoutMsg) Global.Model Global.Msg appMsg (Element appMsg)
+    Spa.Types.Upgrade Route params model msg (Html msg) layoutModel layoutMsg (Html layoutMsg) Global.Model Global.Msg appMsg (Html appMsg)
 
 
 recipe :
     Upgrade params model msg layoutModel layoutMsg appMsg
     -> Recipe params model msg layoutModel layoutMsg appMsg
 recipe =
-    Spa.Page.recipe Element.map
+    Spa.Page.recipe Html.map
 
 
 type alias Transitions msg =
-    Spa.Types.Transitions (Element msg)
+    Spa.Types.Transitions (Html msg)

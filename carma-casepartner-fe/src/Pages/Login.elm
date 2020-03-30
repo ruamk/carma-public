@@ -1,14 +1,20 @@
 module Pages.Login exposing (Model, Msg, page)
 
 import Api
-import Element exposing (..)
-import Element.Background as Bg
-import Element.Border as Bd
-import Element.Font as Font
-import Element.Input exposing (button, currentPassword, labelLeft, username)
+import Bootstrap.Button as Button
+import Bootstrap.Form as Form
+import Bootstrap.Form.Input as Input
+import Bootstrap.Grid as Grid
+import Bootstrap.Grid.Col as Col
+import Bootstrap.Grid.Row as Row
+import Bootstrap.Navbar as Navbar
+import Bootstrap.Utilities.Flex as Flex
 import Generated.Params as Params
 import Generated.Routes as Routes exposing (routes)
 import Global
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Ports
 import Spa.Page
@@ -137,54 +143,45 @@ subscriptions model =
 -- VIEW
 
 
-view : PageContext -> Model -> Element Msg
+view : PageContext -> Model -> Html Msg
 view _ model =
-    column
-        [ centerX
-        , centerY
-        , spacing 16
-        ]
-        [ el [] <|
-            image []
-                { src = "/logo.png"
-                , description = ""
-                }
-        , el
-            [ alignLeft
-            , Font.size 24
-            , Font.semiBold
-            ]
-          <|
-            text "Вход в систему"
-        , Ui.horizontalLine
-        , el [ alignRight ] <|
-            username [ Font.size 12 ]
-                { label = labelLeft [ centerY ] <| text "Имя пользователя"
-                , text = model.name
-                , onChange = Name
-                , placeholder = Nothing
-                }
-        , el [ alignRight ] <|
-            currentPassword [ Font.size 12 ]
-                { label = labelLeft [ centerY ] <| text "Пароль"
-                , text = model.password
-                , onChange = Password
-                , placeholder = Nothing
-                , show = False
-                }
-        , el [] none
-        , el [ centerX ] <| Ui.button ( "Войти", Just TryLogin )
-        , el [ centerX ]
-            (case model.errorMessage of
-                Nothing ->
-                    el [] none
+    Grid.row [ Row.centerXs ]
+        [ Grid.col [ Col.sm2, Col.attrs [ Flex.alignSelfCenter ] ]
+            [ div []
+                [ img
+                    [ src "/logo.png"
+                    ]
+                    []
+                ]
+            , div
+                []
+                [ text "Вход в систему"
+                ]
+            , hr [] []
+            , Form.form []
+                [ Form.group []
+                    [ Form.label [ for "name" ] [ text "Имя пользователя" ]
+                    , Input.text [ Input.id "name", Input.value model.name, Input.attrs [ onInput Name ] ]
+                    ]
+                , Form.group []
+                    [ Form.label [ for "password" ] [ text "Пароль" ]
+                    , Input.password [ Input.id "password", Input.value model.password, Input.attrs [ onInput Password ] ]
+                    ]
+                , Form.row [ Row.rightSm ]
+                    [ Form.col []
+                        [ div []
+                            [ text <|
+                                case model.errorMessage of
+                                    Nothing ->
+                                        ""
 
-                Just errorMessage ->
-                    el
-                        [ Font.color Ui.colors.red
-                        , Font.size 12
+                                    Just errorMessage ->
+                                        "Ошибка: " ++ errorMessage
+                            ]
                         ]
-                    <|
-                        text ("Ошибка: " ++ errorMessage)
-            )
+                    ]
+                ]
+            , Button.button [ Button.primary, Button.attrs [ onClick TryLogin ] ]
+                [ text "Войти" ]
+            ]
         ]

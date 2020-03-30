@@ -6,7 +6,7 @@ import Utils.Spa as Spa
 
 transitions : Spa.Transitions msg
 transitions =
-    { layout = Transition.fadeElmUi 500
-    , page = Transition.fadeElmUi 300
+    { layout = Transition.fadeHtml 500
+    , page = Transition.fadeHtml 300
     , pages = []
     }

@@ -1,10 +1,7 @@
 module Pages.Top exposing (Model, Msg, page)
 
-import Element exposing (..)
-import Element.Background as Background
-import Element.Font as Font
-import Element.Input exposing (currentPassword, labelLeft, username)
 import Generated.Params as Params
+import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput)
 import Spa.Page
@@ -66,6 +63,6 @@ subscriptions model =
 -- VIEW
 
 
-view : Model -> Element Msg
+view : Model -> Html Msg
 view model =
-    column [] []
+    div [] []

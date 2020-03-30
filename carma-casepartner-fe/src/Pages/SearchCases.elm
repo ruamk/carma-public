@@ -1,10 +1,17 @@
 module Pages.SearchCases exposing (Model, Msg, page)
 
-import Element exposing (..)
-import Element.Font as Font
-import Element.Input as Input exposing (button, labelLeft)
+import Bootstrap.Button as Button
+import Bootstrap.Form as Form
+import Bootstrap.Form.Input as Input
+import Bootstrap.Grid as Grid
+import Bootstrap.Grid.Col as Col
+import Bootstrap.Grid.Row as Row
+import Bootstrap.Navbar as Navbar
+import Bootstrap.Table as Table
 import Generated.Params as Params
 import Global
+import Html exposing (..)
+import Html.Events exposing (onClick, onInput)
 import Ports
 import Spa.Page
 import Types exposing (CaseInfo)
@@ -49,11 +56,16 @@ type alias Model =
     , search_make : String
     , search_typeOfService : String
     , search_breakdownPlace : String
+    , navbarState : Navbar.State
     }
 
 
 init : PageContext -> Params.SearchCases -> ( Model, Cmd Msg, Cmd Global.Msg )
 init context _ =
+    let
+        ( navbarState, navbarCmd ) =
+            Navbar.initialState NavbarMsg
+    in
     ( { cases =
             [ { id = 654765
               , services = 1
@@ -75,8 +87,9 @@ init context _ =
       , search_make = ""
       , search_typeOfService = ""
       , search_breakdownPlace = ""
+      , navbarState = navbarState
       }
-    , Cmd.none
+    , navbarCmd
     , Cmd.none
     )
 
@@ -96,6 +109,7 @@ type Msg
     | Make String -- марка
     | TypeOfService String -- тип услуги
     | BreakdownPlace String -- адрес места поломки
+    | NavbarMsg Navbar.State
 
 
 update : PageContext -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
@@ -157,7 +171,13 @@ update context msg model =
 
         BreakdownPlace place ->
             ( { model | search_breakdownPlace = place }
-            , Ports.log <| "Saerch by breakdown place " ++ place
+            , Ports.log <| "Search by breakdown place " ++ place
+            , Cmd.none
+            )
+
+        NavbarMsg state ->
+            ( { model | navbarState = state }
+            , Cmd.none
             , Cmd.none
             )
 
@@ -175,149 +195,101 @@ subscriptions model =
 -- VIEW
 
 
-view : PageContext -> Model -> Element Msg
+view : PageContext -> Model -> Html Msg
 view context model =
-    Ui.page context.global.username
-        [ button Ui.inactiveTabStyle
-            { label = text "Текущие заявки"
-            , onPress = Just Cases
-            }
-        , button Ui.activeTabStyle
-            { label = text "Поиск заявок"
-            , onPress = Nothing
-            }
+    Ui.page NavbarMsg
+        model.navbarState
+        context.global.username
+        [ ( False, Cases, "Текущие заявки" )
+        , ( True, NavbarMsg model.navbarState, "Поиск заявок" )
         ]
     <|
-        row [ padding 16 ]
-            [ viewCases model.cases
-            , viewSearchForm model
-            ]
-
-
-viewCases : List CaseInfo -> Element Msg
-viewCases data =
-    el [ alignTop ] <|
-        table Ui.casesTableStyle
-            { data = data
-            , columns =
-                [ { header = Ui.headerCell "Заявка"
-                  , width = shrink
-                  , view = \theCase -> Ui.idCell Case theCase.id theCase.services
-                  }
-                , { header = Ui.headerCell "Дата"
-                  , width = shrink
-                  , view = \theCase -> Ui.cell theCase.callDate
-                  }
-                , { header = Ui.headerCell "Тип услуги"
-                  , width = shrink
-                  , view = \theCase -> Ui.cell theCase.typeOfService
-                  }
-                , { header = Ui.headerCell "Статус"
-                  , width = shrink
-                  , view = \theCase -> Ui.cell theCase.status
-                  }
-                , { header = Ui.headerCell "ОВНОУ (п)"
-                  , width = shrink
-                  , view = \theCase -> Ui.cell theCase.accordTime
-                  }
-                , { header = Ui.headerCell "Остаток времени (таймер)"
-                  , width = shrink
-                  , view = \theCase -> Ui.cell theCase.remainTime
-                  }
-                , { header = Ui.headerCell "Изменить статус"
-                  , width = shrink
-                  , view = \theCase -> Ui.cell theCase.status
-                  }
-                , { header = Ui.headerCell "Марка/Модель"
-                  , width = shrink
-                  , view = \theCase -> Ui.cell theCase.makeModel
-                  }
-                , { header = Ui.headerCell "Адрес места поломки"
-                  , width = shrink
-                  , view = \theCase -> Ui.cell theCase.breakdownPlace
-                  }
-                , { header = Ui.headerCell "Тип оплаты"
-                  , width = shrink
-                  , view = \theCase -> Ui.cell theCase.payType
-                  }
+        Grid.row []
+            [ Grid.col []
+                [ viewCases model.cases
+                , viewSearchForm model
                 ]
-            }
-
-
-viewSearchForm : Model -> Element Msg
-viewSearchForm model =
-    let
-        font =
-            [ Font.size 12 ]
-
-        leftLabel t =
-            labelLeft [ centerY ] <| text t
-
-        textStyle =
-            font ++ [ width (px 205) ]
-
-        dateStyle =
-            font ++ [ width (px 100) ]
-
-        datePlaceholder =
-            Just <| Input.placeholder [] <| text "ГГГГ-ММ-ДД"
-    in
-    column [ paddingXY 16 0, alignTop, spacing 8, width (px 400) ]
-        [ el [ alignRight ] <|
-            Input.text textStyle
-                { label = leftLabel "Номер кейса:"
-                , text = model.search_caseId
-                , placeholder = Nothing
-                , onChange = CaseId
-                }
-        , el [ alignRight ] <|
-            Input.text textStyle
-                { label = leftLabel "Госномер:"
-                , text = model.search_plateNumber
-                , placeholder = Nothing
-                , onChange = PlateNumber
-                }
-        , row [ alignRight ]
-            [ el font <| text "Дата звонка:"
-            , Input.text dateStyle
-                { label = labelLeft [] <| none
-                , text = model.search_callDateStart
-                , placeholder = datePlaceholder
-                , onChange = CallDateStart
-                }
-            , Input.text dateStyle
-                { label = labelLeft [] <| none
-                , text = model.search_callDateEnd
-                , placeholder = datePlaceholder
-                , onChange = CallDateEnd
-                }
             ]
-        , el [ alignRight ] <|
-            Input.text textStyle
-                { label = leftLabel "Телефоны:"
-                , text = model.search_phones
-                , placeholder = Nothing
-                , onChange = Phones
-                }
-        , el [ alignRight ] <|
-            Input.text textStyle
-                { label = leftLabel "Марка:"
-                , text = model.search_make
-                , placeholder = Nothing
-                , onChange = Make
-                }
-        , el [ alignRight ] <|
-            Input.text textStyle
-                { label = leftLabel "Услуга:"
-                , text = model.search_typeOfService
-                , placeholder = Nothing
-                , onChange = TypeOfService
-                }
-        , el [ alignRight ] <|
-            Input.text textStyle
-                { label = leftLabel "Адрес места поломки:"
-                , text = model.search_breakdownPlace
-                , placeholder = Nothing
-                , onChange = BreakdownPlace
-                }
+
+
+viewCases : List CaseInfo -> Html Msg
+viewCases data =
+    Table.table
+        { options = [ Table.hover, Table.bordered ]
+        , thead =
+            Table.simpleThead
+                [ Table.th [] [ text "Заявка" ]
+                , Table.th [] [ text "Дата" ]
+                , Table.th [] [ text "Тип услуги" ]
+                , Table.th [] [ text "Статус" ]
+                , Table.th [] [ text "ОВНОУ (п)" ]
+                , Table.th [] [ text "Остаток времени (таймер)" ]
+                , Table.th [] [ text "Изменить статус" ]
+                , Table.th [] [ text "Марка/Модель" ]
+                , Table.th [] [ text "Адрес места поломки" ]
+                , Table.th [] [ text "Тип оплаты" ]
+                ]
+        , tbody =
+            Table.tbody [] <|
+                List.map (Table.tr []) <|
+                    List.map
+                        (\theCase ->
+                            [ Table.td [] [ Ui.idCell Case theCase.id theCase.services ]
+                            , Table.td [] [ Ui.cell theCase.callDate ]
+                            , Table.td [] [ Ui.cell theCase.typeOfService ]
+                            , Table.td [] [ Ui.cell theCase.status ]
+                            , Table.td [] [ Ui.cell theCase.accordTime ]
+                            , Table.td [] [ Ui.cell theCase.remainTime ]
+                            , Table.td [] [ Ui.cell theCase.status ]
+                            , Table.td [] [ Ui.cell theCase.makeModel ]
+                            , Table.td [] [ Ui.cell theCase.breakdownPlace ]
+                            , Table.td [] [ Ui.cell theCase.payType ]
+                            ]
+                        )
+                        data
+        }
+
+
+viewSearchForm : Model -> Html Msg
+viewSearchForm model =
+    Form.form []
+        [ Form.row []
+            [ Form.colLabel [] [ text "Номер кейса:" ]
+            , Form.col []
+                [ Input.text [ Input.attrs [ onInput CaseId ], Input.value model.search_caseId ]
+                ]
+            ]
+        , Form.row []
+            [ Form.colLabel [] [ text "Госномер:" ]
+            , Form.col []
+                [ Input.text [ Input.attrs [ onInput PlateNumber ], Input.value model.search_plateNumber ]
+                ]
+            ]
+        , Form.row []
+            [ Form.colLabel [] [ text "Дата звонка:" ]
+            , Form.col []
+                [ Input.date [ Input.attrs [ onInput CallDateStart ], Input.value model.search_callDateStart ] ]
+            , Form.col []
+                [ Input.date [ Input.attrs [ onInput CallDateEnd ], Input.value model.search_callDateEnd ] ]
+            ]
+        , Form.row []
+            [ Form.colLabel [] [ text "Телефоны:" ]
+            , Form.col []
+                [ Input.text [ Input.attrs [ onInput Phones ], Input.value model.search_phones ] ]
+            ]
+        , Form.row []
+            [ Form.colLabel [] [ text "Марка:" ]
+            , Form.col []
+                [ Input.text [ Input.attrs [ onInput Make ], Input.value model.search_make ] ]
+            ]
+        , Form.row []
+            [ Form.colLabel [] [ text "Услуга:" ]
+            , Form.col []
+                [ Input.text [ Input.attrs [ onInput TypeOfService ], Input.value model.search_typeOfService ] ]
+            ]
+        , Form.row []
+            [ Form.colLabel [] [ text "Адрес места поломки:" ]
+            , Form.col []
+                [ Input.text [ Input.attrs [ onInput BreakdownPlace ], Input.value model.search_breakdownPlace ] ]
+            ]
         ]

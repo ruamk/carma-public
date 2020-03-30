@@ -1,14 +1,19 @@
 module Pages.ShowCase exposing (Model, Msg, page)
 
 import Api
+import Bootstrap.Button as Button
+import Bootstrap.Grid as Grid
+import Bootstrap.Grid.Col as Col
+import Bootstrap.Grid.Row as Row
+import Bootstrap.Navbar as Navbar
+import Bootstrap.Utilities.Border as Border
+import Bootstrap.Utilities.Spacing as Spacing
 import Debug
-import Element exposing (..)
-import Element.Background as Bg
-import Element.Border as Bd
-import Element.Font as Font
-import Element.Input as Input exposing (button, labelLeft)
 import Generated.Params as Params
 import Global
+import Html exposing (..)
+import Html.Attributes as Attrs
+import Html.Events exposing (onClick)
 import Http
 import Ports
 import Spa.Page
@@ -57,11 +62,16 @@ type alias Model =
     , commentFileName : String
     , comments : List Comment
     , caseStatus : Maybe CaseStatus
+    , navbarState : Navbar.State
     }
 
 
 init : PageContext -> Params.ShowCase -> ( Model, Cmd Msg, Cmd Global.Msg )
 init context params =
+    let
+        ( navbarState, navbarCmd ) =
+            Navbar.initialState NavbarMsg
+    in
     ( { cases = []
       , caseDescription =
             { caseId = 0
@@ -87,8 +97,9 @@ init context params =
       , commentFileName = ""
       , comments = []
       , caseStatus = Nothing
+      , navbarState = navbarState
       }
-    , Api.getCase context.global.caseId CaseDescriptionArrived
+    , navbarCmd
     , Cmd.none
     )
 
@@ -108,6 +119,7 @@ type Msg
     | CommentFileName String
     | SelectStatus (Maybe CaseStatus)
     | CaseDescriptionArrived (Result Http.Error CaseDescription)
+    | NavbarMsg Navbar.State
 
 
 update : PageContext -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
@@ -187,6 +199,12 @@ update context msg model =
                     , Cmd.none
                     )
 
+        NavbarMsg state ->
+            ( { model | navbarState = state }
+            , Api.getCase context.global.caseId CaseDescriptionArrived
+            , Cmd.none
+            )
+
 
 
 -- SUBSCRIPTIONS
@@ -194,108 +212,58 @@ update context msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Navbar.subscriptions model.navbarState NavbarMsg
 
 
 
 -- VIEW
 
 
-view : PageContext -> Model -> Element Msg
+view : PageContext -> Model -> Html Msg
 view context model =
-    Ui.page context.global.username
-        [ button Ui.inactiveTabStyle
-            { label = text "Текущие заявки"
-            , onPress = Just Cases
-            }
-        , button Ui.inactiveTabStyle
-            { label = text "Поиск заявок"
-            , onPress = Just SearchCases
-            }
+    Ui.page NavbarMsg
+        model.navbarState
+        context.global.username
+        [ ( False, Cases, "Текущие заявки" )
+        , ( False, SearchCases, "Поиск заявок" )
         ]
     <|
-        row [ height fill, width fill ]
-            [ --viewCases model.cases
-              viewCasePanel model
+        div []
+            [ viewCasePanel model
             ]
 
 
-
-{-
-   viewCases : List CaseInfo -> Element msg
-   viewCases cases =
-       column
-           [ width (px 200)
-           , height fill
-           , scrollbarY
-           , paddingXY 8 16
-           , spacing 4
-           ]
-       <|
-           List.map viewCase cases
--}
-
-
 nameStyle =
-    [ Font.size 18, Font.semiBold ]
+    [ Attrs.class "name" ]
 
 
 valueStyle =
-    [ Font.size 18 ]
+    [ Attrs.class "value" ]
 
 
 name t =
-    el nameStyle <| text t
+    div nameStyle [ text t ]
 
 
 value t =
-    el valueStyle <| text t
+    div valueStyle [ text t ]
 
 
 field n v =
-    row [ padding 4 ]
-        [ name <| n ++ ": "
-        , value v
+    Grid.row [ Row.attrs [ Spacing.p2 ] ]
+        [ Grid.col [ Col.sm4 ]
+            [ name <| n ++ ": " ]
+        , Grid.col [ Col.sm8 ]
+            [ value v ]
         ]
 
 
-
-{-
-   viewCase : CaseDescription -> Element msg
-   viewCase theCase =
-       let
-           columnStyle =
-               [ spacing 4
-               , padding 4
-               , width fill
-               , Bd.width 1
-               , Bd.rounded 8
-               , Bd.color Ui.colors.darkgray
-               ]
-       in
-       column columnStyle
-           [ field "заявка" theCase.id
-           , field "тип услуги" theCase.typeOfService
-           , field "статус" theCase.status
-           ]
--}
-
-
-viewCasePanel : Model -> Element Msg
+viewCasePanel : Model -> Html Msg
 viewCasePanel model =
-    column [ alignTop, width fill ]
-        [ viewCaseVerbose model
-
-        --, Ui.horizontalLine
-        --, viewCaseStatus model
-        --, Ui.horizontalLine
-        --, viewCaseClosing model
-        --, Ui.horizontalLine
-        --, viewCaseCommentsPanel model
-        ]
+    viewCaseVerbose model
 
 
-viewCaseVerbose : Model -> Element msg
+viewCaseVerbose : Model -> Html msg
 viewCaseVerbose model =
     let
         c =
@@ -310,8 +278,9 @@ viewCaseVerbose model =
                         ""
                    )
     in
-    row []
-        [ column [ alignTop, spacingXY 8 16, padding 16 ]
+    Grid.row [ Row.attrs [ Spacing.p5 ] ]
+        [ Grid.col [] []
+        , Grid.col [ Col.attrs [ Attrs.style "background-color" Ui.colors.casesBg ], Col.sm5 ]
             [ field "Номер заявки" caseId
             , field "Вид помощи" c.serviceType
             , field "Клиент" c.client
@@ -322,7 +291,7 @@ viewCaseVerbose model =
             , field "Факт. время оказания услуг" c.factServiceStart
             , field "Время окончания работы" c.factServiceEnd
             ]
-        , column [ alignTop, spacingXY 8 16, padding 16 ]
+        , Grid.col [ Col.attrs [ Attrs.style "background-color" Ui.colors.casesBg ], Col.sm5 ]
             [ field "Марка и модель авто" c.makeModel
             , field "Гос. номер" c.plateNumber
             , field "Сложность погрузки" c.loadingDifficulty
@@ -332,127 +301,5 @@ viewCaseVerbose model =
             , field "Стоимость услуги" ""
             , field "KPI" ""
             ]
-        ]
-
-
-viewCaseStatus : Model -> Element Msg
-viewCaseStatus model =
-    column [ centerX ]
-        [ field "Статус заявки" "услуга оказана"
-        , row []
-            [ Input.radio []
-                { label = labelLeft [] <| text "Изменить статус:"
-                , selected = Just model.caseStatus
-                , onChange = SelectStatus
-                , options =
-                    [ Input.option (Just TowageArrived) <| text "Эвакуатор на месте"
-                    , Input.option (Just TowageAwaiting) <| text "Эвакуатор в пути"
-                    ]
-                }
-            ]
-        ]
-
-
-viewCaseClosing : Model -> Element Msg
-viewCaseClosing model =
-    let
-        inputStyle =
-            [ Font.size 14 ]
-    in
-    column [ padding 16 ]
-        [ field "Закрытие заявки" ""
-        , row []
-            [ Input.text inputStyle
-                { label = labelLeft [] <| none
-                , text = model.closing1
-                , placeholder = Nothing
-                , onChange = Closing1
-                }
-            , Input.text inputStyle
-                { label = labelLeft [] <| none
-                , text = model.closing2
-                , placeholder = Nothing
-                , onChange = Closing2
-                }
-            , Input.text inputStyle
-                { label = labelLeft [] <| none
-                , text = model.closing3
-                , placeholder = Nothing
-                , onChange = Closing3
-                }
-            , Input.text inputStyle
-                { label = labelLeft [] <| none
-                , text = model.closing4
-                , placeholder = Nothing
-                , onChange = Closing4
-                }
-            ]
-        ]
-
-
-commentStyle : List (Attribute msg)
-commentStyle =
-    [ spacing 4
-    , padding 4
-    , width fill
-    , Bd.width 1
-    , Bd.rounded 8
-    , Bd.color Ui.colors.darkgray
-    ]
-
-
-viewComment : Comment -> Element msg
-viewComment comment =
-    column commentStyle
-        [ el
-            [ Font.semiBold
-            , Font.size 14
-            ]
-          <|
-            text <|
-                comment.date
-                    ++ " "
-                    ++ comment.author
-        , field "Действие" comment.action
-        , field "Результат" comment.result
-        , field "Услуга" comment.service
-        ]
-
-
-viewCaseCommentsPanel : Model -> Element Msg
-viewCaseCommentsPanel model =
-    column [ width fill, padding 16 ]
-        [ Input.multiline
-            [ centerX
-            , width fill
-            , height (px 100)
-            , Font.size 14
-            ]
-            { onChange = InputComment
-            , text = model.inputComment
-            , placeholder = Just <| Input.placeholder [] <| text "Добавить комментарий..."
-            , label = labelLeft [] <| none
-            , spellcheck = False
-            }
-        , row [ paddingXY 4 8, spacingXY 8 8, width fill ]
-            [ Ui.button ( "Добавить комментарий", Nothing )
-            , el [ width fill ] <| none
-            , Input.text [ Font.size 14, spacingXY 8 8 ]
-                { label = labelLeft [] <| none
-                , text = model.commentFileName
-                , placeholder = Just <| Input.placeholder [] <| text "Добавить файл"
-                , onChange = CommentFileName
-                }
-            , Ui.button ( "🗁", Nothing )
-            , Ui.button ( "⭳", Nothing )
-            ]
-        , column
-            [ scrollbarY
-            , width fill
-            , height fill
-            , spacing 4
-            , paddingXY 8 16
-            ]
-          <|
-            List.map viewComment model.comments
+        , Grid.col [] []
         ]

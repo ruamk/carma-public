@@ -10,7 +10,7 @@ import Transitions
 main : Spa.Program Global.Flags Global.Model Global.Msg Pages.Model Pages.Msg
 main =
     Spa.create
-        { ui = Spa.usingElmUi
+        { ui = Spa.usingHtml
         , transitions = Transitions.transitions
         , routing =
             { routes = Routes.parsers
