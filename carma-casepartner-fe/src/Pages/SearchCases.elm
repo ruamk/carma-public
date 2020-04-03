@@ -69,11 +69,10 @@ init context _ =
     ( { cases =
             [ { id = 654765
               , services = 1
-              , callDate = "16.02.2020"
+              , callDate = Nothing
               , typeOfService = "Эвакуатор"
               , status = "Услуга оказана"
-              , accordTime = "11.11.2019 17:07:14"
-              , remainTime = "01:15:03"
+              , accordTime = Nothing
               , makeModel = "Ford/Mondeo"
               , breakdownPlace = "Новосибирск, Красный проспект 10"
               , payType = "РАМК"
@@ -235,11 +234,10 @@ viewCases data =
                     List.map
                         (\theCase ->
                             [ Table.td [] [ Ui.idCell Case theCase.id theCase.services ]
-                            , Table.td [] [ Ui.cell theCase.callDate ]
+                            , Table.td [] [ Ui.timeCell theCase.callDate ]
                             , Table.td [] [ Ui.cell theCase.typeOfService ]
                             , Table.td [] [ Ui.cell theCase.status ]
-                            , Table.td [] [ Ui.cell theCase.accordTime ]
-                            , Table.td [] [ Ui.cell theCase.remainTime ]
+                            , Table.td [] [ Ui.timeCell theCase.accordTime ]
                             , Table.td [] [ Ui.cell theCase.status ]
                             , Table.td [] [ Ui.cell theCase.makeModel ]
                             , Table.td [] [ Ui.cell theCase.breakdownPlace ]

@@ -7,7 +7,8 @@ module Api exposing
 
 import Http
 import HttpBuilder
-import Json.Decode exposing (Decoder, list, string, int, succeed)
+import ISO8601 exposing (Time)
+import Json.Decode exposing (Decoder, andThen, fail, int, list, nullable, string, succeed)
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as JE
 import Types exposing (CaseDescription, CaseInfo)
@@ -18,13 +19,18 @@ type Msg
     = Login
     | Logout
 
+
+
 -- |  In production should be empty, for elm-live with hot reload
+
+
 prefix : String
 prefix = ""
 
+
 apiLogin : String
 apiLogin =
-    prefix ++"/api/v1/login"
+    prefix ++ "/api/v1/login"
 
 
 apiLogout : String
@@ -89,11 +95,10 @@ latestCasesDecoder =
             succeed CaseInfo
                 |> required "caseId" int
                 |> optional "services" int 0
-                |> optional "callDate" string ""
+                |> optional "callDate" (nullable ISO8601.decode) Nothing
                 |> optional "typeOfService" string ""
                 |> optional "status" string ""
-                |> optional "accordTime" string ""
-                |> optional "remainTime" string ""
+                |> optional "accordTime" (nullable ISO8601.decode) Nothing
                 |> optional "makeModel" string ""
                 |> optional "breakdownPlace" string ""
                 |> optional "payType" string ""

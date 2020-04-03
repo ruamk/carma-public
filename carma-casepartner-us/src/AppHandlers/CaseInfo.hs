@@ -9,6 +9,7 @@ import           Data.Aeson (ToJSON)
 import qualified Data.Map as Map
 import           Data.Map ((!))
 import           Data.Maybe (fromMaybe)
+import           Data.Time.LocalTime (ZonedTime)
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.SqlQQ
 import           GHC.Generics (Generic)
@@ -36,10 +37,10 @@ casesLimit = 1000
 data CaseInfo = CaseInfo
     { caseId :: Int
     , services :: Int
-    , callDate :: String
+    , callDate :: Maybe ZonedTime
     , typeOfService :: String
     , status :: String
-    , accordTime :: String
+    , accordTime :: Maybe ZonedTime
     , makeModel :: String
     , breakdownPlace :: String
     , payType :: String
@@ -72,12 +73,12 @@ handleApiGetLatestCases caseType = checkAuthCasePartner $ do
     SELECT
         servicetbl.parentid
       , 0 as services
-      , date_trunc('second', createTime::timestamp)::text as cTime
+      , createTime
       , st.label
       , ss.label
-      , date_trunc('second', times_expectedservicestart::timestamp)::text
+      , times_expectedservicestart
       , make.label || ' / ' || model.label
-       , casetbl.caseaddress_address
+      , casetbl.caseaddress_address
       , pt.label
     FROM servicetbl
     LEFT OUTER JOIN "ServiceType" st ON st.id = type
@@ -89,9 +90,8 @@ handleApiGetLatestCases caseType = checkAuthCasePartner $ do
     LEFT OUTER JOIN "CasePartner" cp
                  ON cp.partner = servicetbl.contractor_partnerid
     WHERE (servicetbl.status IN ?)
-      AND (createTime IS NOT NULL)
       AND cp.uid = ?
-    ORDER BY cTime DESC
+    ORDER BY createTime DESC
     LIMIT ?
   |] ( In $ map (\(Ident i) -> i)  statuses :: In [Int]
      , uid

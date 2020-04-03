@@ -2,14 +2,17 @@ module Ui exposing
     ( addressCell
     , cell
     , cellAttrs
+    , centerCell
     , colors
     , idCell
     , mainMenu
     , page
     , pageButtonStyle
     , pageIndicatorStyle
+    , timeCell
     )
 
+import Bootstrap.Alert as Alert
 import Bootstrap.Badge as Badge
 import Bootstrap.Button as Button
 import Bootstrap.Grid as Grid
@@ -23,6 +26,8 @@ import Color exposing (rgb255, toCssString)
 import Html exposing (..)
 import Html.Attributes as Attrs
 import Html.Events exposing (onClick)
+import ISO8601 as ISO8601 exposing (Time)
+import Time as Time
 
 
 colors =
@@ -93,6 +98,11 @@ cell t =
     div cellAttrs [ text t ]
 
 
+centerCell : String -> Html msg
+centerCell t =
+    div (cellAttrs ++ [ Attrs.class "text-center" ]) [ text t ]
+
+
 idCell msg caseId services =
     Button.button
         [ Button.attrs [ onClick <| msg caseId ]
@@ -107,6 +117,29 @@ idCell msg caseId services =
                     else
                         ""
                    )
+        ]
+
+
+timeCell : Maybe Time -> Html msg
+timeCell t =
+    let
+        formatTime nt =
+            let
+                f =
+                    List.map (\field -> field nt |> String.fromInt |> String.padLeft 2 '0')
+            in
+            String.join "-" (f [ .year, .month, .day ])
+                ++ " "
+                ++ String.join ":" (f [ .hour, .minute, .second ])
+    in
+    div cellAttrs
+        [ text <|
+            case t of
+                Nothing ->
+                    ""
+
+                Just tt ->
+                    formatTime tt
         ]
 
 

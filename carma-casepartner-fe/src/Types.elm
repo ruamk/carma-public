@@ -1,20 +1,27 @@
 module Types exposing (CaseDescription, CaseInfo)
 
--- заявка
+import ISO8601 exposing (Time)
+
+
+
+-- для списка заявок
 
 
 type alias CaseInfo =
     { id : Int -- идентификатор заявка
     , services : Int -- Количество услуг
-    , callDate : String -- дата
+    , callDate : Maybe Time -- дата
     , typeOfService : String -- тип услуги
     , status : String -- статус
-    , accordTime : String -- овноу
-    , remainTime : String -- остаток времени (таймер)
+    , accordTime : Maybe Time -- овноу
     , makeModel : String -- марка/модель
     , breakdownPlace : String -- адрес места поломки
     , payType : String -- тип оплаты
     }
+
+
+
+-- заявка
 
 
 type alias CaseDescription =
