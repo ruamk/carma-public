@@ -9,6 +9,7 @@ import           Data.Aeson (ToJSON)
 import qualified Data.Map as Map
 import           Data.Map ((!))
 import           Data.Maybe (fromMaybe)
+import qualified Data.Text as T
 import           Data.Time.LocalTime (ZonedTime)
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.SqlQQ
@@ -74,12 +75,12 @@ handleApiGetLatestCases caseType = checkAuthCasePartner $ do
         servicetbl.parentid
       , 0 as services
       , createTime
-      , st.label
-      , ss.label
+      , st.label as typeofservice
+      , ss.label as status
       , times_expectedservicestart
-      , make.label || ' / ' || model.label
-      , casetbl.caseaddress_address
-      , pt.label
+      , coalesce(make.label || ' / ' || model.label, '')::text
+      , coalesce(casetbl.caseaddress_address, '')::text
+      , coalesce(pt.label, '')::text
     FROM servicetbl
     LEFT OUTER JOIN "ServiceType" st ON st.id = type
     LEFT OUTER JOIN "ServiceStatus" ss ON ss.id = status
@@ -94,7 +95,7 @@ handleApiGetLatestCases caseType = checkAuthCasePartner $ do
     ORDER BY createTime DESC
     LIMIT ?
   |] ( In $ map (\(Ident i) -> i)  statuses :: In [Int]
-     , uid
+     , (read $ T.unpack uid) :: Int
      , casesLimit
      )
 
