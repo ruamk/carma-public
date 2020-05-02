@@ -347,16 +347,16 @@ relevantCases :: AppHandler ()
 relevantCases = do
   Just c <- getParam "caseId"
   rows <- query ([sql|
-    SELECT
-      c2.id::text,
-      to_char(c2.callDate, 'YYYY-MM-DD HH24:MI')
-    FROM casetbl c1, casetbl c2
-    WHERE c1.id = ?
-      AND c2.id <> c1.id
-      AND lower(c1.contractIdentifier) = lower(c2.contractIdentifier)
-      AND length(c2.contractIdentifier) > 4
-    ORDER BY c2.callDate DESC
-    LIMIT 25
+    WITH c1 AS (
+      SELECT
+        c2.id::text,
+        to_char(c2.callDate, 'YYYY-MM-DD HH24:MI') calldate
+      FROM casetbl c1, casetbl c2
+      WHERE c1.id = ?
+        AND c2.id <> c1.id
+        AND lower(c1.contractIdentifier) = lower(c2.contractIdentifier)
+        AND length(c2.contractIdentifier) > 4
+    )
     |]) [c]
   writeJSON $ mkMap ["caseId", "caseDate"] rows
 
