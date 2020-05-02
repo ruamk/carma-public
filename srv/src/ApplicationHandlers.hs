@@ -275,7 +275,9 @@ WITH towtimes AS (
  AND a.caseid = c.id
  AND a.type=1
  AND c.city=?
- AND (CURRENT_DATE, INTERVAL '1 day') OVERLAPS (c.callDate, c.callDate)
+ AND c.callDate >= CURRENT_DATE
+ AND t.createtime >= CURRENT_DATE
+ AND a.ctime >= CURRENT_DATE
  GROUP BY a.serviceId)
 SELECT extract(epoch from avg(max)) FROM towtimes;
 |]
