@@ -42,9 +42,7 @@ CREATE TABLE "Contract"
 create index on "Contract"(subprogram);
 -- this one is used in tools/vinnie to search for contract duplicates
 create index on "Contract"(fts_key);
-create index on "Contract"
-  using gin(fts_key gin_trgm_ops)
-  where dixi and isactive;
+create index on "Contract" using gin(fts_key gin_trgm_ops) where dixi;
 
 
 -- trigger to update fts_key
