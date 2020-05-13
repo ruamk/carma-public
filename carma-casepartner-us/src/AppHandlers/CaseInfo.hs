@@ -34,51 +34,90 @@ casesLimit :: Int
 casesLimit = 1000
 
 
+data CurrentCaseInfo = CurrentCaseInfo
+    { cuCaseId :: Int
+    , cuServices :: Int
+    , cuCallDate :: Maybe ZonedTime
+    , cuTypeOfService :: String
+    , cuStatus :: String
+    , cuAccordTime :: String
+    , cuMakeModel :: String
+    , cuBreakdownPlace :: String
+    , cuPayType :: String
+    } deriving (Show ,Generic)
 
-data CaseInfo = CaseInfo
-    { caseId :: Int
-    , services :: Int
-    , callDate :: Maybe ZonedTime
-    , typeOfService :: String
-    , status :: String
-    , accordTime :: Maybe ZonedTime
-    , makeModel :: String
-    , breakdownPlace :: String
-    , payType :: String
+instance ToJSON CurrentCaseInfo
+
+instance FromRow CurrentCaseInfo where
+    fromRow = CurrentCaseInfo <$> field
+                              <*> field
+                              <*> field
+                              <*> field
+                              <*> field
+                              <*> field
+                              <*> field
+                              <*> field
+                              <*> field
+
+
+data ClosingCaseInfo = ClosingCaseInfo
+    { clCaseId :: Int
+    , clServices :: Int
+    , clCallDate :: Maybe ZonedTime
+    , clTypeOfService :: String
+    , clMakeModel :: String
+    , clBreakdownPlace :: String
+    , clPayType :: String
     } deriving (Show, Generic)
+    
+instance ToJSON ClosingCaseInfo
 
-instance ToJSON CaseInfo
-
-instance FromRow CaseInfo where
-    fromRow = CaseInfo <$> field
-                       <*> field
-                       <*> field
-                       <*> field
-                       <*> field
-                       <*> field
-                       <*> field
-                       <*> field
-                       <*> field
-
+instance FromRow ClosingCaseInfo where
+    fromRow = ClosingCaseInfo <$> field
+                              <*> field
+                              <*> field
+                              <*> field
+                              <*> field
+                              <*> field
+                              <*> field
 
 -- | Handle get latest cases
 handleApiGetLatestCases :: LatestCases -> AppHandler ()
 handleApiGetLatestCases caseType = checkAuthCasePartner $ do
   user <- fromMaybe (error "No current user") <$> with auth currentUser
   let UserId uid = fromMaybe (error "no uid") $ userId user
-  let statuses = case caseType of
-                     Current -> [SS.ordered, SS.delayed, SS.inProgress]
-                     Closing -> [SS.ok]
+  case caseType of
+    Current -> getLatestCurrentCases $ read $ T.unpack uid
+    Closing -> getLatestClosingCases $ read $ T.unpack uid
 
-  rows :: [CaseInfo] <- query [sql|
+
+
+getLatestCurrentCases :: Int -> AppHandler ()
+getLatestCurrentCases uid = do
+  let [ordered, delayed, inProgress] = map (\(Ident i) -> i)
+                                       [SS.ordered, SS.delayed, SS.inProgress]
+
+  rows :: [CurrentCaseInfo] <- query [sql|
     SELECT
         servicetbl.parentid
       , 0 as services
-      , createTime
+      , times_expectedservicestart
       , st.label as typeofservice
       , ss.label as status
-      , times_expectedservicestart
-      , coalesce(make.label || ' / ' || model.label, '')::text
+      , CASE
+          WHEN servicetbl.status = ? THEN 'В работе'
+          WHEN now() > times_expectedservicestart AND
+               servicetbl.status IN ?
+               THEN 'Опоздание'
+          WHEN now() < times_expectedservicestart AND
+               servicetbl.status IN ?
+               THEN (extract(hour from (times_expectedservicestart - now()))::text
+                    || ':' ||
+                    to_char(extract(minute from (times_expectedservicestart - now())), '00FM')
+                    )
+        END
+      , coalesce(make.label || ' / ' ||
+                 regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text
       , coalesce(casetbl.caseaddress_address, '')::text
       , coalesce(pt.label, '')::text
     FROM servicetbl
@@ -94,16 +133,59 @@ handleApiGetLatestCases caseType = checkAuthCasePartner $ do
       AND cp.uid = ?
     ORDER BY createTime DESC
     LIMIT ?
-  |] ( In $ map (\(Ident i) -> i)  statuses :: In [Int]
-     , (read $ T.unpack uid) :: Int
+  |] ( inProgress
+     , In [ordered, delayed]
+     , In [ordered, delayed]
+     , In [ordered, delayed, inProgress]
+     , uid
      , casesLimit
      )
 
-  counters :: Map.Map Int Int <- fmap Map.fromList <$> query [sql|
+  counters <- countServices $ map cuCaseId rows
+
+  writeJSON $ map (\m -> m { cuServices = counters ! cuCaseId m} :: CurrentCaseInfo)
+                  rows
+
+
+getLatestClosingCases :: Int -> AppHandler ()
+getLatestClosingCases uid = do
+  rows :: [ClosingCaseInfo] <- query [sql|
+    SELECT servicetbl.parentid
+         , 0 as services
+         , createTime
+         , st.label as typeofservice
+         , coalesce(make.label || ' / ' ||
+                    regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text
+         , coalesce(casetbl.caseaddress_address, '')::text
+         , coalesce(pt.label, '')::text
+    FROM servicetbl
+    LEFT OUTER JOIN "ServiceType"   st    ON st.id = type
+    LEFT OUTER JOIN "ServiceStatus" ss    ON ss.id = status
+    LEFT OUTER JOIN "PaymentType"   pt    ON pt.id = paytype
+    LEFT OUTER JOIN casetbl               ON casetbl.id = parentid
+    LEFT OUTER JOIN "CarMake"       make  ON make.id = casetbl.car_make
+    LEFT OUTER JOIN "CarModel"      model ON model.id = casetbl.car_model
+    LEFT OUTER JOIN "CasePartner"   cp    ON
+         cp.partner = servicetbl.contractor_partnerid
+    WHERE (servicetbl.status IN ?)
+      AND cp.uid = ?
+    ORDER BY createTime DESC
+    LIMIT ?
+  |] (In $ map (\(Ident i) -> i) [SS.ok] :: In [Int]
+     , uid
+     , casesLimit
+     )
+
+  counters :: Map.Map Int Int <- countServices $ map clCaseId rows
+
+  writeJSON $ map (\m -> m { clServices = counters ! clCaseId m} :: ClosingCaseInfo)
+                  rows
+
+
+countServices :: [Int] -> AppHandler (Map.Map Int Int)
+countServices parentIds = fmap Map.fromList <$> query [sql|
     SELECT parentid, count(*)
     FROM servicetbl
     WHERE parentid in ?
     GROUP BY parentid
-  |] $ Only $ In $ map caseId rows
-
-  writeJSON $ map (\m -> m { services = counters ! caseId m} :: CaseInfo) rows
+  |] $ Only $ In parentIds

@@ -6,10 +6,10 @@ module AppHandlers.CaseDescription
     where
 
 
-import           Control.Monad.IO.Class (liftIO)
 import           Data.Aeson (ToJSON)
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
+import           Data.Time.LocalTime (ZonedTime)
 import           Database.PostgreSQL.Simple.SqlQQ
 import           Snap.Snaplet.PostgresqlSimple
                  ( query
@@ -28,9 +28,9 @@ data CaseDescription = CaseDescription
     , clientPhone :: String
     , firstAddress :: String
     , lastAddress :: String
-    , expectedServiceStart :: String
-    , factServiceStart :: String
-    , factServiceEnd :: String
+    , expectedServiceStart :: Maybe ZonedTime
+    , factServiceStart :: Maybe ZonedTime
+    , factServiceEnd :: Maybe ZonedTime
     , makeModel :: String
     , plateNumber :: String
     , loadingDifficulty :: String
@@ -43,14 +43,13 @@ instance ToJSON CaseDescription
 handleApiGetCase :: AppHandler ()
 handleApiGetCase = do
   caseId <- fromMaybe (error "invalid case id") <$> getIntParam "caseId"
-  liftIO $ print $ "caseId " ++ show caseId
   [(client, clientPhone, firstAddress, makeModel, plateNumber)] <-
       query [sql|
               SELECT
                   contact_name
                 , contact_phone1
                 , caseaddress_address
-                , "CarMake".label || ' / ' || "CarModel".label
+                , "CarMake".label || ' / ' || regexp_replace("CarModel".label, '^([^/]*)/.*','\1')
                 , car_platenum
               FROM casetbl
               LEFT OUTER JOIN "CarMake" ON "CarMake".id = car_make
@@ -63,9 +62,9 @@ handleApiGetCase = do
     $ Only caseId
 
   [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType)] <- query [sql|
-      SELECT coalesce(date_trunc('second', times_expectedservicestart::timestamp)::text, '')
-           , coalesce(date_trunc('second', times_factservicestart::timestamp)::text, '')
-           , coalesce(date_trunc('second', times_factserviceend::timestamp)::text, '')
+      SELECT times_expectedservicestart
+           , times_factservicestart
+           , times_factserviceend
            , "ServiceType".label
       FROM servicetbl
       LEFT JOIN "ServiceType" ON servicetbl.type = "ServiceType".id
