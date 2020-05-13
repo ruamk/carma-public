@@ -35,6 +35,7 @@ data CaseDescription = CaseDescription
     , plateNumber :: String
     , loadingDifficulty :: String
     , suburbanMilage :: String
+    , vin :: Maybe String
     } deriving (Show, Generic)
 
 instance ToJSON CaseDescription
@@ -43,7 +44,7 @@ instance ToJSON CaseDescription
 handleApiGetCase :: AppHandler ()
 handleApiGetCase = do
   caseId <- fromMaybe (error "invalid case id") <$> getIntParam "caseId"
-  [(client, clientPhone, firstAddress, makeModel, plateNumber)] <-
+  [(client, clientPhone, firstAddress, makeModel, plateNumber, vin)] <-
       query [sql|
               SELECT
                   contact_name
@@ -51,6 +52,7 @@ handleApiGetCase = do
                 , caseaddress_address
                 , "CarMake".label || ' / ' || regexp_replace("CarModel".label, '^([^/]*)/.*','\1')
                 , car_platenum
+                , car_vin
               FROM casetbl
               LEFT OUTER JOIN "CarMake" ON "CarMake".id = car_make
               LEFT OUTER JOIN "CarModel" ON "CarModel".id = car_model
@@ -93,4 +95,5 @@ handleApiGetCase = do
                makeModel plateNumber
                loadingDifficulty
                suburbanMilage
+               vin
               )
