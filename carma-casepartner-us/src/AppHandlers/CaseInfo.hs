@@ -111,10 +111,14 @@ getLatestCurrentCases uid = do
                THEN 'Опоздание'
           WHEN now() < times_expectedservicestart AND
                servicetbl.status IN ?
-               THEN (extract(hour from (times_expectedservicestart - now()))::text
-                    || ':' ||
-                    to_char(extract(minute from (times_expectedservicestart - now())), '00FM')
+               -- returns: 'days hours minutes'
+               THEN (extract(day from (times_expectedservicestart - now())::interval)
+                    || ' ' ||
+                    extract(hour from times_expectedservicestart - now())::text
+                    || ' ' ||
+                    to_char(extract(minute from times_expectedservicestart - now()), '00FM')
                     )
+
         END
       , coalesce(make.label || ' / ' ||
                  regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text
@@ -131,7 +135,7 @@ getLatestCurrentCases uid = do
                  ON cp.partner = servicetbl.contractor_partnerid
     WHERE (servicetbl.status IN ?)
       AND cp.uid = ?
-    ORDER BY createTime DESC
+    ORDER BY times_expectedservicestart ASC
     LIMIT ?
   |] ( inProgress
      , In [ordered, delayed]
