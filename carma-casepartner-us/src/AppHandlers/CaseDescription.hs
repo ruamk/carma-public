@@ -7,9 +7,11 @@ module AppHandlers.CaseDescription
 
 
 import           Data.Aeson (ToJSON)
+import           Data.Map as M
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
 import           Data.Time.LocalTime (ZonedTime)
+import           Database.PostgreSQL.Simple.FromField (FromField, fromField, fromJSONField)
 import           Database.PostgreSQL.Simple.SqlQQ
 import           Snap.Snaplet.PostgresqlSimple
                  ( query
@@ -20,6 +22,16 @@ import           Application
 import           AppHandlers.Util
 
 
+type LoadingDifficulties = M.Map String Bool
+
+instance FromField LoadingDifficulties where
+    fromField = fromJSONField
+
+--instance IsString (Maybe LoadingDifficulties)
+--instance Generic LoadingDifficulties
+--instance ToJSON LoadingDifficulties
+--    toJSON = genericToJSON defaultOptions
+                
 data CaseDescription = CaseDescription
     { caseId :: Int
     , services :: Int
@@ -33,7 +45,7 @@ data CaseDescription = CaseDescription
     , factServiceEnd :: Maybe ZonedTime
     , makeModel :: String
     , plateNumber :: String
-    , loadingDifficulty :: String
+    , loadingDifficulties :: Maybe LoadingDifficulties
     , suburbanMilage :: String
     , vin :: Maybe String
     } deriving (Show, Generic)
@@ -78,14 +90,14 @@ handleApiGetCase = do
   r1 <- query [sql|
     SELECT coalesce(towaddress_address, '')
          , coalesce(suburbanmilage::text, '')
-         , coalesce(flags::text, '')
+         , flags
     FROM allservicesview
     WHERE parentid = ?
     LIMIT 1
   |] $ Only caseId
   let (lastAddress, suburbanMilage, loadingDifficulty) = if length r1 == 1
                                                          then head r1
-                                                         else ("","", "")
+                                                         else ("","", Nothing)
 
   writeJSON $ (CaseDescription
                caseId serviceCounter serviceType
