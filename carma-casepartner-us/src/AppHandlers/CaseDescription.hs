@@ -27,11 +27,6 @@ type LoadingDifficulties = M.Map String Bool
 instance FromField LoadingDifficulties where
     fromField = fromJSONField
 
---instance IsString (Maybe LoadingDifficulties)
---instance Generic LoadingDifficulties
---instance ToJSON LoadingDifficulties
---    toJSON = genericToJSON defaultOptions
-                
 data CaseDescription = CaseDescription
     { caseId :: Int
     , services :: Int
