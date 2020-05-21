@@ -36,7 +36,8 @@ casesLimit = 1000
 
 data CurrentCaseInfo = CurrentCaseInfo
     { cuCaseId :: Int
-    , cuServices :: Int
+    , cuServiceId :: Int -- идентификатор услуги
+    , cuServiceSerial :: Int -- номер услиги в списке услуг для заявки
     , cuCallDate :: Maybe ZonedTime
     , cuTypeOfService :: String
     , cuStatus :: String
@@ -58,11 +59,13 @@ instance FromRow CurrentCaseInfo where
                               <*> field
                               <*> field
                               <*> field
+                              <*> field
 
 
 data ClosingCaseInfo = ClosingCaseInfo
     { clCaseId :: Int
-    , clServices :: Int
+    , clServiceId :: Int -- идентификатор услуги
+    , clServiceSerial :: Int -- номер услиги в списке услуг для заявки
     , clCallDate :: Maybe ZonedTime
     , clTypeOfService :: String
     , clMakeModel :: String
@@ -74,6 +77,7 @@ instance ToJSON ClosingCaseInfo
 
 instance FromRow ClosingCaseInfo where
     fromRow = ClosingCaseInfo <$> field
+                              <*> field
                               <*> field
                               <*> field
                               <*> field
@@ -100,7 +104,8 @@ getLatestCurrentCases uid = do
   rows :: [CurrentCaseInfo] <- query [sql|
     SELECT
         servicetbl.parentid
-      , servicetbl.id AS services
+      , servicetbl.id
+      , 0 as serviceSerial
       , times_expectedservicestart
       , st.label AS typeofservice
       , ss.label AS status
@@ -147,21 +152,23 @@ getLatestCurrentCases uid = do
 
   serviceNums <- enumerateServices $ map cuCaseId rows
 
-  writeJSON $ map (\m -> m { cuServices = serviceNums ! cuServices m} :: CurrentCaseInfo)
+  writeJSON $ map (\m -> m { cuServiceSerial = serviceNums ! cuServiceId m} :: CurrentCaseInfo)
                   rows
 
 
 getLatestClosingCases :: Int -> AppHandler ()
 getLatestClosingCases uid = do
   rows :: [ClosingCaseInfo] <- query [sql|
-    SELECT servicetbl.parentid
-         , servicetbl.id AS services
-         , createTime
-         , st.label AS typeofservice
-         , coalesce(make.label || ' / ' ||
-                    regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text
-         , coalesce(casetbl.caseaddress_address, '')::text
-         , coalesce(pt.label, '')::text
+    SELECT
+        servicetbl.parentid
+      , servicetbl.id
+      , 0 as serviceSerial
+      , createTime
+      , st.label AS typeofservice
+      , coalesce(make.label || ' / ' ||
+                 regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text
+      , coalesce(casetbl.caseaddress_address, '')::text
+      , coalesce(pt.label, '')::text
     FROM servicetbl
     LEFT OUTER JOIN "ServiceType"   st    ON st.id = type
     LEFT OUTER JOIN "ServiceStatus" ss    ON ss.id = status
@@ -182,7 +189,7 @@ getLatestClosingCases uid = do
 
   serviceNums <- enumerateServices $ map clCaseId rows
 
-  writeJSON $ map (\m -> m { clServices = serviceNums ! clServices m} :: ClosingCaseInfo)
+  writeJSON $ map (\m -> m { clServiceSerial = serviceNums ! clServiceId m} :: ClosingCaseInfo)
                   rows
 
 

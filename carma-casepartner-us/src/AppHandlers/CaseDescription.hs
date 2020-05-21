@@ -11,7 +11,8 @@ import           Data.Map as M
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
 import           Data.Time.LocalTime (ZonedTime)
-import           Database.PostgreSQL.Simple.FromField (FromField, fromField, fromJSONField)
+import           Database.PostgreSQL.Simple.FromField
+                 (FromField, fromField, fromJSONField)
 import           Database.PostgreSQL.Simple.SqlQQ
 import           Snap.Snaplet.PostgresqlSimple
                  ( query
@@ -22,7 +23,7 @@ import           Application
 import           AppHandlers.Util
 
 
-type LoadingDifficulties = M.Map String Bool
+type LoadingDifficulties = M.Map String (Maybe Bool)
 
 instance FromField LoadingDifficulties where
     fromField = fromJSONField
@@ -48,39 +49,48 @@ data CaseDescription = CaseDescription
 instance ToJSON CaseDescription
 
 
-handleApiGetCase :: AppHandler ()
-handleApiGetCase = do
-  caseId <- fromMaybe (error "invalid case id") <$> getIntParam "caseId"
-  [(client, clientPhone, firstAddress, makeModel, plateNumber, vin)] <-
-      query [sql|
-              SELECT
-                  contact_name
-                , contact_phone1
-                , caseaddress_address
-                , "CarMake".label || ' / ' || regexp_replace("CarModel".label, '^([^/]*)/.*','\1')
-                , car_platenum
-                , car_vin
-              FROM casetbl
-              LEFT OUTER JOIN "CarMake" ON "CarMake".id = car_make
-              LEFT OUTER JOIN "CarModel" ON "CarModel".id = car_model
-              WHERE casetbl.id = ?
-  |] $ Only caseId
+handleApiGetService :: AppHandler ()
+handleApiGetService = do
+  serviceId <- fromMaybe (error "invalid service id") <$>
+              getIntParam "serviceId"
+  [(caseId, client, clientPhone, firstAddress, makeModel, plateNumber, vin)] <- query [sql|
+    SELECT
+        casetbl.id
+      , contact_name
+      , contact_phone1
+      , caseaddress_address
+      , "CarMake".label || ' / ' ||
+        regexp_replace("CarModel".label, '^([^/]*)/.*','\1')
+      , car_platenum
+      , car_vin
+    FROM casetbl
+    LEFT OUTER JOIN "CarMake"  ON "CarMake".id = car_make
+    LEFT OUTER JOIN "CarModel" ON "CarModel".id = car_model
+    WHERE casetbl.id IN (SELECT parentid FROM servicetbl where id = ?)
+  |] $ Only serviceId
 
-  [Only serviceCounter] <- query
-    "SELECT count(*) FROM servicetbl WHERE parentid = ?"
-    $ Only caseId
+  [Only serviceSerial] <- query [sql|
+    SELECT r
+    FROM (
+      SELECT row_number () OVER (PARTITION BY parentid ORDER BY id) AS r, id
+      FROM servicetbl
+      WHERE parentid = ? 
+      ) AS a
+    WHERE id = ?;
+  |] $ (caseId, serviceId)
 
   [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType)] <- query [sql|
-      SELECT times_expectedservicestart
-           , times_factservicestart
-           , times_factserviceend
-           , "ServiceType".label
-      FROM servicetbl
-      LEFT JOIN "ServiceType" ON servicetbl.type = "ServiceType".id
-      WHERE servicetbl.parentid = ?
-      ORDER by servicetbl.id DESC
-      LIMIT 1
-    |] $ Only caseId
+    SELECT
+        times_expectedservicestart
+      , times_factservicestart
+      , times_factserviceend
+      , "ServiceType".label
+    FROM servicetbl
+    LEFT OUTER JOIN "ServiceType" ON servicetbl.type = "ServiceType".id
+    WHERE servicetbl.id = ?
+    ORDER by servicetbl.id DESC
+    LIMIT 1
+  |] $ Only serviceId
 
   r1 <- query [sql|
     SELECT coalesce(towaddress_address, '')
@@ -95,7 +105,7 @@ handleApiGetCase = do
                                                          else ("","", Nothing)
 
   writeJSON $ (CaseDescription
-               caseId serviceCounter serviceType
+               caseId serviceSerial serviceType
                client clientPhone
                firstAddress lastAddress
                expectedServiceStart factServiceStart factServiceEnd
