@@ -100,10 +100,10 @@ getLatestCurrentCases uid = do
   rows :: [CurrentCaseInfo] <- query [sql|
     SELECT
         servicetbl.parentid
-      , 0 as services
+      , servicetbl.id AS services
       , times_expectedservicestart
-      , st.label as typeofservice
-      , ss.label as status
+      , st.label AS typeofservice
+      , ss.label AS status
       , CASE
           WHEN servicetbl.status = ? THEN 'В работе'
           WHEN now() > times_expectedservicestart AND
@@ -145,9 +145,9 @@ getLatestCurrentCases uid = do
      , casesLimit
      )
 
-  counters <- countServices $ map cuCaseId rows
+  serviceNums <- enumerateServices $ map cuCaseId rows
 
-  writeJSON $ map (\m -> m { cuServices = counters ! cuCaseId m} :: CurrentCaseInfo)
+  writeJSON $ map (\m -> m { cuServices = serviceNums ! cuServices m} :: CurrentCaseInfo)
                   rows
 
 
@@ -155,9 +155,9 @@ getLatestClosingCases :: Int -> AppHandler ()
 getLatestClosingCases uid = do
   rows :: [ClosingCaseInfo] <- query [sql|
     SELECT servicetbl.parentid
-         , 0 as services
+         , servicetbl.id AS services
          , createTime
-         , st.label as typeofservice
+         , st.label AS typeofservice
          , coalesce(make.label || ' / ' ||
                     regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text
          , coalesce(casetbl.caseaddress_address, '')::text
@@ -180,16 +180,15 @@ getLatestClosingCases uid = do
      , casesLimit
      )
 
-  counters :: Map.Map Int Int <- countServices $ map clCaseId rows
+  serviceNums <- enumerateServices $ map clCaseId rows
 
-  writeJSON $ map (\m -> m { clServices = counters ! clCaseId m} :: ClosingCaseInfo)
+  writeJSON $ map (\m -> m { clServices = serviceNums ! clServices m} :: ClosingCaseInfo)
                   rows
 
 
-countServices :: [Int] -> AppHandler (Map.Map Int Int)
-countServices parentIds = fmap Map.fromList <$> query [sql|
-    SELECT parentid, count(*)
+enumerateServices :: [Int] -> AppHandler (Map.Map Int Int)
+enumerateServices caseIds = fmap Map.fromList <$> query [sql|
+    SELECT id, row_number() OVER (PARTITION BY parentid ORDER BY id)
     FROM servicetbl
     WHERE parentid in ?
-    GROUP BY parentid
-  |] $ Only $ In parentIds
+  |] $ Only $ In caseIds
