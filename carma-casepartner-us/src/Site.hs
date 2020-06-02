@@ -31,6 +31,7 @@ import qualified AppHandlers.CaseInfo as CI
 import           AppHandlers.CaseDescription as CD
 import           Types
 
+
 apiLogin, apiLogout :: ByteString
 apiLogin  = "/api/v1/login"
 apiLogout = "/api/v1/logout"
@@ -41,9 +42,11 @@ apiGetLatestCurrentCases = "/api/v1/getLatestCases/current"
 apiGetLatestClosingCases :: ByteString
 apiGetLatestClosingCases = "/api/v1/getLatestCases/closing"
 
-apiGetCase :: ByteString
-apiGetCase = "/api/v1/getCase/:caseId"
+apiGetService :: ByteString
+apiGetService = "/api/v1/getService/:serviceId"
 
+apiGetCaseComments :: ByteString
+apiGetCaseComments = "/api/v1/getServiceComments/:caseId"
 
 
 -- | Handle login API
@@ -73,7 +76,8 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiLogout, method POST handleApiLogout)
          , (apiGetLatestCurrentCases, CI.handleApiGetLatestCases Current)
          , (apiGetLatestClosingCases, CI.handleApiGetLatestCases Closing)
-         , (apiGetCase, method GET CD.handleApiGetCase)
+         , (apiGetService, method GET CD.handleApiGetService)
+         , (apiGetCaseComments, method GET CD.handleApiGetCaseComments)
          , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
 

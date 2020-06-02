@@ -6,8 +6,8 @@ module AppHandlers.CaseDescription
     where
 
 
-import           Data.Aeson (ToJSON)
-import           Data.Map as M
+import           Data.Aeson (ToJSON, Value)
+import qualified          Data.Map as M
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
 import           Data.Time.LocalTime (ZonedTime)
@@ -49,6 +49,14 @@ data CaseDescription = CaseDescription
 instance ToJSON CaseDescription
 
 
+data CaseComment = CaseComment
+    { datetime :: Maybe ZonedTime
+    , who :: Maybe String
+    , json :: Maybe Value
+    } deriving (Show, Generic)
+
+instance ToJSON CaseComment
+    
 handleApiGetService :: AppHandler ()
 handleApiGetService = do
   serviceId <- fromMaybe (error "invalid service id") <$>
@@ -97,9 +105,9 @@ handleApiGetService = do
          , coalesce(suburbanmilage::text, '')
          , flags
     FROM allservicesview
-    WHERE parentid = ?
+    WHERE id = ?
     LIMIT 1
-  |] $ Only caseId
+  |] $ Only serviceId
   let (lastAddress, suburbanMilage, loadingDifficulty) = if length r1 == 1
                                                          then head r1
                                                          else ("","", Nothing)
@@ -114,3 +122,22 @@ handleApiGetService = do
                suburbanMilage
                vin
               )
+
+handleApiGetCaseComments :: AppHandler ()
+handleApiGetCaseComments = do
+  caseId <- fromMaybe (error "invalid case id") <$>
+              getIntParam "caseId"
+  limit <- fromMaybe 100 <$> getIntParam "limit"
+  rows <- query [sql|
+    SELECT datetime, who, json
+    FROM "CaseHistory"
+    WHERE caseId = ?
+    ORDER BY datetime DESC
+    LIMIT ? 
+  |] (caseId, limit)
+
+  writeJSON $ map (\(datetime, who, json) ->
+                       CaseComment datetime who json
+                  ) (rows :: [(Maybe ZonedTime, Maybe String, Maybe Value)])
+
+
