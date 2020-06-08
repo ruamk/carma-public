@@ -25,6 +25,7 @@ extra-deps:
 - heist-1.0.1.0
 - io-streams-1.3.6.1
 - map-syntax-0.2.0.2
+- postgresql-simple-0.6.2@sha256:79c1ca7d783e075b4b2817a553c5cf31b4bb1df3d9da0ba5f84e1f1448bbcf72,5090
 - qm-interpolated-string-0.3.0.0
 - snap-1.0.0.1
 - snap-loader-static-1.0.0.0
