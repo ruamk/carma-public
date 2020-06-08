@@ -3,19 +3,22 @@ module AppHandlers.CaseDescription
 
 
 import           Data.Aeson (ToJSON, Value)
-import qualified          Data.Map as M
+import qualified Data.Map as M
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
 import           Data.Time.LocalTime (ZonedTime)
 import           Database.PostgreSQL.Simple.FromField
                  (FromField, fromField, fromJSONField)
 import           Database.PostgreSQL.Simple.SqlQQ
+import           Snap
+import           Snap.Snaplet.Auth
 import           Snap.Snaplet.PostgresqlSimple
                  ( query
                  , Only (..)
                  )
 
 import           Application
+import           AppHandlers.Users
 import           AppHandlers.Util
 
 
@@ -119,21 +122,25 @@ handleApiGetService = do
                vin
               )
 
+
 handleApiGetCaseComments :: AppHandler ()
-handleApiGetCaseComments = do
-  caseId <- fromMaybe (error "invalid case id") <$>
-              getIntParam "caseId"
+handleApiGetCaseComments = checkAuthCasePartner $ do
+  user <- fromMaybe (error "No current user") <$> with auth currentUser
+  let UserId uid = fromMaybe (error "no uid") $ userId user
+
+  caseId <- fromMaybe (error "invalid case id") <$> getIntParam "caseId"
   limit <- fromMaybe 100 <$> getIntParam "limit"
   rows <- query [sql|
     SELECT datetime, who, json
     FROM "CaseHistory"
     WHERE caseId = ?
+      AND (json::jsonb ?? 'serviceid' OR
+           json->>'userid' = ?)
     ORDER BY datetime DESC
-    LIMIT ? 
-  |] (caseId, limit)
+    LIMIT ?
+  |] (caseId, uid, limit)
 
-  writeJSON $ map (\(datetime, who, json) ->
-                       CaseComment datetime who json
-                  ) (rows :: [(Maybe ZonedTime, Maybe String, Maybe Value)])
+  writeJSON $ map (\(datetime, who, json) -> CaseComment datetime who json)
+                (rows :: [(Maybe ZonedTime, Maybe String, Maybe Value)])
 
 

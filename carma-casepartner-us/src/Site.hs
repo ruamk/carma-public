@@ -22,7 +22,7 @@ import           Snap.Util.FileServe
 ------------------------------------------------------------------------------
 import           Application
 import           AppHandlers.Users
-import qualified AppHandlers.CaseInfo as CI
+import qualified AppHandlers.Services as Ss
 import           AppHandlers.CaseDescription as CD
 import           Types
 
@@ -31,11 +31,11 @@ apiLogin, apiLogout :: ByteString
 apiLogin  = "/api/v1/login"
 apiLogout = "/api/v1/logout"
 
-apiGetLatestCurrentCases :: ByteString
-apiGetLatestCurrentCases = "/api/v1/getLatestCases/current"
+apiGetLatestCurrentServices :: ByteString
+apiGetLatestCurrentServices = "/api/v1/services/current"
 
-apiGetLatestClosingCases :: ByteString
-apiGetLatestClosingCases = "/api/v1/getLatestCases/closing"
+apiGetLatestClosingServices :: ByteString
+apiGetLatestClosingServices = "/api/v1/services/closing"
 
 apiGetService :: ByteString
 apiGetService = "/api/v1/getService/:serviceId"
@@ -69,10 +69,10 @@ handleApiLogout = ifTop $ do
 routes :: [(ByteString, Handler App App ())]
 routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiLogout, method POST handleApiLogout)
-         , (apiGetLatestCurrentCases, CI.handleApiGetLatestCases Current)
-         , (apiGetLatestClosingCases, CI.handleApiGetLatestCases Closing)
+         , (apiGetLatestCurrentServices, Ss.latestServices Current)
+         , (apiGetLatestClosingServices, Ss.latestServices Closing)
          , (apiGetService, method GET CD.handleApiGetService)
-         , (apiGetCaseComments, method GET CD.handleApiGetCaseComments)
+         , (apiGetCaseComments, CD.handleApiGetCaseComments)
          , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
 

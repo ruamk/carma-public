@@ -1,7 +1,9 @@
-module AppHandlers.CaseInfo
-    where
+module AppHandlers.Services
+    ( latestServices
+    ) where
 
-import           Data.Aeson (ToJSON)
+import           Data.Aeson (ToJSON, toJSON)
+import           Data.Aeson.Types
 import qualified Data.Map as Map
 import           Data.Map ((!))
 import           Data.Maybe (fromMaybe)
@@ -17,62 +19,65 @@ import           Snap.Snaplet.PostgresqlSimple
                  , In (..), Only (..)
                  )
 
+import           Data.Model
 import           Application
 import           AppHandlers.Users
 import           AppHandlers.Util
 import qualified Carma.Model.ServiceStatus as SS
-import           Data.Model
-
 import           Types
 
 
-casesLimit :: Int
-casesLimit = 1000
+servicesLimit :: Int
+servicesLimit = 1000
 
 
-data CurrentCaseInfo = CurrentCaseInfo
+data CurrentServiceInfo = CurrentServiceInfo
     { cuCaseId :: Int
     , cuServiceId :: Int -- идентификатор услуги
-    , cuServiceSerial :: Int -- номер услиги в списке услуг для заявки
-    , cuCallDate :: Maybe ZonedTime
-    , cuTypeOfService :: String
-    , cuStatus :: String
-    , cuAccordTime :: String
-    , cuMakeModel :: String
-    , cuBreakdownPlace :: String
-    , cuPayType :: String
+    , cuServiceSerial :: Int -- номер услуги в списке услуг для заявки
+    , _cuCallDate :: Maybe ZonedTime
+    , _cuTypeOfService :: String
+    , _cuStatus :: String
+    , _cuAccordTime :: String
+    , _cuMakeModel :: String
+    , _cuBreakdownPlace :: String
+    , _cuPayType :: String
     } deriving (Show ,Generic)
 
-instance ToJSON CurrentCaseInfo
+instance ToJSON CurrentServiceInfo where
+    toJSON = genericToJSON defaultOptions
+             { fieldLabelModifier = dropWhile (== '_')}
 
-instance FromRow CurrentCaseInfo where
-    fromRow = CurrentCaseInfo <$> field
-                              <*> field
-                              <*> field
-                              <*> field
-                              <*> field
-                              <*> field
-                              <*> field
-                              <*> field
-                              <*> field
-                              <*> field
+instance FromRow CurrentServiceInfo where
+    fromRow = CurrentServiceInfo <$> field
+                                 <*> field
+                                 <*> field
+                                 <*> field
+                                 <*> field
+                                 <*> field
+                                 <*> field
+                                 <*> field
+                                 <*> field
+                                 <*> field
 
 
-data ClosingCaseInfo = ClosingCaseInfo
+data ClosingServiceInfo = ClosingServiceInfo
     { clCaseId :: Int
     , clServiceId :: Int -- идентификатор услуги
     , clServiceSerial :: Int -- номер услиги в списке услуг для заявки
-    , clCallDate :: Maybe ZonedTime
-    , clTypeOfService :: String
-    , clMakeModel :: String
-    , clBreakdownPlace :: String
-    , clPayType :: String
+    , _clCallDate :: Maybe ZonedTime
+    , _clTypeOfService :: String
+    , _clMakeModel :: String
+    , _clBreakdownPlace :: String
+    , _clPayType :: String
     } deriving (Show, Generic)
     
-instance ToJSON ClosingCaseInfo
+instance ToJSON ClosingServiceInfo where
+    toJSON = genericToJSON defaultOptions
+             { fieldLabelModifier = dropWhile (== '_')}
 
-instance FromRow ClosingCaseInfo where
-    fromRow = ClosingCaseInfo <$> field
+instance FromRow ClosingServiceInfo where
+    fromRow = ClosingServiceInfo <$> field
                               <*> field
                               <*> field
                               <*> field
@@ -81,23 +86,23 @@ instance FromRow ClosingCaseInfo where
                               <*> field
                               <*> field
 
--- | Handle get latest cases
-handleApiGetLatestCases :: LatestCases -> AppHandler ()
-handleApiGetLatestCases caseType = checkAuthCasePartner $ do
+-- | Handle get latest services
+latestServices :: LatestServices -> AppHandler ()
+latestServices serviceType = checkAuthCasePartner $ do
   user <- fromMaybe (error "No current user") <$> with auth currentUser
   let UserId uid = fromMaybe (error "no uid") $ userId user
-  case caseType of
-    Current -> getLatestCurrentCases $ read $ T.unpack uid
-    Closing -> getLatestClosingCases $ read $ T.unpack uid
+  case serviceType of
+    Current -> getLatestCurrentServices $ read $ T.unpack uid
+    Closing -> getLatestClosingServices $ read $ T.unpack uid
 
 
 
-getLatestCurrentCases :: Int -> AppHandler ()
-getLatestCurrentCases uid = do
+getLatestCurrentServices :: Int -> AppHandler ()
+getLatestCurrentServices uid = do
   let [ordered, delayed, inProgress] = map (\(Ident i) -> i)
                                        [SS.ordered, SS.delayed, SS.inProgress]
 
-  rows :: [CurrentCaseInfo] <- query [sql|
+  rows :: [CurrentServiceInfo] <- query [sql|
     SELECT
         servicetbl.parentid
       , servicetbl.id
@@ -143,18 +148,18 @@ getLatestCurrentCases uid = do
      , In [ordered, delayed]
      , In [ordered, delayed, inProgress]
      , uid
-     , casesLimit
+     , servicesLimit
      )
 
   serviceNums <- enumerateServices $ map cuCaseId rows
 
-  writeJSON $ map (\m -> m { cuServiceSerial = serviceNums ! cuServiceId m} :: CurrentCaseInfo)
+  writeJSON $ map (\m -> m { cuServiceSerial = serviceNums ! cuServiceId m} :: CurrentServiceInfo)
                   rows
 
 
-getLatestClosingCases :: Int -> AppHandler ()
-getLatestClosingCases uid = do
-  rows :: [ClosingCaseInfo] <- query [sql|
+getLatestClosingServices :: Int -> AppHandler ()
+getLatestClosingServices uid = do
+  rows :: [ClosingServiceInfo] <- query [sql|
     SELECT
         servicetbl.parentid
       , servicetbl.id
@@ -180,12 +185,12 @@ getLatestClosingCases uid = do
     LIMIT ?
   |] (In $ map (\(Ident i) -> i) [SS.ok] :: In [Int]
      , uid
-     , casesLimit
+     , servicesLimit
      )
 
   serviceNums <- enumerateServices $ map clCaseId rows
 
-  writeJSON $ map (\m -> m { clServiceSerial = serviceNums ! clServiceId m} :: ClosingCaseInfo)
+  writeJSON $ map (\m -> m { clServiceSerial = serviceNums ! clServiceId m} :: ClosingServiceInfo)
                   rows
 
 

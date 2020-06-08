@@ -1,7 +1,7 @@
 module Types where
 
 
-data LatestCases = Current
-                 | Closing
+data LatestServices = Current
+                    | Closing
 
 
