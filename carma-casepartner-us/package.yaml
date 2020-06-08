@@ -38,6 +38,9 @@ dependencies:
   - xmlhtml
 
 default-extensions:
+  - CPP
+  - DeriveDataTypeable
+  - DeriveGeneric
   - FlexibleContexts
   - FlexibleInstances
   - LambdaCase
@@ -45,7 +48,18 @@ default-extensions:
   - NamedFieldPuns
   - OverloadedStrings
   - QuasiQuotes
-  
+  - ScopedTypeVariables
+  - TemplateHaskell
+  - TypeOperators
+  - ConstraintKinds
+  - DataKinds
+  - DeriveDataTypeable
+  - ExistentialQuantification
+  - MultiWayIf
+  - ScopedTypeVariables
+  - TypeFamilies
+
+
 ghc-options:
   - -O2
   - -Wall

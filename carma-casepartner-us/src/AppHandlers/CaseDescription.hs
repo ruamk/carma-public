@@ -1,7 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-- # OPTIONS_GHC -Wno-unused-top-binds #-}
 module AppHandlers.CaseDescription
     where
 

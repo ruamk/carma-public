@@ -1,6 +1,3 @@
-{-# LANGUAGE CPP             #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 {-
 
 NOTE: Don't modify this file unless you know what you are doing.  If you are
