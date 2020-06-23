@@ -16,8 +16,12 @@ dependencies:
   - basic-prelude
   - bytestring
   - carma-models
+  - carma-http
   - carma-model-utils
+  - carma-utils
+  - configurator
   - containers
+  - HTTP >= 4000.3.9
   - hsyslog
   - lens
   - lifted-base

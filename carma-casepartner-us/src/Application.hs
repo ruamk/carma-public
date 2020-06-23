@@ -15,9 +15,9 @@ import Snaplet.Auth.Class
 
 ------------------------------------------------------------------------------
 data App = App
-    { _sess  :: Snaplet SessionManager
-    , _db    :: Snaplet Postgres
-    , _auth  :: Snaplet (AuthManager App)
+    { _session  :: Snaplet SessionManager
+    , _db       :: Snaplet Postgres
+    , _auth     :: Snaplet (AuthManager App)
     }
 
 makeLenses ''App

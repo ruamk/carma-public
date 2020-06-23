@@ -164,7 +164,7 @@ getLatestClosingServices uid = do
         servicetbl.parentid
       , servicetbl.id
       , 0 as serviceSerial
-      , createTime
+      , times_expectedservicestart
       , st.label AS typeofservice
       , coalesce(make.label || ' / ' ||
                  regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text

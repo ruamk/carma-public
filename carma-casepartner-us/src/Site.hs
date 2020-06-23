@@ -12,18 +12,16 @@ import           Data.Maybe (fromMaybe, isJust)
 import qualified Data.Text.Encoding as T
 import           Snap.Core
 import           Snap.Snaplet
-import           Snap.Snaplet.Auth
+import           Snap.Snaplet.Auth hiding (session)
 import           Snap.Snaplet.Auth.Backends.PostgresqlSimple
-import           Snap.Snaplet.PostgresqlSimple
-                 ( pgsInit
-                 )
+import           Snap.Snaplet.PostgresqlSimple (pgsInit)
 import           Snap.Snaplet.Session.Backends.CookieSession
 import           Snap.Util.FileServe
 ------------------------------------------------------------------------------
 import           Application
 import           AppHandlers.Users
 import qualified AppHandlers.Services as Ss
-import           AppHandlers.CaseDescription as CD
+import           AppHandlers.Service as S
 import           Types
 
 
@@ -42,6 +40,9 @@ apiGetService = "/api/v1/getService/:serviceId"
 
 apiGetCaseComments :: ByteString
 apiGetCaseComments = "/api/v1/getServiceComments/:caseId"
+
+apiPostServiceComment :: ByteString
+apiPostServiceComment = "/api/v1/case/:caseId/comment"
 
 
 -- | Handle login API
@@ -71,8 +72,9 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiLogout, method POST handleApiLogout)
          , (apiGetLatestCurrentServices, Ss.latestServices Current)
          , (apiGetLatestClosingServices, Ss.latestServices Closing)
-         , (apiGetService, method GET CD.handleApiGetService)
-         , (apiGetCaseComments, CD.handleApiGetCaseComments)
+         , (apiGetService, method GET S.handleApiGetService)
+         , (apiGetCaseComments, S.handleApiGetCaseComments)
+         , (apiPostServiceComment, method POST S.postComment)
          , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
 
@@ -81,11 +83,13 @@ routes = [ (apiLogin,  method POST handleApiLogin)
 -- | The application initializer.
 app :: SnapletInit App App
 app = makeSnaplet "app" "Case partner manager application." Nothing $ do
-    s <- nestSnaplet "sess" sess $
-           initCookieSessionManager "site_key.txt" "sess" Nothing (Just 3600)
+    s <- nestSnaplet "session" session $
+        let lifetime = Just $ 365 * 24 * 60 * 60 -- one year in seconds
+        in initCookieSessionManager "client_session_key.aes" "_session"
+                                    Nothing lifetime
 
     ad <- nestSnaplet "db" db pgsInit
-    a <- nestSnaplet "auth" auth $ initPostgresAuth sess ad
+    a <- nestSnaplet "auth" auth $ initPostgresAuth session ad
     addRoutes routes
     return $ App s ad a
 

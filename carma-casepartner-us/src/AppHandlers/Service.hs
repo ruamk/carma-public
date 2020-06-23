@@ -1,17 +1,22 @@
-module AppHandlers.CaseDescription
+module AppHandlers.Service
     where
 
 
+import           Control.Monad (when)
+import           Control.Monad.IO.Class
 import           Data.Aeson (ToJSON, Value)
+import qualified Data.ByteString.Char8 as BS
+import           Data.Configurator (lookupDefault)
 import qualified Data.Map as M
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import           Data.Time.LocalTime (ZonedTime)
 import           Database.PostgreSQL.Simple.FromField
                  (FromField, fromField, fromJSONField)
 import           Database.PostgreSQL.Simple.SqlQQ
 import           Snap
-import           Snap.Snaplet.Auth
 import           Snap.Snaplet.PostgresqlSimple
                  ( query
                  , Only (..)
@@ -20,6 +25,9 @@ import           Snap.Snaplet.PostgresqlSimple
 import           Application
 import           AppHandlers.Users
 import           AppHandlers.Util
+import           CarmaApi
+import           Carma.Model
+import           Snaplet.Auth.PGUsers (currentUserMetaId)
 
 
 type LoadingDifficulties = M.Map String (Maybe Bool)
@@ -31,6 +39,8 @@ data CaseDescription = CaseDescription
     { caseId :: Int
     , services :: Int
     , serviceType :: String
+    , status :: Int
+    , statusLabel :: String
     , client :: String
     , clientPhone :: String
     , firstAddress :: String
@@ -86,14 +96,18 @@ handleApiGetService = do
     WHERE id = ?;
   |] $ (caseId, serviceId)
 
-  [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType)] <- query [sql|
+  [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType
+   , status, statusLabel)] <- query [sql|
     SELECT
         times_expectedservicestart
       , times_factservicestart
       , times_factserviceend
       , "ServiceType".label
+      , status
+      , "ServiceStatus".label
     FROM servicetbl
     LEFT OUTER JOIN "ServiceType" ON servicetbl.type = "ServiceType".id
+    LEFT OUTER JOIN "ServiceStatus" ON servicetbl.status = "ServiceStatus".id
     WHERE servicetbl.id = ?
     ORDER by servicetbl.id DESC
     LIMIT 1
@@ -113,6 +127,7 @@ handleApiGetService = do
 
   writeJSON $ (CaseDescription
                caseId serviceSerial serviceType
+               status statusLabel
                client clientPhone
                firstAddress lastAddress
                expectedServiceStart factServiceStart factServiceEnd
@@ -125,9 +140,11 @@ handleApiGetService = do
 
 handleApiGetCaseComments :: AppHandler ()
 handleApiGetCaseComments = checkAuthCasePartner $ do
-  user <- fromMaybe (error "No current user") <$> with auth currentUser
-  let UserId uid = fromMaybe (error "no uid") $ userId user
+  --user <- fromMaybe (error "No current user") <$> with auth currentUser
+  --let UserId uid = fromMaybe (error "no uid") $ userId user
+  Just (Ident uid) <- currentUserMetaId
 
+  liftIO $ print $ "uid: " ++ show uid
   caseId <- fromMaybe (error "invalid case id") <$> getIntParam "caseId"
   limit <- fromMaybe 100 <$> getIntParam "limit"
   rows <- query [sql|
@@ -138,9 +155,32 @@ handleApiGetCaseComments = checkAuthCasePartner $ do
            json->>'userid' = ?)
     ORDER BY datetime DESC
     LIMIT ?
-  |] (caseId, uid, limit)
+  |] (caseId, show uid, limit)
 
   writeJSON $ map (\(datetime, who, json) -> CaseComment datetime who json)
                 (rows :: [(Maybe ZonedTime, Maybe String, Maybe Value)])
 
+-- POST ../:service/comment
+postComment :: AppHandler ()
+postComment = checkAuthCasePartner $ do
+  -- user <- fromMaybe (error "No current user") <$> with auth currentUser
+  caseId <- fromMaybe (error "invalid case id") <$> getIntParam "caseId"
+  comment <- T.strip . TE.decodeUtf8 . fromMaybe "" <$> getParam "comment"
 
+  when (T.null comment) (error "empty comment")
+
+  cfg <- getSnapletUserConfig
+
+  cookieName :: String <- liftIO $ (T.unpack . T.strip)
+                               <$> lookupDefault "_session" cfg "carma.cookie"
+
+  c <- getCookie $ BS.pack cookieName
+
+  case c of
+    Just c' -> do
+      (Ident caseCommentId, _) <-
+          addComment (cookieName ++ "=" ++ (BS.unpack $ cookieValue c')) caseId
+                   $ T.unpack comment
+
+      writeJSON [caseCommentId]
+    Nothing -> error $ "no cookie named " ++ cookieName
