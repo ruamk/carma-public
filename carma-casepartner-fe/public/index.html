@@ -1,19 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>our-elm-spa</title>
-    <link rel="stylesheet" href="/styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>elm-spa</title>
   </head>
-  <body>
-    <script src="/dist/elm.compiled.js"></script>
-    <script src="/ports.js"></script>
-    <script>
-      window.addEventListener('load', _ =>
-        window.ports.init(Elm.Main.init())
-      )
-    </script>
-  </body>
+<body>
+  <script src="/dist/elm.js"></script>
+  <script>
+   var storedSession = localStorage.getItem('case-partner-session');
+   var startingState = storedSession ? storedSession : null;
+
+   var app = Elm.Main.init({flags: startingState});
+
+   app.ports.storeSession.subscribe(function(session) {
+     localStorage.setItem('case-partner-session', session);
+   })
+  </script>
+</body>
 </html>

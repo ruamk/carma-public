@@ -1,22 +1,44 @@
-module Types exposing (CaseDescription, CaseInfo)
+module Types exposing
+    ( CaseComment
+    , CaseCommentDetails(..)
+    , ClosingCaseInfo
+    , CurrentCaseInfo
+    , ServiceDescription
+    , emptyServiceDescription
+    )
 
+import Dict exposing (Dict)
 import ISO8601 exposing (Time)
+import Json.Decode exposing (Value)
 
 
 
 -- для списка заявок
 
 
-type alias CaseInfo =
-    { id : Int -- идентификатор заявка
-    , services : Int -- Количество услуг
-    , callDate : Maybe Time -- дата
-    , typeOfService : String -- тип услуги
-    , status : String -- статус
-    , accordTime : Maybe Time -- овноу
-    , makeModel : String -- марка/модель
-    , breakdownPlace : String -- адрес места поломки
-    , payType : String -- тип оплаты
+type alias CurrentCaseInfo =
+    { cuCaseId : Int
+    , cuServiceId : Int
+    , cuServiceSerial : Int
+    , cuCallDate : Maybe Time
+    , cuTypeOfService : String
+    , cuStatus : String
+    , cuAccordTime : String
+    , cuMakeModel : String
+    , cuBreakdownPlace : String
+    , cuPayType : String
+    }
+
+
+type alias ClosingCaseInfo =
+    { clCaseId : Int
+    , clServiceId : Int
+    , clServiceSerial : Int
+    , clCallDate : Maybe Time
+    , clTypeOfService : String
+    , clMakeModel : String
+    , clBreakdownPlace : String
+    , clPayType : String
     }
 
 
@@ -24,19 +46,100 @@ type alias CaseInfo =
 -- заявка
 
 
-type alias CaseDescription =
+type alias ServiceDescription =
     { caseId : Int
     , services : Int
     , serviceType : String
+    , status : Int
+    , statusLabel : String
     , client : String
     , clientPhone : String
     , firstAddress : String
     , lastAddress : String
-    , expectedServiceStart : String
-    , factServiceStart : String
-    , factServiceEnd : String
+    , expectedServiceStart : Maybe Time
+    , factServiceStart : Maybe Time
+    , factServiceEnd : Maybe Time
     , makeModel : String
     , plateNumber : String
-    , loadingDifficulty : String
+    , loadingDifficulties : Maybe (Dict.Dict String (Maybe Bool))
     , suburbanMilage : String
+    , vin : Maybe String
     }
+
+
+emptyServiceDescription : ServiceDescription
+emptyServiceDescription =
+    { caseId = 0
+    , services = 0
+    , serviceType = ""
+    , status = 0
+    , statusLabel = ""
+    , client = ""
+    , clientPhone = ""
+    , firstAddress = ""
+    , lastAddress = ""
+    , expectedServiceStart = Nothing
+    , factServiceStart = Nothing
+    , factServiceEnd = Nothing
+    , makeModel = ""
+    , plateNumber = ""
+    , loadingDifficulties = Nothing
+    , suburbanMilage = ""
+    , vin = Nothing
+    }
+
+
+type CaseCommentDetails
+    = CaseCommentAction
+        { type_ : String
+        , result : String
+        , comment : Maybe String
+        , serviceLabel : Maybe String
+        }
+    | CaseCommentAvayaEvent
+        { aeType : String
+        , aeCall : String
+        , aeInterLocutors : List String
+        }
+    | CaseCommentCall
+        { callType : String
+        }
+    | CaseCommentComment
+        { commentText : String
+        }
+    | CaseCommentLocationSharingResponse
+        { lat : Float
+        , lon : Float
+        , accuracy : Int
+        }
+    | CaseCommentLocationSharingRequest
+        { smsSent : Bool
+        }
+    | CaseCommentPartnerCancel
+        { partnerName : String
+        , refusalComment : String
+        , refusalReason : String
+        }
+    | CaseCommentPartnerDelay
+        { partnerName : String
+        , serviceLabel : Maybe String
+        , delayMinutes : Maybe Int
+        , delayConfirmed : Maybe String
+        }
+    | CaseCommentSmsForPartner
+        { msgText : String
+        , sender : String
+        , phone : String
+        , deliveryStatus : String
+        }
+
+
+type alias CaseComment =
+    { datetime : Maybe Time
+    , who : Maybe String
+    , details : Maybe CaseCommentDetails
+    }
+
+
+type CaseComments
+    = List CaseComment

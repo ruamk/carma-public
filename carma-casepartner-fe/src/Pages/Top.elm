@@ -1,68 +1,75 @@
-module Pages.Top exposing (Model, Msg, page)
+module Pages.Top exposing (Flags, Model, Msg, page)
 
-import Generated.Params as Params
+import Bootstrap.Grid as Grid
+import Bootstrap.Grid.Col as Col
+import Bootstrap.Grid.Row as Row
+import Bootstrap.Utilities.Flex as Flex
+import Generated.Route as Route
+import Global
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
-import Spa.Page
-import Ui
-import Utils.Spa exposing (Page)
+import Page exposing (Document, Page)
+import Time
 
 
-page : Page Params.Top Model Msg model msg appMsg
-page =
-    Spa.Page.element
-        { title = always "homepage"
-        , init = always init
-        , update = always update
-        , subscriptions = always subscriptions
-        , view = always view
-        }
-
-
-
--- INIT
+type alias Flags =
+    ()
 
 
 type alias Model =
-    {}
-
-
-init : Params.Top -> ( Model, Cmd Msg )
-init _ =
-    ( {}
-    , Cmd.none
-    )
-
-
-
--- UPDATE
+    { counter : Int
+    }
 
 
 type Msg
-    = Msg
+    = Tick Time.Posix
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update _ model =
-    ( model
+page : Page Flags Model Msg
+page =
+    Page.component
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
+
+
+init _ _ =
+    ( { counter = 3 }
+    , Cmd.none
     , Cmd.none
     )
 
 
-
--- SUBSCRIPTIONS
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
+subscriptions : Global.Model -> Model -> Sub Msg
+subscriptions global model =
+    Time.every 1000 Tick
 
 
+update : Global.Model -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
+update _ msg model =
+    case msg of
+        Tick _ ->
+            ( { model | counter = model.counter - 1 }
+            , Cmd.none
+            , if model.counter > 1 then
+                Cmd.none
 
--- VIEW
+              else
+                Global.navigate Route.Login
+            )
 
 
-view : Model -> Html Msg
-view model =
-    div [] []
+view : Global.Model -> Model -> Document Msg
+view global model =
+    { title = "Top"
+    , body =
+        [ Grid.row [ Row.centerXs, Row.attrs [ style "height" "100vh" ] ]
+            [ Grid.col [ Col.sm2, Col.attrs [ Flex.alignSelfCenter ] ]
+                [ h1 [attribute "class" "text-center"]
+                    [ text <| String.fromInt model.counter ]
+                ]
+            ]
+        ]
+    }

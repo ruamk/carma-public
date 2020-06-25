@@ -4,30 +4,49 @@ module Ui exposing
     , cellAttrs
     , centerCell
     , colors
+    , dateCell
     , idCell
     , mainMenu
     , page
     , pageButtonStyle
     , pageIndicatorStyle
+    , viewSpinner
     , timeCell
     )
 
 import Bootstrap.Alert as Alert
 import Bootstrap.Badge as Badge
 import Bootstrap.Button as Button
+import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Navbar as Navbar
-import Bootstrap.Text as Text
+import Bootstrap.Spinner as Spinner
+import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Size as Size
 import Bootstrap.Utilities.Spacing as Spacing
 import Color exposing (rgb255, toCssString)
+import FontAwesome.Attributes as Icon
+import FontAwesome.Icon as Icon
+import FontAwesome.Solid as Icon
+import FontAwesome.Styles as Icon
 import Html exposing (..)
-import Html.Attributes as Attrs
+import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import ISO8601 as ISO8601 exposing (Time)
 import Time as Time
+import Utils exposing (formatDate, formatTime)
+
+
+email : String
+email =
+    "dpd@ruamc.ru?subject=Предложения/замечания по личному кабинету партнера."
+
+
+telephone : String
+telephone =
+    "8-800-200-72-62"
 
 
 colors =
@@ -46,46 +65,133 @@ colors =
     }
 
 
-page navbarMsg navbarState username buttons content =
+page :
+    { navbarMsg : Navbar.State -> a
+    , logoutMsg : a
+    , usermenuMsg : Dropdown.State -> a
+    , navbarState : Navbar.State
+    , usermenuState : Dropdown.State
+    , username : String
+    , buttons : List ( Bool, a, String )
+    }
+    -> Html a
+    -> Html a
+page { navbarMsg, logoutMsg, usermenuMsg, navbarState, usermenuState, username, buttons } content =
     Grid.row []
         [ Grid.col [ Col.attrs [ Spacing.p0 ] ]
-            [ mainMenu navbarMsg navbarState username buttons
-            , div [ Spacing.p4 ] [ content ]
+            [ mainMenu
+                { navbarMsg = navbarMsg
+                , logoutMsg = logoutMsg
+                , usermenuMsg = usermenuMsg
+                , navbarState = navbarState
+                , usermenuState = usermenuState
+                , username = username
+                , buttons = buttons
+                }
+            , div [ Spacing.p1 ] [ content ]
             ]
         ]
 
 
-mainMenu msg state username buttons =
-    Navbar.config msg
+mainMenu :
+    { navbarMsg : Navbar.State -> a
+    , logoutMsg : a
+    , usermenuMsg : Dropdown.State -> a
+    , navbarState : Navbar.State
+    , usermenuState : Dropdown.State
+    , username : String
+    , buttons : List ( Bool, a, String )
+    }
+    -> Html a
+mainMenu { navbarMsg, logoutMsg, usermenuMsg, navbarState, usermenuState, username, buttons } =
+    Navbar.config navbarMsg
         |> Navbar.withAnimation
-        |> Navbar.info
-        |> Navbar.brand []
-            [ img
-                [ Attrs.src "/logo.png"
-                , Attrs.class "d-inline-block align-middle"
-                , Attrs.style "width" "60px"
-                ]
-                []
-            , text "CaRMa"
+        |> Navbar.primary
+        |> Navbar.brand
+            [ style "background-color" "yellow"
+            , style "font-weight" "800"
+            , Spacing.pb2
+            , Spacing.pl2
+            , Spacing.pr2
+            , Spacing.pt0
+            ]
+            [ text "Р"
+            , span [ style "color" "red" ]
+                [ text "А" ]
+            , text "МК"
             ]
         |> Navbar.items
             (List.map
                 (\( active, itemMsg, label ) ->
+                    let
+                        d v =
+                            div
+                                [ class "d-inline-block align-middle"
+                                , Spacing.p1
+                                ]
+                                [ v ]
+                    in
                     if active then
-                        Navbar.itemLinkActive [ Attrs.href "" ] [ text label ]
+                        Navbar.itemLinkActive [ href "" ] [ d <| text label ]
 
                     else
                         Navbar.itemLink
-                            [ Attrs.href ""
+                            [ href ""
                             , onClick itemMsg
                             ]
-                            [ text label ]
+                            [ d <| text label ]
                 )
                 buttons
             )
         |> Navbar.customItems
-            [ Navbar.textItem [] [ text username ] ]
-        |> Navbar.view state
+            [ Navbar.customItem <|
+                Button.linkButton
+                    [ Button.attrs [ href <| "mailto:" ++ email ]
+                    , Button.primary
+                    ]
+                    [ div
+                        [ class "d-inline-block align-middle"
+                        , Spacing.p1
+                        ]
+                        [ Icon.envelope
+                            |> Icon.present
+                            |> Icon.styled [ Icon.lg ]
+                            |> Icon.view
+                        ]
+                    ]
+            , Navbar.customItem <|
+                Button.linkButton
+                    [ Button.attrs [ href <| "tel:" ++ telephone ]
+                    , Button.primary
+                    ]
+                    [ div
+                        [ class "d-inline-block align-middle"
+                        , Spacing.p1
+                        ]
+                        [ Icon.phoneSquareAlt
+                            |> Icon.present
+                            |> Icon.styled [ Icon.lg ]
+                            |> Icon.view
+                        ]
+                    , div
+                        [ class "d-inline-block align-middle"
+                        , Spacing.p1
+                        ]
+                        [ text telephone ]
+                    ]
+            , Navbar.customItem <|
+                Dropdown.dropdown
+                    usermenuState
+                    { options = []
+                    , toggleMsg = usermenuMsg
+                    , toggleButton =
+                        Dropdown.toggle [ Button.primary ] [ text username ]
+                    , items =
+                        [ Dropdown.buttonItem [ onClick logoutMsg ] [ text "Выход" ]
+                        ]
+                    }
+            ]
+        |> Navbar.view navbarState
 
 
 cellAttrs : List (Attribute msg)
@@ -100,19 +206,19 @@ cell t =
 
 centerCell : String -> Html msg
 centerCell t =
-    div (cellAttrs ++ [ Attrs.class "text-center" ]) [ text t ]
+    div (cellAttrs ++ [ class "text-center" ]) [ text t ]
 
 
-idCell msg caseId services =
+idCell msg serviceId caseId serviceSerial =
     Button.button
-        [ Button.attrs [ onClick <| msg caseId ]
+        [ Button.attrs [ onClick <| msg serviceId ]
         , Button.roleLink
-        , Button.attrs [ Spacing.pb0, Spacing.pt0 ]
+        , Button.attrs [ Spacing.pb1, Spacing.pt1, Spacing.pl1, Spacing.pr1 ]
         ]
         [ text <|
             String.fromInt caseId
-                ++ (if services > 1 then
-                        " / " ++ String.fromInt services
+                ++ (if serviceSerial > 1 then
+                        "/" ++ String.fromInt serviceSerial
 
                     else
                         ""
@@ -122,25 +228,30 @@ idCell msg caseId services =
 
 timeCell : Maybe Time -> Html msg
 timeCell t =
-    let
-        formatTime nt =
-            let
-                f =
-                    List.map (\field -> field nt |> String.fromInt |> String.padLeft 2 '0')
-            in
-            String.join "-" (f [ .year, .month, .day ])
-                ++ " "
-                ++ String.join ":" (f [ .hour, .minute, .second ])
-    in
-    div cellAttrs
-        [ text <|
-            case t of
-                Nothing ->
-                    ""
+    case t of
+        Nothing ->
+            text ""
 
-                Just tt ->
+        Just tt ->
+            let
+                ( date, time ) =
                     formatTime tt
-        ]
+            in
+            div cellAttrs
+                [ text date
+                , br [] []
+                , text time
+                ]
+
+
+dateCell : Maybe Time -> Html msg
+dateCell t =
+    case t of
+        Nothing ->
+            text ""
+
+        Just tt ->
+            div cellAttrs [ text <| formatDate tt ]
 
 
 addressCell t =
@@ -155,3 +266,14 @@ pageButtonStyle =
 pageIndicatorStyle : List (Attribute msg)
 pageIndicatorStyle =
     []
+
+
+viewSpinner : String -> Html msg
+viewSpinner size =
+    Spinner.spinner
+        [ Spinner.attrs
+            [ style "width" size
+            , style "height" size
+            ]
+        ]
+        []

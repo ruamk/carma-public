@@ -1,6 +1,6 @@
 /* you can include CSS here */
 html {
-  font-size: 14px;
+  font-size: 0.8rem;
 }
 
 @include media-breakpoint-up(sm) {
@@ -28,4 +28,8 @@ html {
 
 .value {
     font-weight: normal;
+}
+
+.navbar * {
+    font-size: 1.4rem !important;
 }

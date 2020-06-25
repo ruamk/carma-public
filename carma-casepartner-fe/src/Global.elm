@@ -1,78 +1,169 @@
 module Global exposing
     ( Flags
     , Model
-    , Msg(..)
+    , Msg
     , init
+    , logout
+    , navigate
+    , saveUsername
+    , serviceId
     , subscriptions
     , update
+    , view
     )
 
-import Generated.Routes as Routes exposing (Route, routes)
+import Api
+import Browser exposing (Document)
+import Browser.Navigation as Nav
+import Components
+import Generated.Route as Route exposing (Route)
+import Json.Encode as JE
 import Ports
+import Task
+import Url exposing (Url)
+import Utils
+
+
+
+-- INIT
 
 
 type alias Flags =
-    ()
+    Maybe String
 
 
 type alias Model =
-    { username : String
-    , caseId : Int
+    { flags : Flags
+    , url : Url
+    , key : Nav.Key
+    , username : String
+    , serviceId : Int
     }
 
 
-type Msg
-    = Login
-    | Logout
-    | Cases String
-    | SearchCases
-    | ShowCase Int
+init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
+    let
+        session =
+            case flags of
+                Just s ->
+                    Api.decodeSession s
 
-
-type alias Commands msg =
-    { navigate : Route -> Cmd msg
-    }
-
-
-init : Commands msg -> Flags -> ( Model, Cmd Msg, Cmd msg )
-init commands _ =
-    ( { username = ""
-      , caseId = 0
-      }
+                Nothing ->
+                    Api.Session "" 0
+    in
+    ( Model
+        flags
+        url
+        key
+        session.username
+        session.serviceId
     , Cmd.none
-    , commands.navigate routes.login
     )
 
 
-update : Commands msg -> Msg -> Model -> ( Model, Cmd Msg, Cmd msg )
-update commands msg model =
+
+-- UPDATE
+
+
+type Msg
+    = Navigate Route
+    | Username String
+    | ServiceId Int
+    | Logout
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
     case msg of
-        Cases username ->
-            ( { model | username = username }
-            , Cmd.none
-            , commands.navigate routes.cases
-            )
-
-        SearchCases ->
+        Navigate route ->
             ( model
-            , Cmd.none
-            , commands.navigate routes.searchCases
+            , Nav.pushUrl model.key (Route.toHref route)
             )
 
-        ShowCase caseId ->
-            ( { model | caseId = caseId }
-            , Cmd.none
-            , commands.navigate routes.showCase
+        Username name ->
+            ( { model | username = name }
+            , saveSessions
+                { username = name
+                , serviceId = model.serviceId
+                }
             )
 
-        -- todo: remove
-        _ ->
+        ServiceId id ->
+            ( { model | serviceId = id }
+            , saveSessions
+                { username = model.username
+                , serviceId = id
+                }
+            )
+
+        Logout ->
             ( model
-            , Cmd.none
-            , Cmd.none
+            , navigate Route.Login
             )
+
+
+
+-- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
+subscriptions model =
     Sub.none
+
+
+
+-- VIEW
+
+
+view :
+    { page : Document msg
+    , global : Model
+    , toMsg : Msg -> msg
+    }
+    -> Document msg
+view { page, global, toMsg } =
+    Components.layout
+        { page = page
+        }
+
+
+
+-- COMMANDS
+
+
+send : msg -> Cmd msg
+send =
+    Task.succeed >> Task.perform identity
+
+
+navigate : Route -> Cmd Msg
+navigate route =
+    send (Navigate route)
+
+
+saveUsername : String -> Cmd Msg
+saveUsername username =
+    send (Username username)
+
+
+serviceId : Int -> Cmd Msg
+serviceId id =
+    send (ServiceId id)
+
+
+logout : Cmd Msg
+logout =
+    send Logout
+
+
+{-| Save username and serviceId
+-}
+saveSessions : { username : String, serviceId : Int } -> Cmd msg
+saveSessions session =
+    JE.object
+        [ ( "username", JE.string session.username )
+        , ( "serviceId", JE.int session.serviceId )
+        ]
+        |> JE.encode 0
+        |> Ports.storeSession

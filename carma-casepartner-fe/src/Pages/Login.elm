@@ -1,41 +1,27 @@
-module Pages.Login exposing (Model, Msg, page)
+module Pages.Login exposing (Flags, Model, Msg, page)
 
 import Api
 import Bootstrap.Button as Button
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
 import Bootstrap.Grid as Grid
-import Bootstrap.Utilities.Size as Size
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Navbar as Navbar
 import Bootstrap.Utilities.Flex as Flex
-import Generated.Params as Params
-import Generated.Routes as Routes exposing (routes)
+import Bootstrap.Utilities.Size as Size
+import Generated.Route as Route
 import Global
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http
-import Ports
-import Spa.Page
+import Page exposing (Document, Page)
 import Ui
-import Utils.Spa exposing (Page, PageContext)
 
 
-page : Page Params.Login Model Msg model msg appMsg
-page =
-    Spa.Page.component
-        { title = always "Вход в систему"
-        , init = init
-        , update = update
-        , view = view
-        , subscriptions = always subscriptions
-        }
-
-
-
--- INIT
+type alias Flags =
+    ()
 
 
 type alias Model =
@@ -45,8 +31,25 @@ type alias Model =
     }
 
 
-init : PageContext -> Params.Login -> ( Model, Cmd Msg, Cmd Global.Msg )
-init context _ =
+type Msg
+    = Name String
+    | Password String
+    | TryLogin
+    | LoginStatus (Result Http.Error Int)
+
+
+page : Page Flags Model Msg
+page =
+    Page.component
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        }
+
+
+init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
+init global flags =
     ( { name = ""
       , password = ""
       , errorMessage = Nothing
@@ -56,19 +59,8 @@ init context _ =
     )
 
 
-
--- UPDATE
-
-
-type Msg
-    = Name String
-    | Password String
-    | TryLogin
-    | LoginStatus (Result Http.Error Int)
-
-
-update : PageContext -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
-update commands msg model =
+update : Global.Model -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
+update global msg model =
     case msg of
         Name name ->
             ( { model | name = name }
@@ -115,7 +107,10 @@ update commands msg model =
                 200 ->
                     ( { model | errorMessage = Nothing }
                     , Cmd.none
-                    , Spa.Page.send <| Global.Cases model.name
+                    , Cmd.batch
+                        [ Global.saveUsername model.name
+                        , Global.navigate Route.Cases
+                        ]
                     )
 
                 401 ->
@@ -131,59 +126,48 @@ update commands msg model =
                     )
 
 
-
--- SUBSCRIPTIONS
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions : Global.Model -> Model -> Sub Msg
+subscriptions global model =
     Sub.none
 
 
+view : Global.Model -> Model -> Document Msg
+view global model =
+    { title = "Вход в систему"
+    , body =
+        [ Grid.row [ Row.centerXs, Row.attrs [ style "height" "100vh" ] ]
+            [ Grid.col [ Col.sm2, Col.attrs [ Flex.alignSelfCenter ] ]
+                [ div []
+                    [ img [ src "/logo.png" ] [] ]
+                , div [ style "height" "2rem" ] []
+                , h3 [] [ text "Вход в систему" ]
+                , hr [] []
+                , Form.form []
+                    [ Form.group []
+                        [ Form.label [ for "name" ] [ text "Имя пользователя" ]
+                        , Input.text [ Input.id "name", Input.value model.name, Input.attrs [ onInput Name ] ]
+                        ]
+                    , Form.group []
+                        [ Form.label [ for "password" ] [ text "Пароль" ]
+                        , Input.password [ Input.id "password", Input.value model.password, Input.attrs [ onInput Password ] ]
+                        ]
+                    , Form.row [ Row.rightSm ]
+                        [ Form.col []
+                            [ div []
+                                [ text <|
+                                    case model.errorMessage of
+                                        Nothing ->
+                                            ""
 
--- VIEW
-
-
-view : PageContext -> Model -> Html Msg
-view _ model =
-    Grid.row [ Row.centerXs, Row.attrs [ style "height" "100vh"] ]
-        [ Grid.col [ Col.sm2, Col.attrs [ Flex.alignSelfCenter ] ]
-            [ div []
-                [ img
-                    [ src "/logo.png"
-                    ]
-                    []
-                ]
-            , div [style "height" "2rem"] []
-            , h3
-                []
-                [ text "Вход в систему"
-                ]
-            , hr [] []
-            , Form.form []
-                [ Form.group []
-                    [ Form.label [ for "name" ] [ text "Имя пользователя" ]
-                    , Input.text [ Input.id "name", Input.value model.name, Input.attrs [ onInput Name ] ]
-                    ]
-                , Form.group []
-                    [ Form.label [ for "password" ] [ text "Пароль" ]
-                    , Input.password [ Input.id "password", Input.value model.password, Input.attrs [ onInput Password ] ]
-                    ]
-                , Form.row [ Row.rightSm ]
-                    [ Form.col []
-                        [ div []
-                            [ text <|
-                                case model.errorMessage of
-                                    Nothing ->
-                                        ""
-
-                                    Just errorMessage ->
-                                        "Ошибка: " ++ errorMessage
+                                        Just errorMessage ->
+                                            "Ошибка: " ++ errorMessage
+                                ]
                             ]
                         ]
                     ]
+                , Button.button [ Button.primary, Button.attrs [ onClick TryLogin ] ]
+                    [ text "Войти" ]
                 ]
-            , Button.button [ Button.primary, Button.attrs [ onClick TryLogin ] ]
-                [ text "Войти" ]
             ]
         ]
+    }
