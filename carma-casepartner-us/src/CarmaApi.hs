@@ -4,6 +4,7 @@ module CarmaApi
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Configurator (lookupDefault)
 import qualified Data.Text as T
+import           Data.Time.Clock (getCurrentTime)
 import           Network.HTTP (HeaderName(HdrCookie), mkHeader)
 import           Snap.Snaplet (MonadSnaplet, getSnapletUserConfig)
 
@@ -13,10 +14,16 @@ import           Carma.HTTP
                  , defaultCarmaOptions
                  , CarmaOptions(..)
                  )
-import           Carma.HTTP.New (createInstance)
+import           Carma.HTTP.New
+                 ( createInstance
+                 , updateInstance
+                 )
 import           Carma.Utils.Operators ((&))
 import           Carma.Model (IdentI, Ident(..))
+import           Carma.Model.Action as Action
+import           Carma.Model.ActionResult as ActionResult
 import           Carma.Model.CaseComment as CaseComment
+import           Carma.Model.Service as Service
 import           Data.Model.Patch as Patch
 
 
@@ -54,3 +61,36 @@ addComment cookie caseId comment = carma cookie $ createInstance cc
              & Patch.put CaseComment.comment (T.pack comment)
 
         
+-- | Изменение результата действия "Контроль доезда помощи"
+-- | на "Услуга в процессе оказания"
+
+serviceInProgress
+    :: ( MonadIO (m b v)
+      , MonadSnaplet m
+      )
+    => String
+    -> IdentI Action
+    -> m b v (Patch Action)
+serviceInProgress cookie actionId = do
+  carma cookie $
+      updateInstance actionId
+                     ( Patch.empty
+                     & Patch.put Action.result (Just ActionResult.serviceInProgress)
+                     )
+
+
+updateFactServiceStartTime
+    :: ( MonadIO (m b v)
+      , MonadSnaplet m
+      )
+    => String
+    -> IdentI Service
+    -> m b v (Patch Service)
+updateFactServiceStartTime cookie serviceId = do
+  now <- liftIO getCurrentTime
+  carma cookie $
+        updateInstance serviceId
+                       ( Patch.empty
+                       & Patch.put Service.times_factServiceStart (Just now)
+                       )
+

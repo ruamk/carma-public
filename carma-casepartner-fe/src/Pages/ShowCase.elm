@@ -11,12 +11,14 @@ import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
+import Bootstrap.Modal as Modal
 import Bootstrap.Navbar as Navbar
 import Bootstrap.Spinner as Spinner
 import Bootstrap.Text as Text
 import Bootstrap.Utilities.Border as Border
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Spacing as Spacing
+import Chat as Chat
 import Const as Const
 import Dict as Dict
 import FontAwesome.Attributes as Icon
@@ -29,7 +31,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
+import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
+import Time as Time
 import Types
     exposing
         ( CaseComment
@@ -37,7 +41,7 @@ import Types
         , ServiceDescription
         , emptyServiceDescription
         )
-import Ui
+import Ui exposing (empty)
 import Utils exposing (formatTime)
 
 
@@ -72,7 +76,9 @@ type alias Model =
     , usermenuState : Dropdown.State
     , commentsDownloaded : Bool
     , comments : List CaseComment
-    , statusButton2 : { label : String, disabled : Bool, message : Maybe Msg }
+    , statusButton2 : { label : String, disabled : Bool, disabledTime : Int, message : Maybe Msg }
+    , modalVisibility : Modal.Visibility
+    , messageToast : MessageToast Msg
     }
 
 
@@ -94,8 +100,22 @@ type Msg
     | UsermenuMsg Dropdown.State
     | InPlace -- На месте
     | ServicePerformed -- Услуга оказана
-    | ServicePerformedResponse (Result Http.Error Int) -- Услуга оказана (ответ)
+    | UpdateStatus (Result Http.Error String) -- Результат изменения статуса
+    | UpdateComments (Result Http.Error Int) -- Услуга оказана (ответ)
     | Logout
+    | ModalClose
+    | UpdateCustomMessageToast (MessageToast Msg)
+    | Chat String
+    | Tick Time.Posix
+
+
+
+{- | buttonDisabledTime in seconds -}
+
+
+buttonDisabledTime : Int
+buttonDisabledTime =
+    5
 
 
 page : Page Flags Model Msg
@@ -126,7 +146,18 @@ init global flags =
       , usermenuState = Dropdown.initialState
       , commentsDownloaded = False
       , comments = []
-      , statusButton2 = { label = "", disabled = True, message = Nothing }
+      , statusButton2 =
+            { label = ""
+            , disabled = True
+            , disabledTime = 0
+            , message = Nothing
+            }
+      , modalVisibility = Modal.hidden
+      , messageToast =
+            MessageToast.initWithConfig UpdateCustomMessageToast
+                { delayInMs = 2000
+                , toastsToShow = 10
+                }
       }
     , navbarCmd
     , Cmd.none
@@ -146,13 +177,17 @@ update global msg model =
         ServiceDownloaded result ->
             case result of
                 Err e ->
-                    ( model
-                    , let
-                        a =
-                            Debug.log "Error get case in showcase "
-                                [ String.fromInt global.serviceId ]
-                      in
-                      Cmd.none
+                    let
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage
+                                    ("Error get case in showcase "
+                                        ++ String.fromInt global.serviceId
+                                    )
+                    in
+                    ( { model | messageToast = messageToast }
+                    , Cmd.none
                     , Cmd.none
                     )
 
@@ -162,18 +197,21 @@ update global msg model =
                             if service.status == Const.serviceStatus.ordered then
                                 { label = "На месте"
                                 , disabled = False
+                                , disabledTime = 0
                                 , message = Just InPlace
                                 }
 
                             else if service.status == Const.serviceStatus.inProgress then
                                 { label = "Услуга выполнена"
                                 , disabled = False
+                                , disabledTime = 0
                                 , message = Just ServicePerformed
                                 }
 
                             else
                                 { label = "Услуга оказана"
                                 , disabled = True
+                                , disabledTime = 0
                                 , message = Nothing
                                 }
                     in
@@ -181,20 +219,21 @@ update global msg model =
                         | service = service
                         , statusButton2 = statusButton2
                       }
-                    , Api.getCaseComments service.caseId CommentsDownloaded
+                    , Api.getServiceComments global.serviceId CommentsDownloaded
                     , Cmd.none
                     )
 
         CommentsDownloaded result ->
             case result of
                 Err e ->
-                    ( model
-                    , let
-                        a =
-                            Debug.log "error get comments in showcase "
-                                [ e ]
-                      in
-                      Cmd.none
+                    let
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "error get comments in showcase "
+                    in
+                    ( { model | messageToast = messageToast }
+                    , Cmd.none
                     , Cmd.none
                     )
 
@@ -203,7 +242,7 @@ update global msg model =
                         | comments = comments
                         , commentsDownloaded = True
                       }
-                    , Cmd.none
+                    , Chat.connectToCase model.service.caseId
                     , Cmd.none
                     )
 
@@ -257,11 +296,7 @@ update global msg model =
 
         AddComment ->
             ( { model | inputComment = "" }
-            , let
-                a =
-                    Debug.log "Add comment: " [ model.inputComment ]
-              in
-              Api.postServiceComment model.service.caseId
+            , Api.postServiceComment model.service.caseId
                 { comment = model.inputComment }
                 AddCommentResponse
             , Cmd.none
@@ -269,11 +304,7 @@ update global msg model =
 
         AddCommentResponse result ->
             ( model
-            , let
-                a =
-                    Debug.log "add comment response: " [ result ]
-              in
-              Api.getCaseComments model.service.caseId CommentsDownloaded
+            , Api.getServiceComments global.serviceId CommentsDownloaded
             , Cmd.none
             )
 
@@ -291,35 +322,99 @@ update global msg model =
 
         InPlace ->
             ( model
-            , let
-                _ =
-                    Debug.log "InPlace" []
-              in
-              Cmd.none
+            , Api.statusInPlace global.serviceId UpdateStatus
             , Cmd.none
             )
 
         ServicePerformed ->
             ( model
-            , let
-                _ =
-                    Debug.log "Партнер выполнил услугу: " []
-              in
-              Api.postServiceComment model.service.caseId
-                { comment = "Партнёр выполнил услугу" }
-                ServicePerformedResponse
+            , Api.statusServicePerformed global.serviceId
+                ("Партнёр выполнил услугу " ++ formatServiceSerial model)
+                UpdateStatus
             , Cmd.none
             )
 
-        ServicePerformedResponse result ->
+        UpdateComments result ->
             ( model
-            , let
-                _ =
-                    Debug.log "Партнёр выполнил услугу (ответ): " [ result ]
-              in
-              Api.getCaseComments model.service.caseId CommentsDownloaded
+            , Api.getServiceComments global.serviceId CommentsDownloaded
             , Cmd.none
             )
+
+        Tick _ ->
+            let
+                s =
+                    model.statusButton2
+            in
+            ( { model
+                | statusButton2 =
+                    if model.statusButton2.disabledTime > 0 then
+                        { s | disabledTime = model.statusButton2.disabledTime - 1 }
+
+                    else
+                        { s | disabled = False }
+              }
+            , if model.statusButton2.disabledTime == 0 && model.statusButton2.disabled then
+                Api.getService global.serviceId ServiceDownloaded
+
+              else
+                Cmd.none
+            , Cmd.none
+            )
+
+        UpdateStatus status ->
+            case status of
+                Ok "service_performed" ->
+                    ( { model
+                        | statusButton2 =
+                            { label = "Услуга оказана"
+                            , disabled = True
+                            , disabledTime = buttonDisabledTime
+                            , message = Nothing
+                            }
+                      }
+                    , Api.getServiceComments global.serviceId CommentsDownloaded
+                    , Cmd.none
+                    )
+
+                Ok "service_already_performed" ->
+                    ( { model
+                        | statusButton2 =
+                            { label = "Услуга оказана"
+                            , disabled = True
+                            , disabledTime = buttonDisabledTime
+                            , message = Nothing
+                            }
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok unknown ->
+                    let
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.warning
+                                |> MessageToast.withMessage
+                                    ("UpdateStatus unknown response: "
+                                        ++ unknown
+                                    )
+                    in
+                    ( { model | messageToast = messageToast }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Err err ->
+                    let
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "UpdateStatus error "
+                    in
+                    ( { model | messageToast = messageToast }
+                    , Cmd.none
+                    , Cmd.none
+                    )
 
         Logout ->
             ( model
@@ -327,10 +422,71 @@ update global msg model =
             , Global.logout
             )
 
+        ModalClose ->
+            ( { model | modalVisibility = Modal.hidden }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        UpdateCustomMessageToast updatedMessageToast ->
+            ( { model | messageToast = updatedMessageToast }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        Chat message ->
+            {-
+               let
+                   formatUser { ip, id } =
+                       String.fromInt id ++ ", " ++ ip
+
+                   messageToast =
+                       case Chat.decodeChat message of
+                           Ok (Chat.Joined user) ->
+                               model.messageToast
+                                   |> MessageToast.danger
+                                   |> MessageToast.withMessage ("Оператор " ++ formatUser user ++ " вошёл в кейс")
+
+                           Ok (Chat.Left user) ->
+                               model.messageToast
+                                   |> MessageToast.success
+                                   |> MessageToast.withMessage ("Оператор " ++ formatUser user ++ " вышел из кейса")
+
+                           Ok (Chat.YouAreNotAlone users) ->
+                               List.foldl
+                                   (\user toast ->
+                                       toast
+                                           |> MessageToast.danger
+                                           |> MessageToast.withMessage ("Оператор " ++ formatUser user ++ " работает с кейсом")
+                                   )
+                                   model.messageToast
+                                   users
+
+                           Ok (Chat.Message chatMessage user) ->
+                               model.messageToast
+                                   |> MessageToast.warning
+                                   |> MessageToast.withMessage ("Оператор " ++ formatUser user ++ " оставил сообщение: " ++ chatMessage)
+
+                           Err e ->
+                               model.messageToast
+                                   |> MessageToast.danger
+                                   |> MessageToast.withMessage ("Неизвестное сообщение из чата: " ++ e)
+               in
+               ( { model | messageToast = messageToast }
+            -}
+            ( model
+            , Cmd.none
+            , Cmd.none
+            )
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
-    Sub.batch [ Dropdown.subscriptions model.usermenuState UsermenuMsg ]
+    Sub.batch
+        [ Dropdown.subscriptions model.usermenuState UsermenuMsg
+        , Chat.caseReceiver Chat
+        , Time.every 1000 Tick
+        ]
 
 
 formatServiceSerial : Model -> String
@@ -367,9 +523,35 @@ view global model =
           <|
             div []
                 [ viewCasePanel model
+                , div [ style "width" "100vw", style "height" "100vh" ]
+                    [ model.messageToast
+                        |> MessageToast.overwriteContainerAttributes
+                            [ style "top" "20px"
+                            , style "bottom" "auto"
+                            , style "right" "20px"
+                            ]
+                        |> MessageToast.view
+                    ]
                 ]
         ]
     }
+
+
+viewModal : Model -> Html Msg
+viewModal model =
+    Modal.config ModalClose
+        |> Modal.small
+        |> Modal.hideOnBackdropClick True
+        |> Modal.h3 [] [ text "Внимание" ]
+        |> Modal.body [] [ p [] [ text "Услуга уже оказана" ] ]
+        |> Modal.footer []
+            [ Button.button
+                [ Button.outlinePrimary
+                , Button.attrs [ onClick ModalClose ]
+                ]
+                [ text "Закрыть" ]
+            ]
+        |> Modal.view model.modalVisibility
 
 
 nameStyle =
@@ -508,19 +690,20 @@ viewCaseVerbose model =
                                 style "width" "150px"
                           in
                           div []
-                            [ Button.button
-                                [ Button.primary
-                                , Button.attrs [ Spacing.m3, width ]
-                                ]
-                                [ text "Опоздание" ]
-                            , Button.button
+                            [ {- Button.button
+                                     [ Button.primary
+                                     , Button.attrs [ Spacing.m3, width ]
+                                     ]
+                                     [ text "Опоздание" ]
+                                 ,
+                              -}
+                              Button.button
                                 [ Button.primary
                                 , Button.disabled model.statusButton2.disabled
                                 , Button.attrs
-                                    ([ Spacing.m3
-                                     , width
-                                     ]
-                                        ++ (case model.statusButton2.message of
+                                    (Spacing.m3
+                                        :: width
+                                        :: (case model.statusButton2.message of
                                                 Just m ->
                                                     [ onClick m ]
 
@@ -529,7 +712,16 @@ viewCaseVerbose model =
                                            )
                                     )
                                 ]
-                                [ text model.statusButton2.label ]
+                                [ text <|
+                                    model.statusButton2.label
+                                        ++ (if model.statusButton2.disabledTime > 0 then
+                                                " (" ++ String.fromInt model.statusButton2.disabledTime ++ ")"
+
+                                            else
+                                                ""
+                                           )
+                                ]
+                            , viewModal model
                             ]
                         ]
                     ]
@@ -569,6 +761,7 @@ viewCaseVerbose model =
                                     ]
                                     [ Button.button
                                         [ Button.success
+                                        , Button.disabled (String.isEmpty model.inputComment)
                                         , Button.attrs
                                             [ class "float-right"
                                             ]
@@ -639,21 +832,19 @@ viewDetails { details } =
                 Just (Types.CaseCommentAction { type_, result, comment, serviceLabel }) ->
                     [ field "Действие" type_
                     , field "Результат" result
+                    , case serviceLabel of
+                        Just serviceLabel_ ->
+                            field "Услуга" serviceLabel_
+
+                        Nothing ->
+                            []
+                    , case comment of
+                        Just comment_ ->
+                            field "Комментарий" comment_
+
+                        Nothing ->
+                            []
                     ]
-                        ++ (case serviceLabel of
-                                Just serviceLabel_ ->
-                                    [ field "Услуга" serviceLabel_ ]
-
-                                Nothing ->
-                                    []
-                           )
-                        ++ (case comment of
-                                Just comment_ ->
-                                    [ field "Комментарий" comment_ ]
-
-                                Nothing ->
-                                    []
-                           )
 
                 Just (CaseCommentAvayaEvent { aeType, aeCall, aeInterLocutors }) ->
                     [ field "Событие AVAYA" aeType ]

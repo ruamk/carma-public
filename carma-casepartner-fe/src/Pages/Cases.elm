@@ -19,6 +19,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onMouseOver)
 import Http
 import ISO8601 as ISO8601
+import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
 import Task
 import Time
@@ -57,6 +58,7 @@ type alias Model =
     , navbarState : Navbar.State
     , usermenuState : Dropdown.State
     , nowMillis : Int
+    , messageToast : MessageToast Msg
     }
 
 
@@ -78,6 +80,7 @@ type Msg
     | Logout
     | NowTime Time.Posix
     | Tick Time.Posix
+    | UpdateCustomMessageToast (MessageToast Msg)
 
 
 page : Page Flags Model Msg
@@ -105,6 +108,11 @@ init global flags =
       , navbarState = navbarState
       , usermenuState = Dropdown.initialState
       , nowMillis = 0
+      , messageToast =
+            MessageToast.initWithConfig UpdateCustomMessageToast
+                { delayInMs = 2000
+                , toastsToShow = 10
+                }
       }
     , navbarCmd
     , Cmd.none
@@ -116,11 +124,7 @@ update global msg model =
     case msg of
         CurrentCase serviceId ->
             ( model
-            , let
-                a =
-                    Debug.log "Current service " [ serviceId ]
-              in
-              Cmd.none
+            , Cmd.none
             , Cmd.batch
                 [ Global.serviceId serviceId
                 , Global.navigate Route.ShowCase
@@ -129,11 +133,7 @@ update global msg model =
 
         ClosingCase serviceId ->
             ( model
-            , let
-                a =
-                    Debug.log "Closing service " [ serviceId ]
-              in
-              Cmd.none
+            , Cmd.none
             , Cmd.batch
                 [ Global.serviceId serviceId
                 , Global.navigate Route.ShowCase
@@ -148,9 +148,18 @@ update global msg model =
 
         GetCurrentCases result ->
             case result of
-                Err e ->
-                    ( { model | showCurrentSpinner = False }
-                    , Debug.todo "Error get current latest cases"
+                Err _ ->
+                    let
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "Error get current latest cases "
+                    in
+                    ( { model
+                        | showCurrentSpinner = False
+                        , messageToast = messageToast
+                      }
+                    , Cmd.none
                     , Cmd.none
                     )
 
@@ -170,8 +179,14 @@ update global msg model =
         GetClosingCases result ->
             case result of
                 Err _ ->
-                    ( { model | showClosingSpinner = False }
-                    , Debug.todo "Error get closing latest cases"
+                    let
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "Error get closing latest cases "
+                    in
+                    ( { model | showClosingSpinner = False, messageToast = messageToast }
+                    , Cmd.none
                     , Cmd.none
                     )
 
@@ -301,6 +316,12 @@ update global msg model =
             , Cmd.none
             )
 
+        UpdateCustomMessageToast updatedMessageToast ->
+            ( { model | messageToast = updatedMessageToast }
+            , Cmd.none
+            , Cmd.none
+            )
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -333,6 +354,15 @@ view global model =
                 , br [] []
                 , viewClosingCases model
                 , br [] []
+                , div [ style "width" "100vw", style "height" "100vh" ]
+                    [ model.messageToast
+                        |> MessageToast.overwriteContainerAttributes
+                            [ style "top" "20px"
+                            , style "bottom" "auto"
+                            , style "right" "20px"
+                            ]
+                        |> MessageToast.view
+                    ]
                 ]
         ]
     }
@@ -505,10 +535,10 @@ viewCurrentCases model =
                             [ Table.th ha [ text "Заявка" ]
                             , Table.th ha [ text "Дата подачи" ]
                             , Table.th ha [ text "Услуга" ]
-                            , Table.th ([ hideMobile ] ++ ha) [ text "Статус" ]
+                            , Table.th (hideMobile :: ha) [ text "Статус" ]
                             , Table.th ha [ text "Остаток времени" ]
-                            , Table.th ([ hideMobile ] ++ ha) [ text "Марка/Модель" ]
-                            , Table.th ([ hideMobile ] ++ ha) [ text "Адрес места поломки" ]
+                            , Table.th (hideMobile :: ha) [ text "Марка/Модель" ]
+                            , Table.th (hideMobile :: ha) [ text "Адрес места поломки" ]
                             , Table.th ha [ text "Тип оплаты" ]
                             ]
                     , tbody =
@@ -576,7 +606,7 @@ viewClosingCases model =
                             , Table.th ha [ text "Дата подачи" ]
                             , Table.th ha [ text "Услуга" ]
                             , Table.th ha [ text "Марка/Модель" ]
-                            , Table.th ([ hideMobile ] ++ ha) [ text "Адрес места поломки" ]
+                            , Table.th (hideMobile :: ha) [ text "Адрес места поломки" ]
                             , Table.th ha [ text "Тип оплаты" ]
                             ]
                     , tbody =

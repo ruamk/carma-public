@@ -5,13 +5,14 @@ module Ui exposing
     , centerCell
     , colors
     , dateCell
+    , empty
     , idCell
     , mainMenu
     , page
     , pageButtonStyle
     , pageIndicatorStyle
-    , viewSpinner
     , timeCell
+    , viewSpinner
     )
 
 import Bootstrap.Alert as Alert
@@ -63,6 +64,10 @@ colors =
     , menuFg = toCssString <| rgb255 255 255 255
     , casesBg = toCssString <| rgb255 238 246 251
     }
+
+
+empty =
+    Html.text ""
 
 
 page :

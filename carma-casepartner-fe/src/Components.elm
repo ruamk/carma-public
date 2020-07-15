@@ -15,10 +15,9 @@ layout { page } =
     { title = page.title
     , body =
         [ Grid.containerFluid [ Size.h100 ]
-            ([ CDN.stylesheet -- bootstrap css, required
-             , Icon.css -- Font.awesome css, required
-             ]
-                ++ page.body
+            (CDN.stylesheet
+                :: Icon.css
+                :: page.body
             )
         ]
     }

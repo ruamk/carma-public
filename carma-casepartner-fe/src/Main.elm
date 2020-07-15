@@ -8,7 +8,7 @@ import Global
 import Html
 import Url exposing (Url)
 import Utils
-
+import Ports
 
 main : Program Flags Model Msg
 main =

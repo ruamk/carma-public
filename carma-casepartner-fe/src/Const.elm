@@ -4,4 +4,5 @@ module Const exposing (..)
 serviceStatus =
     { ordered = 15 -- Услуга заказана
     , inProgress = 17 -- Услуга оказывается
+    , ok = 19 -- Услуга оказана
     }

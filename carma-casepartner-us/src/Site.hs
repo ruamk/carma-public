@@ -36,13 +36,19 @@ apiGetLatestClosingServices :: ByteString
 apiGetLatestClosingServices = "/api/v1/services/closing"
 
 apiGetService :: ByteString
-apiGetService = "/api/v1/getService/:serviceId"
+apiGetService = "/api/v1/service/:serviceId"
 
-apiGetCaseComments :: ByteString
-apiGetCaseComments = "/api/v1/getServiceComments/:caseId"
+apiGetServiceComments :: ByteString
+apiGetServiceComments = "/api/v1/service/:serviceId/comments"
 
 apiPostServiceComment :: ByteString
 apiPostServiceComment = "/api/v1/case/:caseId/comment"
+
+apiStatusInPlace :: ByteString
+apiStatusInPlace = "/api/v1/service/:serviceId/inplace"
+
+apiStatusServicePerformed :: ByteString
+apiStatusServicePerformed = "/api/v1/service/:serviceId/performed"
 
 
 -- | Handle login API
@@ -73,8 +79,12 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiGetLatestCurrentServices, Ss.latestServices Current)
          , (apiGetLatestClosingServices, Ss.latestServices Closing)
          , (apiGetService, method GET S.handleApiGetService)
-         , (apiGetCaseComments, S.handleApiGetCaseComments)
+         , (apiGetServiceComments, method GET S.serviceComments)
          , (apiPostServiceComment, method POST S.postComment)
+
+         , (apiStatusInPlace, method POST S.statusInPlace)
+         , (apiStatusServicePerformed, method POST S.statusServicePerformed)
+
          , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
 

@@ -1,12 +1,14 @@
 module Api exposing
     ( Session
     , decodeSession
-    , getCaseComments
     , getLatestClosingCases
     , getLatestCurrentCases
     , getService
+    , getServiceComments
     , login
     , postServiceComment
+    , statusInPlace
+    , statusServicePerformed
     )
 
 import Http
@@ -32,6 +34,7 @@ import Json.Decode
         )
 import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as JE
+import Ports
 import Types
     exposing
         ( CaseComment
@@ -40,7 +43,6 @@ import Types
         , CurrentCaseInfo
         , ServiceDescription
         )
-import Url.Builder as UB
 
 
 type Msg
@@ -49,23 +51,9 @@ type Msg
 
 
 type alias Session =
-    { username : String, serviceId : Int }
-
-
-decodeSession s =
-    case decodeString sessionDecoder s of
-        Ok session ->
-            session
-
-        Err _ ->
-            Session "" 0
-
-
-sessionDecoder : Decoder Session
-sessionDecoder =
-    map2 Session
-        (at [ "username" ] string)
-        (at [ "serviceId" ] int)
+    { username : String
+    , serviceId : Int
+    }
 
 
 
@@ -73,7 +61,8 @@ sessionDecoder =
 
 
 prefix : String
-prefix = "/elm-live"
+prefix =
+    "/elm-live"
 
 
 apiLogin : String
@@ -96,19 +85,48 @@ apiGetLatestClosingCases =
     prefix ++ "/api/v1/services/closing"
 
 
-apiGetCaseComments : String
-apiGetCaseComments =
-    prefix ++ "/api/v1/getServiceComments/"
+apiGetServiceComments : Int -> String
+apiGetServiceComments serviceId =
+    prefix
+        ++ "/api/v1/service/"
+        ++ String.fromInt serviceId
+        ++ "/comments"
 
 
 apiPostServiceComment : Int -> String
-apiPostServiceComment service =
-    prefix ++ "/api/v1/case/" ++ String.fromInt service ++ "/comment"
+apiPostServiceComment serviceId =
+    prefix ++ "/api/v1/case/" ++ String.fromInt serviceId ++ "/comment"
 
 
-apiGetService : String
-apiGetService =
-    prefix ++ "/api/v1/getService/"
+apiGetService : Int -> String
+apiGetService serviceId =
+    prefix ++ "/api/v1/service/" ++ String.fromInt serviceId
+
+
+apiStatusInPlace : Int -> String
+apiStatusInPlace serviceId =
+    prefix ++ "/api/v1/service/" ++ String.fromInt serviceId ++ "/inplace"
+
+
+apiStatusServicePerformed : Int -> String
+apiStatusServicePerformed serviceId =
+    prefix ++ "/api/v1/service/" ++ String.fromInt serviceId ++ "/performed"
+
+
+decodeSession s =
+    case decodeString sessionDecoder s of
+        Ok session ->
+            session
+
+        Err _ ->
+            Session "" 0
+
+
+sessionDecoder : Decoder Session
+sessionDecoder =
+    map2 Session
+        (at [ "username" ] string)
+        (at [ "serviceId" ] int)
 
 
 login : String -> String -> (Result Http.Error Int -> msg) -> Cmd msg
@@ -221,13 +239,13 @@ getService serviceId message =
                 |> optional "suburbanMilage" string ""
                 |> required "vin" (nullable string)
     in
-    HttpBuilder.get (apiGetService ++ String.fromInt serviceId)
+    HttpBuilder.get (apiGetService serviceId)
         |> HttpBuilder.withExpect (Http.expectJson message getCaseDecoder)
         |> HttpBuilder.request
 
 
-getCaseComments : Int -> (Result Http.Error (List CaseComment) -> msg) -> Cmd msg
-getCaseComments caseId message =
+getServiceComments : Int -> (Result Http.Error (List CaseComment) -> msg) -> Cmd msg
+getServiceComments serviceId message =
     let
         actionDecoder : Decoder CaseCommentDetails
         actionDecoder =
@@ -390,7 +408,7 @@ getCaseComments caseId message =
                 |> required "who" (nullable string)
                 |> required "json" (nullable caseCommentJsonDecoder)
     in
-    HttpBuilder.get (apiGetCaseComments ++ String.fromInt caseId)
+    HttpBuilder.get (apiGetServiceComments serviceId)
         |> HttpBuilder.withExpect (Http.expectJson message caseCommentsDecoder)
         |> HttpBuilder.request
 
@@ -425,4 +443,33 @@ postServiceComment service { comment } message =
     HttpBuilder.post (apiPostServiceComment service)
         |> HttpBuilder.withUrlEncodedBody postBody
         |> HttpBuilder.withExpect (commentExpect message)
+        |> HttpBuilder.request
+
+
+statusDecoder : Decoder String
+statusDecoder =
+    field "status" string
+
+
+statusExpect : (Result Http.Error String -> msg) -> Http.Expect msg
+statusExpect toMsg =
+    Http.expectJson toMsg statusDecoder
+
+
+statusInPlace : Int -> (Result Http.Error String -> msg) -> Cmd msg
+statusInPlace serviceId message =
+    HttpBuilder.post (apiStatusInPlace serviceId)
+        |> HttpBuilder.withExpect (statusExpect message)
+        |> HttpBuilder.request
+
+
+statusServicePerformed : Int -> String -> (Result Http.Error String -> msg) -> Cmd msg
+statusServicePerformed serviceId comment message =
+    let
+        postBody =
+            [ ( "comment", comment ) ]
+    in
+    HttpBuilder.post (apiStatusServicePerformed serviceId)
+        |> HttpBuilder.withUrlEncodedBody postBody
+        |> HttpBuilder.withExpect (statusExpect message)
         |> HttpBuilder.request

@@ -2,8 +2,8 @@ module AppHandlers.Services
     ( latestServices
     ) where
 
-import           Data.Aeson (ToJSON, toJSON)
-import           Data.Aeson.Types
+import           Data.Aeson (ToJSON, toJSON, genericToJSON)
+import           Data.Aeson.Types (defaultOptions, fieldLabelModifier)
 import qualified Data.Map as Map
 import           Data.Map ((!))
 import           Data.Maybe (fromMaybe)
