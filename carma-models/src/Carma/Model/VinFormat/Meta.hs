@@ -181,6 +181,7 @@ data FormatFieldType = Raw
                      | Name
                      -- ^ Concatenate several columns and store as is.
                      | Date
+                     | Model
                      | Dict
                      | Dealer
                      | Subprogram
@@ -225,6 +226,8 @@ instance FFTypeI (SFFT 'Name) where
   type TitleParameter (SFFT 'Name) = (SFFL 'MultiTitles)
 
 instance FFTypeI (SFFT 'Dict)
+
+instance FFTypeI (SFFT 'Model)
 
 instance FFTypeI (SFFT 'Dealer) where
   type TitleParameter (SFFT 'Dealer) = (SFFL 'MultiTitles)
