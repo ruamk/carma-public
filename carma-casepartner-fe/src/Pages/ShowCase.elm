@@ -91,7 +91,6 @@ type Msg
     | Closing4 String
     | InputComment String
     | CommentFileName String
-    | SelectStatus (Maybe CaseStatus)
     | ServiceDownloaded (Result Http.Error ServiceDescription)
     | CommentsDownloaded (Result Http.Error (List CaseComment))
     | AddComment
@@ -308,12 +307,6 @@ update global msg model =
             , Cmd.none
             )
 
-        SelectStatus s ->
-            ( { model | caseStatus = s }
-            , Cmd.none
-            , Cmd.none
-            )
-
         UsermenuMsg state ->
             ( { model | usermenuState = state }
             , Cmd.none
@@ -523,7 +516,7 @@ view global model =
           <|
             div []
                 [ viewCasePanel model
-                , div [ style "width" "100vw", style "height" "100vh" ]
+                , div []
                     [ model.messageToast
                         |> MessageToast.overwriteContainerAttributes
                             [ style "top" "20px"
@@ -870,13 +863,16 @@ viewDetails { details } =
                         { partnerName, serviceLabel, delayMinutes, delayConfirmed } =
                             params
 
+                        time : Maybe String
                         time =
                             case delayMinutes of
                                 Just mm ->
                                     let
+                                        hours : Int
                                         hours =
                                             mm // 60
 
+                                        minutes : Int
                                         minutes =
                                             mm - hours * 60
                                     in
@@ -914,6 +910,7 @@ viewLog model =
             List.map
                 (\l ->
                     let
+                        dt : String
                         dt =
                             case l.datetime of
                                 Just dt_ ->

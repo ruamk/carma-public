@@ -1,42 +1,44 @@
 module Ui exposing
     ( addressCell
     , cell
-    , cellAttrs
-    , centerCell
     , colors
     , dateCell
     , empty
     , idCell
-    , mainMenu
     , page
-    , pageButtonStyle
-    , pageIndicatorStyle
     , timeCell
     , viewSpinner
     )
 
-import Bootstrap.Alert as Alert
-import Bootstrap.Badge as Badge
 import Bootstrap.Button as Button
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
-import Bootstrap.Grid.Row as Row
 import Bootstrap.Navbar as Navbar
 import Bootstrap.Spinner as Spinner
-import Bootstrap.Utilities.Flex as Flex
-import Bootstrap.Utilities.Size as Size
 import Bootstrap.Utilities.Spacing as Spacing
 import Color exposing (rgb255, toCssString)
 import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html
+    exposing
+        ( Attribute
+        , Html
+        , br
+        , div
+        , span
+        , text
+        )
+import Html.Attributes
+    exposing
+        ( class
+        , href
+        , style
+        )
 import Html.Events exposing (onClick)
-import ISO8601 as ISO8601 exposing (Time)
-import Time as Time
+import ISO8601 exposing (Time)
 import Utils exposing (formatDate, formatTime)
 
 
@@ -66,6 +68,7 @@ colors =
     }
 
 
+empty : Html msg
 empty =
     Html.text ""
 
@@ -129,6 +132,7 @@ mainMenu { navbarMsg, logoutMsg, usermenuMsg, navbarState, usermenuState, userna
             (List.map
                 (\( active, itemMsg, label ) ->
                     let
+                        d : Html msg -> Html msg
                         d v =
                             div
                                 [ class "d-inline-block align-middle"
@@ -209,11 +213,7 @@ cell t =
     div cellAttrs [ text t ]
 
 
-centerCell : String -> Html msg
-centerCell t =
-    div (cellAttrs ++ [ class "text-center" ]) [ text t ]
-
-
+idCell : (Int -> msg) -> Int -> Int -> Int -> Html msg
 idCell msg serviceId caseId serviceSerial =
     Button.button
         [ Button.attrs [ onClick <| msg serviceId ]
@@ -259,18 +259,9 @@ dateCell t =
             div cellAttrs [ text <| formatDate tt ]
 
 
+addressCell : String -> Html msg
 addressCell t =
     div cellAttrs [ text t ]
-
-
-pageButtonStyle : List (Attribute msg)
-pageButtonStyle =
-    []
-
-
-pageIndicatorStyle : List (Attribute msg)
-pageIndicatorStyle =
-    []
 
 
 viewSpinner : String -> Html msg

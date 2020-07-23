@@ -1,6 +1,9 @@
-module Const exposing (..)
+module Const exposing (serviceStatus)
 
-{-| carma-models/src/Carma/Model/ServiceStatus.hs -}
+{-| carma-models/src/Carma/Model/ServiceStatus.hs
+-}
+
+
 serviceStatus =
     { ordered = 15 -- Услуга заказана
     , inProgress = 17 -- Услуга оказывается

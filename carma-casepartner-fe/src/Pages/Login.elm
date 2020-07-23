@@ -7,17 +7,26 @@ import Bootstrap.Form.Input as Input
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
-import Bootstrap.Navbar as Navbar
 import Bootstrap.Utilities.Flex as Flex
-import Bootstrap.Utilities.Size as Size
 import Generated.Route as Route
 import Global
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html
+    exposing
+        ( div
+        , h3
+        , hr
+        , img
+        , text
+        )
+import Html.Attributes
+    exposing
+        ( for
+        , src
+        , style
+        )
 import Html.Events exposing (onClick, onInput)
 import Http
 import Page exposing (Document, Page)
-import Ui
 
 
 type alias Flags =
@@ -49,7 +58,7 @@ page =
 
 
 init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
-init global flags =
+init _ _ =
     ( { name = ""
       , password = ""
       , errorMessage = Nothing
@@ -60,7 +69,7 @@ init global flags =
 
 
 update : Global.Model -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
-update global msg model =
+update _ msg model =
     case msg of
         Name name ->
             ( { model | name = name }
@@ -95,6 +104,7 @@ update global msg model =
 
         LoginStatus result ->
             let
+                code : Int
                 code =
                     case result of
                         Ok value ->
@@ -127,12 +137,12 @@ update global msg model =
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
-subscriptions global model =
+subscriptions _ _ =
     Sub.none
 
 
 view : Global.Model -> Model -> Document Msg
-view global model =
+view _ model =
     { title = "Вход в систему"
     , body =
         [ Grid.row [ Row.centerXs, Row.attrs [ style "height" "100vh" ] ]

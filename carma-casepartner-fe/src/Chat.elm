@@ -1,5 +1,6 @@
 module Chat exposing
     ( ChatMessage(..)
+    , ChatUser
     , caseReceiver
     , connectToCase
     , decodeChat
@@ -9,16 +10,16 @@ import Json.Decode
     exposing
         ( Decoder
         , decodeString
+        , errorToString
         , field
         , int
         , list
         , map2
         , oneOf
         , string
-        , errorToString
         , succeed
         )
-import Json.Decode.Pipeline exposing (optional, required)
+import Json.Decode.Pipeline exposing (required)
 import Ports
 
 
@@ -56,23 +57,28 @@ decodeChat value =
                 (field "ip" string)
                 (field "id" int)
 
+        decodeJoined : Decoder ChatMessage
         decodeJoined =
             succeed (\user -> Joined user)
                 |> required "joined" decodeChatUser
 
+        decodeLeft : Decoder ChatMessage
         decodeLeft =
             succeed (\user -> Left user)
                 |> required "left" decodeChatUser
 
+        decodeMessage : Decoder ChatMessage
         decodeMessage =
             succeed (\message user -> Message message user)
                 |> required "msg" string
                 |> required "user" decodeChatUser
 
+        decodeYouAreNotAlone : Decoder ChatMessage
         decodeYouAreNotAlone =
             succeed (\users -> YouAreNotAlone users)
                 |> required "youAreNotAlone" (list decodeChatUser)
 
+        decoder : Decoder ChatMessage
         decoder =
             oneOf
                 [ decodeJoined
@@ -82,5 +88,8 @@ decodeChat value =
                 ]
     in
     case decodeString decoder value of
-        Ok v -> Ok v
-        Err e -> Err <| errorToString e
+        Ok v ->
+            Ok v
+
+        Err e ->
+            Err <| errorToString e

@@ -6,8 +6,8 @@ import Bootstrap.Grid.Row as Row
 import Bootstrap.Utilities.Flex as Flex
 import Generated.Route as Route
 import Global
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html exposing (h1, text)
+import Html.Attributes exposing (attribute, style)
 import Page exposing (Document, Page)
 import Time
 
@@ -35,6 +35,7 @@ page =
         }
 
 
+init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
 init _ _ =
     ( { counter = 3 }
     , Cmd.none
@@ -43,7 +44,7 @@ init _ _ =
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
-subscriptions global model =
+subscriptions _ _ =
     Time.every 1000 Tick
 
 
@@ -62,12 +63,12 @@ update _ msg model =
 
 
 view : Global.Model -> Model -> Document Msg
-view global model =
+view _ model =
     { title = "Top"
     , body =
         [ Grid.row [ Row.centerXs, Row.attrs [ style "height" "100vh" ] ]
             [ Grid.col [ Col.sm2, Col.attrs [ Flex.alignSelfCenter ] ]
-                [ h1 [attribute "class" "text-center"]
+                [ h1 [ attribute "class" "text-center" ]
                     [ text <| String.fromInt model.counter ]
                 ]
             ]

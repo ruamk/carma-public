@@ -5,7 +5,7 @@ module Utils exposing
     )
 
 import Generated.Route as Route exposing (Route)
-import ISO8601 as ISO8601 exposing (Time)
+import ISO8601 exposing (Time)
 import Url exposing (Url)
 
 
@@ -19,6 +19,7 @@ fromUrl =
 formatTime : Time -> ( String, String )
 formatTime nt =
     let
+        f : List (Time -> Int) -> List String
         f =
             List.map (\field -> field nt |> String.fromInt |> String.padLeft 2 '0')
     in
@@ -32,6 +33,7 @@ formatTime nt =
 formatDate : Time -> String
 formatDate nt =
     let
+        f : List (Time -> Int) -> List String
         f =
             List.map (\field -> field nt |> String.fromInt |> String.padLeft 2 '0')
     in

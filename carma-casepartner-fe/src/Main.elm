@@ -3,12 +3,11 @@ module Main exposing (main)
 import Browser exposing (Document)
 import Browser.Navigation as Nav exposing (Key)
 import Generated.Pages as Pages
-import Generated.Route as Route exposing (Route)
 import Global
 import Html
 import Url exposing (Url)
 import Utils
-import Ports
+
 
 main : Program Flags Model Msg
 main =

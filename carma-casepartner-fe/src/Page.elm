@@ -1,7 +1,7 @@
 module Page exposing
     ( Page, Document, Bundle
     , upgrade
-    , static, sandbox, element, component
+    , static, component
     )
 
 {-|
@@ -47,27 +47,6 @@ upgrade =
 static : { view : Document msg } -> Page flags () msg
 static =
     Spa.static
-
-
-sandbox :
-    { init : model
-    , update : msg -> model -> model
-    , view : model -> Document msg
-    }
-    -> Page flags model msg
-sandbox =
-    Spa.sandbox
-
-
-element :
-    { init : flags -> ( model, Cmd msg )
-    , update : msg -> model -> ( model, Cmd msg )
-    , subscriptions : model -> Sub msg
-    , view : model -> Document msg
-    }
-    -> Page flags model msg
-element =
-    Spa.element
 
 
 component :

@@ -13,7 +13,7 @@ module Api exposing
 
 import Http
 import HttpBuilder
-import ISO8601 exposing (Time)
+import ISO8601
 import Json.Decode
     exposing
         ( Decoder
@@ -33,8 +33,6 @@ import Json.Decode
         , succeed
         )
 import Json.Decode.Pipeline exposing (optional, required)
-import Json.Encode as JE
-import Ports
 import Types
     exposing
         ( CaseComment
@@ -43,11 +41,6 @@ import Types
         , CurrentCaseInfo
         , ServiceDescription
         )
-
-
-type Msg
-    = Login
-    | Logout
 
 
 type alias Session =
@@ -62,7 +55,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    "/elm-live"
+    ""
 
 
 apiLogin : String
@@ -113,6 +106,7 @@ apiStatusServicePerformed serviceId =
     prefix ++ "/api/v1/service/" ++ String.fromInt serviceId ++ "/performed"
 
 
+decodeSession : String -> Session
 decodeSession s =
     case decodeString sessionDecoder s of
         Ok session ->
@@ -132,6 +126,7 @@ sessionDecoder =
 login : String -> String -> (Result Http.Error Int -> msg) -> Cmd msg
 login name password message =
     let
+        postBody : List (String, String)
         postBody =
             [ ( "login", name )
             , ( "password", password )
@@ -151,10 +146,10 @@ login name password message =
                         Http.NetworkError_ ->
                             Err Http.NetworkError
 
-                        Http.BadStatus_ metadata body ->
+                        Http.BadStatus_ metadata _ ->
                             Ok metadata.statusCode
 
-                        Http.GoodStatus_ metadata body ->
+                        Http.GoodStatus_ metadata _ ->
                             Ok metadata.statusCode
     in
     HttpBuilder.post apiLogin
@@ -416,6 +411,7 @@ getServiceComments serviceId message =
 postServiceComment : Int -> { comment : String } -> (Result Http.Error Int -> msg) -> Cmd msg
 postServiceComment service { comment } message =
     let
+        postBody : List (String, String)
         postBody =
             [ ( "comment", comment )
             ]
@@ -434,10 +430,10 @@ postServiceComment service { comment } message =
                         Http.NetworkError_ ->
                             Err Http.NetworkError
 
-                        Http.BadStatus_ metadata body ->
+                        Http.BadStatus_ metadata _ ->
                             Ok metadata.statusCode
 
-                        Http.GoodStatus_ metadata body ->
+                        Http.GoodStatus_ metadata _ ->
                             Ok metadata.statusCode
     in
     HttpBuilder.post (apiPostServiceComment service)
@@ -466,6 +462,7 @@ statusInPlace serviceId message =
 statusServicePerformed : Int -> String -> (Result Http.Error String -> msg) -> Cmd msg
 statusServicePerformed serviceId comment message =
     let
+        postBody : List (String, String)
         postBody =
             [ ( "comment", comment ) ]
     in

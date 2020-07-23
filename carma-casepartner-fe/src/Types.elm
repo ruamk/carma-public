@@ -7,9 +7,8 @@ module Types exposing
     , emptyServiceDescription
     )
 
-import Dict exposing (Dict)
+import Dict
 import ISO8601 exposing (Time)
-import Json.Decode exposing (Value)
 
 
 

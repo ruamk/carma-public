@@ -14,11 +14,22 @@ import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Spacing as Spacing
 import Generated.Route as Route
 import Global
-import Html exposing (..)
-import Html.Attributes exposing (..)
-import Html.Events exposing (onClick, onMouseOver)
+import Html
+    exposing
+        ( Html
+        , br
+        , div
+        , h3
+        , text
+        )
+import Html.Attributes
+    exposing
+        ( attribute
+        , class
+        , style
+        )
+import Html.Events exposing (onClick)
 import Http
-import ISO8601 as ISO8601
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
 import Task
@@ -29,7 +40,7 @@ import Ui
 
 {-| seconds between updates
 -}
-updateSeconds : Int
+updateSeconds : Float
 updateSeconds =
     60
 
@@ -94,7 +105,7 @@ page =
 
 
 init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
-init global flags =
+init _ _ =
     let
         ( navbarState, navbarCmd ) =
             Navbar.initialState NavbarMsg
@@ -120,7 +131,7 @@ init global flags =
 
 
 update : Global.Model -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
-update global msg model =
+update _ msg model =
     case msg of
         CurrentCase serviceId ->
             ( model
@@ -324,9 +335,9 @@ update global msg model =
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
-subscriptions global model =
+subscriptions _ model =
     Sub.batch
-        [ Time.every (60 * 1000) Tick
+        [ Time.every (updateSeconds * 1000) Tick
         , Dropdown.subscriptions model.usermenuState UsermenuMsg
         ]
 
@@ -354,7 +365,7 @@ view global model =
                 , br [] []
                 , viewClosingCases model
                 , br [] []
-                , div [ style "width" "100vw", style "height" "100vh" ]
+                , div []
                     [ model.messageToast
                         |> MessageToast.overwriteContainerAttributes
                             [ style "top" "20px"
@@ -393,6 +404,7 @@ viewCasesTitle title pageNumber caseType =
         ]
 
 
+casesTableAttrs : List (Table.TableOption msg)
 casesTableAttrs =
     [ Table.bordered
     , Table.striped
@@ -508,7 +520,7 @@ viewCurrentCases model =
     Grid.row [] <|
         if model.showCurrentSpinner then
             [ Grid.col [ Col.textAlign Text.alignXsCenter ]
-                [ Ui.viewSpinner "10rem" ]
+                [ Ui.viewSpinner spinnerSize ]
             ]
 
         else
@@ -583,7 +595,7 @@ viewClosingCases model =
     Grid.row [] <|
         if model.showClosingSpinner then
             [ Grid.col [ Col.textAlign Text.alignXsCenter ] <|
-                [ Ui.viewSpinner "10rem" ]
+                [ Ui.viewSpinner spinnerSize ]
             ]
 
         else

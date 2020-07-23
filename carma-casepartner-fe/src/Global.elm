@@ -21,7 +21,6 @@ import Json.Encode as JE
 import Ports
 import Task
 import Url exposing (Url)
-import Utils
 
 
 
@@ -44,6 +43,7 @@ type alias Model =
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
     let
+        session : Api.Session
         session =
             case flags of
                 Just s ->
@@ -108,7 +108,7 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none
 
 
