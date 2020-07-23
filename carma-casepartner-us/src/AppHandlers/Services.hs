@@ -111,7 +111,10 @@ getLatestCurrentServices uid = do
       , st.label AS typeofservice
       , ss.label AS status
       , CASE
-          WHEN servicetbl.status = ? THEN 'В работе'
+          WHEN servicetbl.status = ?
+               THEN 'В работе'
+          WHEN times_expectedservicestart is null
+               THEN 'Ошибка'
           WHEN now() > times_expectedservicestart AND
                servicetbl.status IN ?
                THEN 'Опоздание'
@@ -124,7 +127,6 @@ getLatestCurrentServices uid = do
                     || ' ' ||
                     to_char(extract(minute from times_expectedservicestart - now()), '00FM')
                     )
-
         END
       , coalesce(make.label || ' / ' ||
                  regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text
