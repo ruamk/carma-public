@@ -119,7 +119,7 @@ update _ msg model =
                     , Cmd.none
                     , Cmd.batch
                         [ Global.saveUsername model.name
-                        , Global.navigate Route.Cases
+                        , Global.navigate Route.Services
                         ]
                     )
 

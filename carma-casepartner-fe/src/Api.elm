@@ -27,7 +27,7 @@ import Json.Decode
         , float
         , int
         , list
-        , map2
+        , map3
         , nullable
         , string
         , succeed
@@ -46,6 +46,7 @@ import Types
 type alias Session =
     { username : String
     , serviceId : Int
+    , route : String
     }
 
 
@@ -113,20 +114,21 @@ decodeSession s =
             session
 
         Err _ ->
-            Session "" 0
+            Session "" 0 ""
 
 
 sessionDecoder : Decoder Session
 sessionDecoder =
-    map2 Session
+    map3 Session
         (at [ "username" ] string)
         (at [ "serviceId" ] int)
+        (at [ "route" ] string)
 
 
 login : String -> String -> (Result Http.Error Int -> msg) -> Cmd msg
 login name password message =
     let
-        postBody : List (String, String)
+        postBody : List ( String, String )
         postBody =
             [ ( "login", name )
             , ( "password", password )
@@ -411,7 +413,7 @@ getServiceComments serviceId message =
 postServiceComment : Int -> { comment : String } -> (Result Http.Error Int -> msg) -> Cmd msg
 postServiceComment service { comment } message =
     let
-        postBody : List (String, String)
+        postBody : List ( String, String )
         postBody =
             [ ( "comment", comment )
             ]
@@ -462,7 +464,7 @@ statusInPlace serviceId message =
 statusServicePerformed : Int -> String -> (Result Http.Error String -> msg) -> Cmd msg
 statusServicePerformed serviceId comment message =
     let
-        postBody : List (String, String)
+        postBody : List ( String, String )
         postBody =
             [ ( "comment", comment ) ]
     in

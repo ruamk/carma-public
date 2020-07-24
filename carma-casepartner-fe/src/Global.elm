@@ -37,6 +37,7 @@ type alias Model =
     , key : Nav.Key
     , username : String
     , serviceId : Int
+    , route : String
     }
 
 
@@ -50,7 +51,7 @@ init flags url key =
                     Api.decodeSession s
 
                 Nothing ->
-                    Api.Session "" 0
+                    Api.Session "" 0 ""
     in
     ( Model
         flags
@@ -58,6 +59,7 @@ init flags url key =
         key
         session.username
         session.serviceId
+        session.route
     , Cmd.none
     )
 
@@ -77,8 +79,15 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Navigate route ->
-            ( model
-            , Nav.pushUrl model.key (Route.toHref route)
+            ( { model | route = Route.toHref route }
+            , Cmd.batch
+                [ saveSessions
+                    { username = model.username
+                    , serviceId = model.serviceId
+                    , route = Route.toHref route
+                    }
+                , Nav.pushUrl model.key (Route.toHref route)
+                ]
             )
 
         Username name ->
@@ -86,6 +95,7 @@ update msg model =
             , saveSessions
                 { username = name
                 , serviceId = model.serviceId
+                , route = model.route
                 }
             )
 
@@ -94,6 +104,7 @@ update msg model =
             , saveSessions
                 { username = model.username
                 , serviceId = id
+                , route = model.route
                 }
             )
 
@@ -159,11 +170,12 @@ logout =
 
 {-| Save username and serviceId
 -}
-saveSessions : { username : String, serviceId : Int } -> Cmd msg
+saveSessions : { username : String, serviceId : Int, route : String } -> Cmd msg
 saveSessions session =
     JE.object
         [ ( "username", JE.string session.username )
         , ( "serviceId", JE.int session.serviceId )
+        , ( "route", JE.string session.route )
         ]
         |> JE.encode 0
         |> Ports.storeSession

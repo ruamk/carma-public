@@ -1,4 +1,4 @@
-module Pages.ShowCase exposing (Flags, Model, Msg, page)
+module Pages.ShowService exposing (Flags, Model, Msg, page)
 
 import Api
 import Bootstrap.Alert as Alert
@@ -248,7 +248,7 @@ update global msg model =
         Cases ->
             ( model
             , Cmd.none
-            , Global.navigate Route.Cases
+            , Global.navigate Route.Services
             )
 
         SearchCases ->

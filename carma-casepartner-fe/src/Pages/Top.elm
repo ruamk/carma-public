@@ -36,10 +36,24 @@ page =
 
 
 init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
-init _ _ =
-    ( { counter = 3 }
+init model flags =
+    let
+        url =
+            model.url
+    in
+    ( { counter = 0 }
     , Cmd.none
-    , Cmd.none
+    , Global.navigate <|
+        if model.route /= "" then
+            case Route.fromUrl { url | path = model.route } of
+                Just r ->
+                    r
+
+                Nothing ->
+                    Route.Login
+
+        else
+            Route.Login
     )
 
 

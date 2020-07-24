@@ -114,6 +114,7 @@ mainMenu :
 mainMenu { navbarMsg, logoutMsg, usermenuMsg, navbarState, usermenuState, username, buttons } =
     Navbar.config navbarMsg
         |> Navbar.withAnimation
+        |> Navbar.attrs [class "sticky-top"]
         |> Navbar.primary
         |> Navbar.brand
             [ style "background-color" "yellow"

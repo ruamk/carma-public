@@ -85,6 +85,11 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiStatusInPlace, method POST S.statusInPlace)
          , (apiStatusServicePerformed, method POST S.statusServicePerformed)
 
+         , ("/login",           redirect "/")
+         , ("/services",        redirect "/")
+         , ("/show-service",    redirect "/")
+         , ("/search-services", redirect "/")
+
          , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
 

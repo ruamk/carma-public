@@ -1,4 +1,4 @@
-module Pages.Cases exposing (Flags, Model, Msg, page)
+module Pages.Services exposing (Flags, Model, Msg, page)
 
 import Api
 import Bootstrap.Button as Button
@@ -138,7 +138,7 @@ update _ msg model =
             , Cmd.none
             , Cmd.batch
                 [ Global.serviceId serviceId
-                , Global.navigate Route.ShowCase
+                , Global.navigate Route.ShowService
                 ]
             )
 
@@ -147,7 +147,7 @@ update _ msg model =
             , Cmd.none
             , Cmd.batch
                 [ Global.serviceId serviceId
-                , Global.navigate Route.ShowCase
+                , Global.navigate Route.ShowService
                 ]
             )
 
