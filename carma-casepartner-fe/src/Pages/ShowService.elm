@@ -241,7 +241,7 @@ update global msg model =
                         | comments = comments
                         , commentsDownloaded = True
                       }
-                    , Chat.connectToCase model.service.caseId
+                    , Chat.connectToCase global.url model.service.caseId
                     , Cmd.none
                     )
 

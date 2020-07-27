@@ -21,6 +21,7 @@ import Json.Decode
         )
 import Json.Decode.Pipeline exposing (required)
 import Ports
+import Url as Url exposing (Url)
 
 
 type alias ChatUser =
@@ -36,11 +37,30 @@ type ChatMessage
     | Message String ChatUser
 
 
-connectToCase : Int -> Cmd msg
-connectToCase caseId =
-    "ws://192.168.10.20:8001/chat/Case:"
-        ++ String.fromInt caseId
-        |> Ports.caseChatConnect
+connectToCase : Url -> Int -> Cmd msg
+connectToCase url caseId =
+    let
+        port_ =
+            case url.port_ of
+                Just p ->
+                    ":" ++ String.fromInt p
+
+                Nothing ->
+                    ""
+
+        chatUrl =
+            (case url.protocol of
+                Url.Http ->
+                    "ws://"
+
+                Url.Https ->
+                    "wss://"
+            )
+                ++ url.host
+                ++ "/chat/Case:"
+                ++ String.fromInt caseId
+    in
+    Ports.caseChatConnect chatUrl
 
 
 caseReceiver : (String -> msg) -> Sub msg
