@@ -1,11 +1,8 @@
 path = require "path"
 
 webpack                 = require "webpack"
-UglifyJSPlugin          = require "uglifyjs-webpack-plugin"
-ExtractTextPlugin       = require "extract-text-webpack-plugin"
+MiniCssExtractPlugin    = require "mini-css-extract-plugin"
 OptimizeCssAssetsPlugin = require "optimize-css-assets-webpack-plugin"
-
-{vendorNames} = require "./frontend.data.json"
 
 RES_DIR = path.join __dirname, "resources"
 SRC_DIR = path.join RES_DIR, "assets", "script"
@@ -16,19 +13,17 @@ BS_WYSIHTML5 =
 BS_WYSIHTML5_LOC_RU =
   "bootstrap3-wysihtml5-bower/dist/locales/bootstrap-wysihtml5.ru-RU"
 
-cssExtractor = new ExtractTextPlugin "bundle.[name].css"
-
 module.exports =
+  mode: "production"
+
   devtool: "source-map"
 
-  entry: do ->
-    f = (acc, x) ->
-      acc[x] = path.join SRC_DIR, "entryPoints", x
-      acc
-
-    vendorNames.reduce f,
-      carma:     path.join SRC_DIR, "entryPoints", "main"
-      resources: path.join SRC_DIR, "entryPoints", "resources"
+  entry:
+    vendor1:   path.join SRC_DIR, "entryPoints", "vendor1"
+    vendor2:   path.join SRC_DIR, "entryPoints", "vendor2"
+    vendor3:   path.join SRC_DIR, "entryPoints", "vendor3"
+    carma:     path.join SRC_DIR, "entryPoints", "main"
+    resources: path.join SRC_DIR, "entryPoints", "resources"
 
   node:
     __filename: true
@@ -159,12 +154,20 @@ module.exports =
               ]
       }
 
-      { test: /\.json$/, use: "json-loader" }
+      {
+        test: /\.css$/
+        use: [
+          { loader: MiniCssExtractPlugin.loader }
+          { loader: "css-loader" }
+        ]
+      }
 
       {
-        test: /\.(css|less)$/
-        use: cssExtractor.extract [
-          "css-loader"
+        test: /\.less$/
+        use: [
+          { loader: MiniCssExtractPlugin.loader, }
+
+          { loader: "css-loader" }
 
           {
             loader: "less-loader"
@@ -194,25 +197,15 @@ module.exports =
       { test: /\.(eot|svg|ttf|woff|woff2)$/, use: "file-loader" }
     ]
 
-  plugins: do ->
-    plugins = [
-      new webpack.optimize.CommonsChunkPlugin
-        # Last in the list contains `webpackJsonp` function that others depends
-        # on, so we need to reverse `vendorNames` to make first vendor to be
-        # last in the list, because in page template it goes first.
-        names: ["carma", "resources"].concat vendorNames.reverse()
-        minChunks: Infinity
-
+  plugins: [
       new webpack.ProvidePlugin
         $: "jquery"
         jQuery: "jquery"
         "window.jQuery": "jquery"
 
-      new webpack.EnvironmentPlugin NODE_ENV: "development"
-      cssExtractor
+      new MiniCssExtractPlugin
+        filename: "bundle.[name].css"
     ]
 
-    if process.env.NODE_ENV is "production"
-      plugins.push new UglifyJSPlugin, new OptimizeCssAssetsPlugin
-
-    plugins
+  optimization:
+    minimizer: [ new OptimizeCssAssetsPlugin ]
