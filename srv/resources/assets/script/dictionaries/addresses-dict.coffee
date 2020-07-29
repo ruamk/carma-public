@@ -4,12 +4,23 @@ m = require "carma/dictionaries/meta-dict"
 debounce = (wait, fn) -> _.debounce fn, wait
 
 class AddressesDict extends m.dict
+
+  # options object:
+  # { kvm: kvm_object
+  # , coords_field: "name of coordinates field in kvm, defaults to caseAddress_coords"
+  # , address_field: "name of address field in kvm, defaults to caseAddress_address"
+  # , map_name: "name of HTML element, defaults to #case-form-caseAddress_map"
+  # }
   constructor: (@opts)->
+    # will not set coords field if it is not specified.
+    @coords_field = if @opts.coords_field? then @opts.coords_field else "caseAddress_coords"
+    @address_field = if @opts.address_field? then @opts.address_field else "caseAddress_address"
+    @map_name = if @opts.map_name? then @opts.map_name else "#case-form-caseAddress_map"
     @kvm = @opts.kvm
     @Dict = require "carma/dictionaries"
     @addresses = []
     @suggestions = []
-    @kvm.caseAddress_address.subscribe(((newValue) -> this.trySetCoords(newValue)), this)
+    @kvm[@address_field].subscribe(((newValue) -> this.trySetCoords(newValue)), this)
     @mapModule = null
 
   trySetCoords: (newValue) ->
@@ -17,10 +28,10 @@ class AddressesDict extends m.dict
     if foundExact.length == 1
       exactData = foundExact[0].data
       coordsString = exactData.geo_lon + "," + exactData.geo_lat
-      @kvm.caseAddress_coords(coordsString)
+      @kvm[@coords_field](coordsString) if @coords_field != null
       if !@mapModule
         @mapModule = require "carma/map"
-      osMap = $("#case-form-caseAddress_map").data("osmap")
+      osMap = $(@map_name).data("osmap")
       lonLatObj = @mapModule.lonlatFromShortString(coordsString)
       @mapModule.setPlace osMap, {coords: lonLatObj}
       @mapModule.spliceCoords lonLatObj, @kvm,
@@ -36,7 +47,6 @@ class AddressesDict extends m.dict
     # query is not short and not in suggestions.
     dataForDD =
            query: q
-    originalThis = this # this way it will be captured.
     objForDD =
            url: "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
            type: "post"
@@ -45,8 +55,8 @@ class AddressesDict extends m.dict
            headers:
                     Authorization: "Token e0fb6d9a7a7920405c3eeefde7e7d6b529b2b2b9"
            dataType: "json"
-           success:  (data) ->
-                               originalThis.processAnswer data, cb
+           success:  (data) => # https://coffeescript.org/#fat-arrow as Max suggested.
+                               @processAnswer data, cb
     $.ajax (objForDD)
 
   processAnswer: (data, cb) ->
