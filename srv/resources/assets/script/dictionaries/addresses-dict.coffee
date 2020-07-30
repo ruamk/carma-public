@@ -36,8 +36,8 @@ class AddressesDict extends m.dict
       @mapModule.setPlace osMap, {coords: lonLatObj}
       @mapModule.spliceCoords lonLatObj, @kvm,
           osmap: osMap
-          addr_field: "caseAddress_address"
-          city_field: "caseAddress_city"
+          addr_field: @address_field
+          city_field: @coords_field
           current_blip_type: "default"
 
   find: debounce 1200, (q, cb, opt) ->
