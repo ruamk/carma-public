@@ -266,8 +266,7 @@ include _form_utils.pug
   .row
     .col-sm-4
     .col-sm-4(style="margin-bottom: 10px")
-      img(src="https://picsum.photos/200" style="max-height:128px"
-        data-bind=`attr: { src: {{name}} }`)
+      img(style="max-height:128px" data-bind=`attr: { src: {{name}} }`)
     .col-sm-4
       b(data-bind=`text: {{name}}Warning`)
 
