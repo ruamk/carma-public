@@ -28,7 +28,6 @@ module Carma.HTTP.New
 
 where
 
-import           Data.Monoid
 import           Data.Aeson                 hiding (Result)
 import           Data.Maybe
 import           Data.HashMap.Strict        as M
@@ -151,7 +150,7 @@ instanceRequest rid rm row = do
       case guard (rm /= GET) >> row of
            Just payload ->
              mkRequestWithBody uri rm 
-               (Just ("application/json", BSL.unpack $ encode payload))
+               (Just ("application/json; charset=utf-8", BSL.unpack $ encode payload))
                headers
 
            Nothing -> mkRequestWithBody uri rm Nothing headers
