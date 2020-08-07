@@ -2,6 +2,7 @@ module AppHandlers.Service
     ( statusInPlace
     , statusServicePerformed
     , postComment
+    , postPartnerDelay
     , serviceComments
     , servicePerformed
     , handleApiGetService
@@ -18,6 +19,7 @@ import           Data.Configurator (lookupDefault)
 import qualified Data.Map as M
 import           Data.Maybe (fromMaybe)
 import           GHC.Generics (Generic)
+import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import           Data.Time.LocalTime (ZonedTime)
@@ -202,6 +204,38 @@ postComment = checkAuthCasePartner $ do
   writeJSON [commentId]
 
 
+-- POST ../:service/partnerdelay
+-- post params: comment - string
+--              minutes - int
+--              reason - int
+postPartnerDelay :: AppHandler ()
+postPartnerDelay = checkAuthCasePartner $ do
+  Just user <- currentUserMeta
+  let Just (Ident uid) = Patch.get user Usermeta.ident
+
+
+  serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
+  minutes <- fromMaybe (error "invalid minutes") <$> getIntParam "minutes"
+  reason <- fromMaybe (error "invalid reason") <$> getIntParam "reason"
+  comment <- (\c -> case c of 
+                        Just s  -> Just $ T.strip $ TE.decodeUtf8 s
+                        Nothing -> Nothing
+                      )
+            <$> getParam "comment"
+
+  [Only (partnerId :: Int)] <-
+      query "SELECT contractor_partnerid FROM servicetbl where id = ?"
+      $ Only serviceId
+
+  Just caseId <- caseForService serviceId
+  when (minutes < 1) $ error "minutes should be > 0"
+
+  partnerDelayId <- carmaPostPartnerDelay caseId serviceId
+                                         uid partnerId
+                                         minutes reason comment
+  writeJSON [partnerDelayId]
+
+
 withCookie
     :: (MonadSnap (m b v), MonadSnaplet m)
     => (String -> m b v b1) -> m b v b1
@@ -226,6 +260,25 @@ carmaPostComment
 carmaPostComment caseId comment = withCookie $ \cookie -> do
   (Ident caseCommentId, _) <- CarmaApi.addComment cookie caseId comment
   return caseCommentId
+
+
+carmaPostPartnerDelay
+    :: (MonadSnap (m b v), MonadSnaplet m)
+    => Int
+    -> Int
+    -> Int
+    -> Int
+    -> Int
+    -> Int
+    -> Maybe Text
+    -> m b v Int
+carmaPostPartnerDelay caseId serviceId ownerId partnerId minutes reason comment =
+  withCookie $ \cookie -> do
+    (Ident partnerDelayId, _) <- CarmaApi.addPartnerDelay cookie
+                                                         caseId serviceId
+                                                         ownerId partnerId
+                                                         minutes reason comment
+    return partnerDelayId
 
 
 carmaServiceInProgress
@@ -315,20 +368,20 @@ statusServicePerformed = checkAuthCasePartner $ do
   writeJSON servicePerformed
 
 
-serviceMessage :: T.Text -> M.Map T.Text T.Text
-serviceMessage message = M.fromList [ ( "status" :: T.Text
+serviceMessage :: Text -> M.Map Text Text
+serviceMessage message = M.fromList [ ( "status" :: Text
                                       , message
                                       )
                                     ]
 
 -- Услуга выполнена
-servicePerformed :: M.Map T.Text T.Text
+servicePerformed :: M.Map Text Text
 servicePerformed = serviceMessage "service_performed"
 
 -- Услуга уже выполнена
-serviceAlreadyPerformed :: M.Map T.Text T.Text
+serviceAlreadyPerformed :: M.Map Text Text
 serviceAlreadyPerformed = serviceMessage "service_already_performed"
 
 -- Действие не найдено
-serviceActionNotfound :: M.Map T.Text T.Text
+serviceActionNotfound :: M.Map Text Text
 serviceActionNotfound = serviceMessage "action_not_found"

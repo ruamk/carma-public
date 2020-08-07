@@ -22,6 +22,7 @@ import           Application
 import           AppHandlers.Users
 import qualified AppHandlers.Services as Ss
 import           AppHandlers.Service as S
+import           AppHandlers.Dicts as D
 import           Types
 
 
@@ -49,6 +50,12 @@ apiStatusInPlace = "/api/v1/service/:serviceId/inplace"
 
 apiStatusServicePerformed :: ByteString
 apiStatusServicePerformed = "/api/v1/service/:serviceId/performed"
+
+apiPostPartnerDelay :: ByteString
+apiPostPartnerDelay = "/api/v1/service/:serviceId/partnerdelay"
+
+apiDictPartnerDelayReason :: ByteString
+apiDictPartnerDelayReason = "/api/v1/dict/PartnerDelay_Reason"
 
 
 -- | Handle login API
@@ -84,6 +91,9 @@ routes = [ (apiLogin,  method POST handleApiLogin)
 
          , (apiStatusInPlace, method POST S.statusInPlace)
          , (apiStatusServicePerformed, method POST S.statusServicePerformed)
+
+         , (apiPostPartnerDelay,       method POST S.postPartnerDelay)
+         , (apiDictPartnerDelayReason, D.partnerDelayReason)
 
          , ("/login",           redirect "/")
          , ("/services",        redirect "/")

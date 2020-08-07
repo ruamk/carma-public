@@ -3,6 +3,7 @@ module CarmaApi
 
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Data.Configurator (lookupDefault)
+import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Time.Clock (getCurrentTime)
 import           Network.HTTP (HeaderName(HdrCookie), mkHeader)
@@ -22,6 +23,10 @@ import           Carma.Utils.Operators ((&))
 import           Carma.Model (IdentI, Ident(..))
 import           Carma.Model.Action as Action
 import           Carma.Model.ActionResult as ActionResult
+import           Carma.Model.PartnerDelay as PartnerDelay
+import           Carma.Model.PartnerDelay.Confirmed as Confirmed
+import           Carma.Model.PartnerDelay.Exceptional as Exceptional
+import           Carma.Model.PartnerDelay.Notified as Notified
 import           Carma.Model.CaseComment as CaseComment
 import           Carma.Model.Service as Service
 import           Data.Model.Patch as Patch
@@ -60,7 +65,35 @@ addComment cookie caseId comment = carma cookie $ createInstance cc
              & Patch.put CaseComment.caseId (Ident caseId)
              & Patch.put CaseComment.comment (T.pack comment)
 
-        
+
+addPartnerDelay
+    :: (MonadSnaplet m, MonadIO (m b v))
+    => String
+    -> Int
+    -> Int
+    -> Int
+    -> Int
+    -> Int
+    -> Int
+    -> Maybe Text
+    -> m b v ( IdentI PartnerDelay, Patch PartnerDelay )
+addPartnerDelay cookie caseId serviceId ownerId partnerId minutes delayReason delayReasonComment =
+    carma cookie $ createInstance pd
+    where pd = Patch.empty
+             & Patch.put PartnerDelay.caseId (Ident caseId)
+             & Patch.put PartnerDelay.serviceId (Ident serviceId)
+             & Patch.put PartnerDelay.owner (Ident ownerId)
+             & Patch.put PartnerDelay.partnerId (Ident partnerId)
+             & Patch.put PartnerDelay.delayConfirmed Confirmed.needConfirmation
+             & Patch.put PartnerDelay.exceptional Exceptional.no
+             & Patch.put PartnerDelay.notified Notified.yes
+             & Patch.put PartnerDelay.delayMinutes minutes
+             & Patch.put PartnerDelay.delayReason (Ident delayReason)
+             & Patch.put PartnerDelay.delayReasonComment
+                         delayReasonComment
+
+
+
 -- | Изменение результата действия "Контроль доезда помощи"
 -- | на "Услуга в процессе оказания"
 
