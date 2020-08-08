@@ -7,41 +7,61 @@ import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
 import Bootstrap.Form.InputGroup as InputGroup
+import Bootstrap.Form.Select as Select
 import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Modal as Modal
 import Bootstrap.Navbar as Navbar
-import Bootstrap.Spinner as Spinner
 import Bootstrap.Text as Text
-import Bootstrap.Utilities.Border as Border
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Spacing as Spacing
-import Chat as Chat
-import Const as Const
-import Dict as Dict
+import Chat
+import Const
+import Dict
 import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
 import Generated.Route as Route
 import Global
-import Html exposing (..)
-import Html.Attributes exposing (..)
+import Html
+    exposing
+        ( Html
+        , b
+        , br
+        , div
+        , h2
+        , hr
+        , li
+        , p
+        , text
+        , ul
+        )
+import Html.Attributes
+    exposing
+        ( action
+        , class
+        , placeholder
+        , style
+        , value
+        )
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
-import Time as Time
+import Time
+import Tuple
 import Types
     exposing
         ( CaseComment
         , CaseCommentDetails(..)
+        , Dictionary
         , ServiceDescription
         , emptyServiceDescription
         )
-import Ui exposing (empty)
+import Ui
 import Utils exposing (formatTime)
 
 
@@ -76,8 +96,25 @@ type alias Model =
     , usermenuState : Dropdown.State
     , commentsDownloaded : Bool
     , comments : List CaseComment
-    , statusButton2 : { label : String, disabled : Bool, disabledTime : Int, message : Maybe Msg }
-    , modalVisibility : Modal.Visibility
+    , statusButton1 :
+        { disabled : Bool
+        , message : Maybe Msg
+        }
+    , statusButton2 :
+        { label : String
+        , disabled : Bool
+        , disabledTime : Int
+        , message : Maybe Msg
+        }
+    , modalAlertVisibility : Modal.Visibility
+    , latenessVisibility : Modal.Visibility
+    , latenessHours : String
+    , latenessMinutes : String
+    , latenessReason : String
+    , latenessReasons : Dictionary
+    , latenessDetails : String
+    , latenessDetailsDisabled : Bool
+    , latenessOkDisabled : Bool
     , messageToast : MessageToast Msg
     }
 
@@ -98,11 +135,20 @@ type Msg
     | NavbarMsg Navbar.State
     | UsermenuMsg Dropdown.State
     | InPlace -- На месте
+    | LatenessAsk -- Опоздание - запрос параметров
+    | LatenessShowModal (Result Http.Error Dictionary) -- показ модального окна Опоздание
+    | LatenessCloseOk -- нажата Ok в модельном окне
+    | LatenessCloseCancel -- нажата Cancel в модальном окне
+    | LatenessHoursChanged String --
+    | LatenessMinutesChanged String --
+    | LatenessReasonChanged String -- выбрана причина опоздания
+    | LatenessDetailsInput String -- ввод подробностей причины "Другое"
+    | LatenessPostPartnerDelayResponse (Result Http.Error Int)
     | ServicePerformed -- Услуга оказана
     | UpdateStatus (Result Http.Error String) -- Результат изменения статуса
     | UpdateComments (Result Http.Error Int) -- Услуга оказана (ответ)
     | Logout
-    | ModalClose
+    | ModalAlreadyOkClose -- Событие закрытия диалога "Услуга уже оказана"
     | UpdateCustomMessageToast (MessageToast Msg)
     | Chat String
     | Tick Time.Posix
@@ -128,7 +174,7 @@ page =
 
 
 init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
-init global flags =
+init _ _ =
     let
         ( navbarState, navbarCmd ) =
             Navbar.initialState NavbarMsg
@@ -145,13 +191,25 @@ init global flags =
       , usermenuState = Dropdown.initialState
       , commentsDownloaded = False
       , comments = []
+      , statusButton1 =
+            { disabled = True
+            , message = Nothing
+            }
       , statusButton2 =
             { label = ""
             , disabled = True
             , disabledTime = 0
             , message = Nothing
             }
-      , modalVisibility = Modal.hidden
+      , modalAlertVisibility = Modal.hidden
+      , latenessVisibility = Modal.hidden
+      , latenessHours = "0"
+      , latenessMinutes = "0"
+      , latenessReason = ""
+      , latenessReasons = Dict.empty
+      , latenessDetails = ""
+      , latenessDetailsDisabled = True
+      , latenessOkDisabled = True
       , messageToast =
             MessageToast.initWithConfig UpdateCustomMessageToast
                 { delayInMs = 2000
@@ -165,6 +223,33 @@ init global flags =
 
 update : Global.Model -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
 update global msg model =
+    let
+        checkOkDisabled : Model -> Bool
+        checkOkDisabled m =
+            let
+                other : String
+                other =
+                    String.fromInt Const.latenessReasons.other
+
+                details : String
+                details =
+                    String.trim m.latenessDetails
+            in
+            if m.latenessHours ++ ":" ++ m.latenessMinutes == "0:0" then
+                {- If time is not specified -}
+                True
+
+            else if m.latenessReason == "" then
+                {- If reason not specified -}
+                True
+
+            else if m.latenessReason == other && details == "" then
+                {- If reason is "Other" and details are not specified -}
+                True
+
+            else
+                False
+    in
     case msg of
         -- Entry point
         NavbarMsg state ->
@@ -175,7 +260,7 @@ update global msg model =
 
         ServiceDownloaded result ->
             case result of
-                Err e ->
+                Err _ ->
                     let
                         messageToast =
                             model.messageToast
@@ -192,6 +277,17 @@ update global msg model =
 
                 Ok service ->
                     let
+                        statusButton1 =
+                            if service.status == Const.serviceStatus.ordered then
+                                { disabled = False
+                                , message = Just LatenessAsk
+                                }
+
+                            else
+                                { disabled = True
+                                , message = Nothing
+                                }
+
                         statusButton2 =
                             if service.status == Const.serviceStatus.ordered then
                                 { label = "На месте"
@@ -216,6 +312,7 @@ update global msg model =
                     in
                     ( { model
                         | service = service
+                        , statusButton1 = statusButton1
                         , statusButton2 = statusButton2
                       }
                     , Api.getServiceComments global.serviceId CommentsDownloaded
@@ -224,7 +321,7 @@ update global msg model =
 
         CommentsDownloaded result ->
             case result of
-                Err e ->
+                Err _ ->
                     let
                         messageToast =
                             model.messageToast
@@ -319,6 +416,165 @@ update global msg model =
             , Cmd.none
             )
 
+        LatenessAsk ->
+            ( model
+            , Api.getLatenessReasons LatenessShowModal
+            , Cmd.none
+            )
+
+        LatenessShowModal result ->
+            case result of
+                Err _ ->
+                    let
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "unable to get lateness reasons"
+                    in
+                    ( { model | messageToast = messageToast }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok reasons ->
+                    ( { model
+                        | latenessReasons = reasons
+                        , latenessOkDisabled = checkOkDisabled model
+                        , latenessVisibility = Modal.shown
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+        LatenessCloseCancel ->
+            ( { model | latenessVisibility = Modal.hidden }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        LatenessCloseOk ->
+            let
+                minutes : Int
+                minutes =
+                    (Maybe.withDefault 0 <| String.toInt model.latenessHours)
+                        * 60
+                        + (Maybe.withDefault 0 <| String.toInt model.latenessMinutes)
+
+                comment : Maybe String
+                comment =
+                    if model.latenessReason == String.fromInt Const.latenessReasons.other then
+                        Just model.latenessDetails
+
+                    else
+                        Nothing
+            in
+            ( { model
+                | latenessDetails = ""
+                , latenessReason = ""
+                , latenessVisibility = Modal.hidden
+              }
+            , Api.postPartnerDelay global.serviceId
+                { minutes = minutes
+                , reason = Maybe.withDefault -1 <| String.toInt model.latenessReason
+                , comment = comment
+                }
+                LatenessPostPartnerDelayResponse
+            , Cmd.none
+            )
+
+        LatenessPostPartnerDelayResponse result ->
+            case result of
+                Err _ ->
+                    let
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "Error create partner delay."
+                    in
+                    ( { model | messageToast = messageToast }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok _ ->
+                    ( model
+                    , Api.getServiceComments global.serviceId CommentsDownloaded
+                    , Cmd.none
+                    )
+
+        LatenessReasonChanged v ->
+            let
+                latenessDetailsDisabled : Bool
+                latenessDetailsDisabled =
+                    v /= String.fromInt Const.latenessReasons.other
+
+                model_ : Model
+                model_ =
+                    { model | latenessReason = v }
+
+                latenessOkDisabled : Bool
+                latenessOkDisabled =
+                    checkOkDisabled model_
+            in
+            ( { model_
+                | latenessOkDisabled = latenessOkDisabled
+                , latenessDetailsDisabled = latenessDetailsDisabled
+              }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        LatenessHoursChanged v ->
+            let
+                model_ : Model
+                model_ =
+                    { model | latenessHours = v }
+
+                latenessOkDisabled : Bool
+                latenessOkDisabled =
+                    checkOkDisabled model_
+            in
+            ( { model_
+                | latenessOkDisabled = latenessOkDisabled
+              }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        LatenessMinutesChanged v ->
+            let
+                model_ : Model
+                model_ =
+                    { model | latenessMinutes = v }
+
+                latenessOkDisabled : Bool
+                latenessOkDisabled =
+                    checkOkDisabled model_
+            in
+            ( { model_
+                | latenessOkDisabled = latenessOkDisabled
+              }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        LatenessDetailsInput s ->
+            let
+                model_ : Model
+                model_ =
+                    { model | latenessDetails = s }
+
+                latenessOkDisabled : Bool
+                latenessOkDisabled =
+                    checkOkDisabled model_
+            in
+            ( { model_
+                | latenessOkDisabled = latenessOkDisabled
+              }
+            , Cmd.none
+            , Cmd.none
+            )
+
         ServicePerformed ->
             ( model
             , Api.statusServicePerformed global.serviceId
@@ -397,7 +653,7 @@ update global msg model =
                     , Cmd.none
                     )
 
-                Err err ->
+                Err _ ->
                     let
                         messageToast =
                             model.messageToast
@@ -415,8 +671,8 @@ update global msg model =
             , Global.logout
             )
 
-        ModalClose ->
-            ( { model | modalVisibility = Modal.hidden }
+        ModalAlreadyOkClose ->
+            ( { model | modalAlertVisibility = Modal.hidden }
             , Cmd.none
             , Cmd.none
             )
@@ -474,7 +730,7 @@ update global msg model =
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
-subscriptions global model =
+subscriptions _ model =
     Sub.batch
         [ Dropdown.subscriptions model.usermenuState UsermenuMsg
         , Chat.caseReceiver Chat
@@ -485,6 +741,7 @@ subscriptions global model =
 formatServiceSerial : Model -> String
 formatServiceSerial model =
     let
+        s : ServiceDescription
         s =
             model.service
     in
@@ -510,7 +767,8 @@ view global model =
             , username = global.username
             , buttons =
                 [ ( False, Cases, "Текущие заявки" )
---                , ( False, SearchCases, "Поиск заявок" )
+
+                --                , ( False, SearchCases, "Поиск заявок" )
                 ]
             }
           <|
@@ -530,9 +788,9 @@ view global model =
     }
 
 
-viewModal : Model -> Html Msg
-viewModal model =
-    Modal.config ModalClose
+viewModalAlreadyOk : Model -> Html Msg
+viewModalAlreadyOk model =
+    Modal.config ModalAlreadyOkClose
         |> Modal.small
         |> Modal.hideOnBackdropClick True
         |> Modal.h3 [] [ text "Внимание" ]
@@ -540,11 +798,118 @@ viewModal model =
         |> Modal.footer []
             [ Button.button
                 [ Button.outlinePrimary
-                , Button.attrs [ onClick ModalClose ]
+                , Button.attrs [ onClick ModalAlreadyOkClose ]
                 ]
                 [ text "Закрыть" ]
             ]
-        |> Modal.view model.modalVisibility
+        |> Modal.view model.modalAlertVisibility
+
+
+viewModalLatenessAsk : Model -> Html Msg
+viewModalLatenessAsk model =
+    let
+        sItem : Int -> Select.Item Msg
+        sItem i =
+            let
+                t : String
+                t =
+                    String.fromInt i
+            in
+            Select.item [ value t ] [ text t ]
+
+        hours : List (Select.Item Msg)
+        hours =
+            List.map sItem <| List.range 0 23
+
+        minutes : List (Select.Item Msg)
+        minutes =
+            List.map sItem <| List.map ((*) 5) <| List.range 0 11
+
+        {- сортировка нужна чтобы варианты были по алфавиту,
+           а пустой элемент вначале вынуждает пользователя выбирать
+        -}
+        reasons : List (Select.Item msg)
+        reasons =
+            [ ( "", "" ) ]
+                ++ Dict.toList model.latenessReasons
+                |> List.sortBy Tuple.second
+                |> List.map (\( v, k ) -> Select.item [ value v ] [ text k ])
+    in
+    Modal.config LatenessCloseCancel
+        |> Modal.hideOnBackdropClick True
+        |> Modal.h3 [] [ text "Укажите параметры опоздания." ]
+        |> Modal.body []
+            [ Grid.row [ Row.attrs [ Spacing.pb2 ] ]
+                [ Grid.col
+                    [ Col.sm4, Col.attrs [ Flex.alignSelfCenter ] ]
+                    [ text "Время опоздания:" ]
+                , Grid.col []
+                    [ div [ class "d-flex flex-row" ]
+                        [ div []
+                            [ Select.select
+                                [ Select.attrs [ style "width" "60px" ]
+                                , Select.onChange LatenessHoursChanged
+                                ]
+                                hours
+                            ]
+                        , div [ Flex.alignSelfCenter, Spacing.pl1, Spacing.pr3 ]
+                            [ text "ч." ]
+                        , div []
+                            [ Select.select
+                                [ Select.attrs [ style "width" "60px" ]
+                                , Select.onChange LatenessMinutesChanged
+                                ]
+                                minutes
+                            ]
+                        , div [ Flex.alignSelfCenter, Spacing.pl1 ]
+                            [ text "мин." ]
+                        ]
+                    ]
+                ]
+            , Grid.row [ Row.attrs [ Spacing.pb2 ] ]
+                [ Grid.col
+                    [ Col.sm4, Col.attrs [ Flex.alignSelfCenter ] ]
+                    [ text "Причина опоздания:" ]
+                , Grid.col []
+                    [ Select.select
+                        [ Select.onChange LatenessReasonChanged ]
+                        reasons
+                    ]
+                ]
+            , Grid.row [ Row.attrs [ Spacing.pb2 ] ]
+                [ Grid.col
+                    [ Col.sm4, Col.attrs [ Flex.alignSelfCenter ] ]
+                    [ text "Подробности:" ]
+                , Grid.col []
+                    [ Textarea.textarea
+                        ((if model.latenessDetailsDisabled then
+                            [ Textarea.disabled ]
+
+                          else
+                            []
+                         )
+                            ++ [ Textarea.rows 3
+                               , Textarea.value model.latenessDetails
+                               , Textarea.attrs [ onInput LatenessDetailsInput ]
+                               ]
+                        )
+                    ]
+                ]
+            ]
+        |> Modal.footer []
+            [ Button.button
+                [ Button.outlinePrimary
+                , Button.disabled model.latenessOkDisabled
+                , Button.attrs [ onClick LatenessCloseOk ]
+                ]
+                [ text "Подтвердить" ]
+            , Button.button
+                [ Button.outlinePrimary
+                , Button.attrs [ onClick LatenessCloseCancel ]
+                ]
+                [ text "Отменить" ]
+            ]
+        |> Modal.view model.latenessVisibility
 
 
 nameStyle =
@@ -683,14 +1048,24 @@ viewCaseVerbose model =
                                 style "width" "150px"
                           in
                           div []
-                            [ {- Button.button
-                                     [ Button.primary
-                                     , Button.attrs [ Spacing.m3, width ]
-                                     ]
-                                     [ text "Опоздание" ]
-                                 ,
-                              -}
-                              Button.button
+                            [ Button.button
+                                [ Button.primary
+                                , Button.disabled model.statusButton1.disabled
+                                , Button.attrs
+                                    (Spacing.m3
+                                        :: width
+                                        :: (case model.statusButton1.message of
+                                                Just m ->
+                                                    [ onClick m ]
+
+                                                _ ->
+                                                    []
+                                           )
+                                    )
+                                ]
+                                [ text "Опоздание" ]
+                            , viewModalLatenessAsk model
+                            , Button.button
                                 [ Button.primary
                                 , Button.disabled model.statusButton2.disabled
                                 , Button.attrs
@@ -714,7 +1089,7 @@ viewCaseVerbose model =
                                                 ""
                                            )
                                 ]
-                            , viewModal model
+                            , viewModalAlreadyOk model
                             ]
                         ]
                     ]
@@ -807,11 +1182,13 @@ viewCaseVerbose model =
 viewDetails : CaseComment -> List (Html Msg)
 viewDetails { details } =
     let
+        field : String -> String -> List (Html Msg)
         field n v =
             [ b [] [ text <| n ++ ": " ]
             , text v
             ]
 
+        fieldOrHide : String -> Maybe String -> List (Html Msg)
         fieldOrHide n v =
             case v of
                 Just v_ ->
@@ -820,6 +1197,7 @@ viewDetails { details } =
                 Nothing ->
                     []
 
+        rows : List (List (Html Msg))
         rows =
             case details of
                 Just (Types.CaseCommentAction { type_, result, comment, serviceLabel }) ->
@@ -860,7 +1238,7 @@ viewDetails { details } =
 
                 Just (CaseCommentPartnerDelay params) ->
                     let
-                        { partnerName, serviceLabel, delayMinutes, delayConfirmed } =
+                        { serviceLabel, delayMinutes, delayConfirmed } =
                             params
 
                         time : Maybe String
@@ -885,12 +1263,11 @@ viewDetails { details } =
                                     Nothing
                     in
                     [ fieldOrHide "Услуга" serviceLabel
-                    , field "Опоздание партнёра" partnerName
                     , fieldOrHide "Время опоздания" time
                     , fieldOrHide "Опоздание согласовано" delayConfirmed
                     ]
 
-                Just (CaseCommentSmsForPartner { msgText, sender, phone, deliveryStatus }) ->
+                Just (CaseCommentSmsForPartner { msgText, phone, deliveryStatus }) ->
                     [ field "Партнёру отправлено SMS" msgText
                     , field "Телефон получателя" phone
                     , field "Статус отправки" deliveryStatus

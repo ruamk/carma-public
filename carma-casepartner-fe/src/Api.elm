@@ -1,11 +1,13 @@
 module Api exposing
     ( Session
     , decodeSession
+    , getLatenessReasons
     , getLatestClosingCases
     , getLatestCurrentCases
     , getService
     , getServiceComments
     , login
+    , postPartnerDelay
     , postServiceComment
     , statusInPlace
     , statusServicePerformed
@@ -39,6 +41,7 @@ import Types
         , CaseCommentDetails(..)
         , ClosingCaseInfo
         , CurrentCaseInfo
+        , Dictionary
         , ServiceDescription
         )
 
@@ -92,6 +95,11 @@ apiPostServiceComment serviceId =
     prefix ++ "/api/v1/case/" ++ String.fromInt serviceId ++ "/comment"
 
 
+apiPostPartnerDelay : Int -> String
+apiPostPartnerDelay serviceId =
+    prefix ++ "/api/v1/service/" ++ String.fromInt serviceId ++ "/partnerdelay"
+
+
 apiGetService : Int -> String
 apiGetService serviceId =
     prefix ++ "/api/v1/service/" ++ String.fromInt serviceId
@@ -105,6 +113,11 @@ apiStatusInPlace serviceId =
 apiStatusServicePerformed : Int -> String
 apiStatusServicePerformed serviceId =
     prefix ++ "/api/v1/service/" ++ String.fromInt serviceId ++ "/performed"
+
+
+apiGetLatenessReasons : String
+apiGetLatenessReasons =
+    prefix ++ "/api/v1/dict/PartnerDelay_Reason"
 
 
 decodeSession : String -> Session
@@ -444,6 +457,52 @@ postServiceComment service { comment } message =
         |> HttpBuilder.request
 
 
+postPartnerDelay :
+    Int
+    -> { minutes : Int, reason : Int, comment : Maybe String }
+    -> (Result Http.Error Int -> msg)
+    -> Cmd msg
+postPartnerDelay service { minutes, reason, comment } message =
+    let
+        params : List (String, String)
+        params =
+            [ ( "minutes", String.fromInt minutes )
+            , ( "reason", String.fromInt reason )
+            ]
+                ++ (case comment of
+                        Just comment_ ->
+                            [ ( "comment", comment_ ) ]
+
+                        Nothing ->
+                            []
+                   )
+
+        expect : (Result Http.Error Int -> msg) -> Http.Expect msg
+        expect toMsg =
+            Http.expectStringResponse toMsg <|
+                \response ->
+                    case response of
+                        Http.BadUrl_ url ->
+                            Err (Http.BadUrl url)
+
+                        Http.Timeout_ ->
+                            Err Http.Timeout
+
+                        Http.NetworkError_ ->
+                            Err Http.NetworkError
+
+                        Http.BadStatus_ metadata _ ->
+                            Ok metadata.statusCode
+
+                        Http.GoodStatus_ metadata _ ->
+                            Ok metadata.statusCode
+    in
+    HttpBuilder.post (apiPostPartnerDelay service)
+        |> HttpBuilder.withUrlEncodedBody params
+        |> HttpBuilder.withExpect (expect message)
+        |> HttpBuilder.request
+
+
 statusDecoder : Decoder String
 statusDecoder =
     field "status" string
@@ -471,4 +530,16 @@ statusServicePerformed serviceId comment message =
     HttpBuilder.post (apiStatusServicePerformed serviceId)
         |> HttpBuilder.withUrlEncodedBody postBody
         |> HttpBuilder.withExpect (statusExpect message)
+        |> HttpBuilder.request
+
+
+dictionaryDecoder : Decoder Dictionary
+dictionaryDecoder =
+    dict string
+
+
+getLatenessReasons : (Result Http.Error Dictionary -> msg) -> Cmd msg
+getLatenessReasons message =
+    HttpBuilder.get apiGetLatenessReasons
+        |> HttpBuilder.withExpect (Http.expectJson message dictionaryDecoder)
         |> HttpBuilder.request

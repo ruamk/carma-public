@@ -3,6 +3,7 @@ module Types exposing
     , CaseCommentDetails(..)
     , ClosingCaseInfo
     , CurrentCaseInfo
+    , Dictionary
     , ServiceDescription
     , emptyServiceDescription
     )
@@ -142,3 +143,7 @@ type alias CaseComment =
 
 type CaseComments
     = List CaseComment
+
+
+type alias Dictionary =
+    Dict.Dict String String

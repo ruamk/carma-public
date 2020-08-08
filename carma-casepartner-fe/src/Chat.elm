@@ -40,6 +40,14 @@ type ChatMessage
 connectToCase : Url -> Int -> Cmd msg
 connectToCase url caseId =
     let
+        protocol =
+            case url.protocol of
+                Url.Http ->
+                    "ws://"
+
+                Url.Https ->
+                    "wss://"
+
         port_ =
             case url.port_ of
                 Just p ->
@@ -49,14 +57,9 @@ connectToCase url caseId =
                     ""
 
         chatUrl =
-            (case url.protocol of
-                Url.Http ->
-                    "ws://"
-
-                Url.Https ->
-                    "wss://"
-            )
+            protocol
                 ++ url.host
+                ++ port_
                 ++ "/chat/Case:"
                 ++ String.fromInt caseId
     in
