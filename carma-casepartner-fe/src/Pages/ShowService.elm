@@ -1109,20 +1109,22 @@ viewCaseVerbose model =
                                     ]
                                 ]
                             , Form.row []
-                                [ Form.col [ Col.sm4, Col.attrs [ Spacing.pt2 ] ]
-                                    [ InputGroup.config
-                                        (InputGroup.text [ Input.attrs [ placeholder "Добавить файл" ] ])
-                                        |> InputGroup.successors
-                                            [ InputGroup.button [ Button.secondary ]
-                                                [ Icon.folderOpen
-                                                    |> Icon.present
-                                                    |> Icon.styled [ Icon.xs ]
-                                                    |> Icon.view
-                                                ]
-                                            ]
-                                        |> InputGroup.view
-                                    ]
-                                , Form.col [ Col.sm4, Col.attrs [ Spacing.pt2 ] ] []
+                                [ {- Form.col [ Col.sm4, Col.attrs [ Spacing.pt2 ] ]
+                                         [ InputGroup.config
+                                             (InputGroup.text [ Input.attrs [ placeholder "Добавить файл" ] ])
+                                             |> InputGroup.successors
+                                                 [ InputGroup.button [ Button.secondary ]
+                                                     [ Icon.folderOpen
+                                                         |> Icon.present
+                                                         |> Icon.styled [ Icon.xs ]
+                                                         |> Icon.view
+                                                     ]
+                                                 ]
+                                             |> InputGroup.view
+                                         ]
+                                     ,
+                                  -}
+                                  Form.col [ Col.sm4, Col.attrs [ Spacing.pt2 ] ] []
                                 , Form.col
                                     [ Col.sm4
                                     , Col.attrs [ Flex.alignItemsEnd, Spacing.pt2 ]
@@ -1171,8 +1173,12 @@ viewCaseVerbose model =
                             ]
                         ]
                     , Button.button
-                        [ Button.primary, Button.attrs [ class "float-right", Spacing.mt3 ] ]
-                        [ text "Закрыть заявку" ]
+                        [ Button.primary
+                        , Button.attrs [ class "float-right", Spacing.mt3 ]
+                        ]
+                        [ text "Функционал в разработке" ]
+
+                    {- [ text "Закрыть заявку" ] -}
                     ]
                 ]
             ]
