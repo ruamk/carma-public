@@ -50,6 +50,8 @@ import           AppHandlers.CustomSearches
 import           AppHandlers.DiagTree
 import           AppHandlers.KPI
 import           AppHandlers.LocationSharing                 (requestLocation)
+import           AppHandlers.CustomerFeedback                (getCustomerFeedback,
+                                                              newCustomerFeedback)
 import           AppHandlers.PSA
 import           AppHandlers.RKC
 import           AppHandlers.Screens
@@ -160,6 +162,10 @@ routes = [ ("/",              method GET $ authOrLogin indexPage)
          , ("/meta",                    method GET serveMeta)
          , ("/requestLocation/:caseId",
                               chkAuth . method POST $ requestLocation)
+         , ("/customerFeedback",
+                              chkAuth . method GET $ getCustomerFeedback)
+         , ("/customerFeedback",
+                              chkAuth . method POST $ newCustomerFeedback)
          ]
 
 dconf :: DirectoryConfig (Handler App App)
