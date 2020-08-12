@@ -89,6 +89,7 @@ instance Model Case where
           , widget "city-dict-with-rush-badge" caseAddress_city
           , widget "coords-with-button" caseAddress_coords
           , widget "detailsFromAutoteka" car_detailsFromAutoteka
+          , widget "customer-feedback" claim
           ]
       _ -> Nothing
 
@@ -217,7 +218,6 @@ caseMod = [
 --  ,widget "radio" car_engine
 
   ,textarea dealerCause
-  ,textarea claim
 
   ,infoText "carVin" car_vin
   ,infoText "comment" comment

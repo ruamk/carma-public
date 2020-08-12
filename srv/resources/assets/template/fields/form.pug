@@ -764,7 +764,7 @@ mixin caseFilesList
         | :&nbsp;
       span#city-towage-average-time
     #contract
-    .program      
+    .program
       div(id="elm-photos")
 
       #case-comments
@@ -1190,3 +1190,13 @@ mixin infoField(name, value)
   +infoField("Коробка передач",    "equipment.transmission.description")
   +infoField("Цвет",               "equipment.color.description")
   // /ko
+
+.field-template#customer-feedback
+  .form-group
+    label.col-sm-4.control-label
+      +labelWithInfo("{{name}}")
+    .col-sm-8
+      .input-group.input-group-sm
+        button.btn.btn-info(href="#"
+          data-bind="click: {{name}}BtnClick")
+          | Открыть в модальном окне
