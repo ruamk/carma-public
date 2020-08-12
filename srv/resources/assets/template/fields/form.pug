@@ -1155,3 +1155,13 @@ mixin caseFilesList
         +dictInputChevron("Local", "glyphicon-chevron-down")
       .help-block(data-bind="visible: {{name}}InRush")
         | В этом городе аврал
+
+.field-template#customer-feedback
+  .form-group
+    label.col-sm-4.control-label
+      +labelWithInfo("{{name}}")
+    .col-sm-8
+      .input-group.input-group-sm
+        button.btn.btn-info(href="#"
+          data-bind="click: {{name}}BtnClick")
+          | Открыть в модальном окне

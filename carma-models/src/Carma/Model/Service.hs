@@ -110,7 +110,7 @@ data Service = Service
   , complication                 :: F (Maybe (IdentI Complication)) "complication"
                                  "Сложный случай"
   , clientSatisfied              :: F (Maybe (IdentI Satisfaction)) "clientSatisfied"
-                                 "Клиент доволен"
+                                 "Оценка качества"
   , warrantyCase                 :: F (Maybe Checkbox) "warrantyCase"
                                  "Гарантийный случай"
   , files                        :: F (Maybe Reference) "files"
@@ -126,7 +126,10 @@ instance Model Service where
   modelInfo = mkModelInfo Service ident
   modelView = \case
     "search" -> Just $ modifyView (searchView serviceSearchParams) svcMod
-    ""       -> Just $ modifyView defaultView $ usualSvcMod ++ [widget "svcStatus" status]
+    ""       -> Just $ modifyView defaultView $ usualSvcMod
+      ++ [ widget "svcStatus" status
+         , widget "customer-feedback" clientSatisfied
+         ]
     _  -> Nothing
 
 
