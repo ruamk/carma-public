@@ -50,6 +50,7 @@ import           Carma.Model.Contract
 import           Carma.Model.ContractCheckStatus
 import           Carma.Model.ContractRegistrationReason  (ContractRegistrationReason)
 import           Carma.Model.CtrModel                    (CtrModel)
+import           Carma.Model.CustomerFeedback            (CustomerFeedback)
 import           Carma.Model.DeferTime                   (DeferTime)
 import           Carma.Model.DiagSlide                   (DiagSlide)
 import           Carma.Model.DiagHistory                 (DiagHistory)
@@ -189,6 +190,7 @@ modelMap fn = modelMap'
       ,add (undefined :: ContractCheckStatus)
       ,add (undefined :: ContractRegistrationReason)
       ,add (undefined :: CtrModel)
+      ,add (undefined :: CustomerFeedback)
       ,add (undefined :: DeferTime)
       ,add (undefined :: DiagSlide)
       ,add (undefined :: DiagHistory)
