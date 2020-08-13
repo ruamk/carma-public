@@ -1,7 +1,8 @@
 module Types where
 
 
-data LatestServices = Current
+data LatestServices = All
                     | Closing
+                    | Current
 
 

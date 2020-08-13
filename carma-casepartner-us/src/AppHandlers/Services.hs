@@ -30,6 +30,11 @@ import           Types
 servicesLimit :: Int
 servicesLimit = 1000
 
+maxLimit :: Int
+maxLimit = 100
+
+defaultLimit :: Int
+defaultLimit = 25
 
 data CurrentServiceInfo = CurrentServiceInfo
     { cuCaseId :: Int
@@ -86,15 +91,42 @@ instance FromRow ClosingServiceInfo where
                               <*> field
                               <*> field
 
+data ServiceInfo = ServiceInfo
+    { caseId :: Int
+    , serviceId :: Int -- идентификатор услуги
+    , serviceSerial :: Int -- номер услиги в списке услуг для заявки
+    , _callDate :: Maybe ZonedTime
+    , _typeOfService :: String
+    , _makeModel :: String
+    , _breakdownPlace :: String
+    , _payType :: String
+    } deriving (Show, Generic)
+
+instance ToJSON ServiceInfo where
+    toJSON = genericToJSON defaultOptions
+             { fieldLabelModifier = dropWhile (== '_')}
+
+instance FromRow ServiceInfo where
+    fromRow = ServiceInfo <$> field
+                          <*> field
+                          <*> field
+                          <*> field
+                          <*> field
+                          <*> field
+                          <*> field
+                          <*> field
+
+
 -- | Handle get latest services
 latestServices :: LatestServices -> AppHandler ()
 latestServices serviceType = checkAuthCasePartner $ do
   user <- fromMaybe (error "No current user") <$> with auth currentUser
   let UserId uid = fromMaybe (error "no uid") $ userId user
+      uid' = read $ T.unpack uid
   case serviceType of
-    Current -> getLatestCurrentServices $ read $ T.unpack uid
-    Closing -> getLatestClosingServices $ read $ T.unpack uid
-
+    All     -> getServices uid'
+    Current -> getLatestCurrentServices uid'
+    Closing -> getLatestClosingServices uid'
 
 
 getLatestCurrentServices :: Int -> AppHandler ()
@@ -192,8 +224,9 @@ getLatestClosingServices uid = do
 
   serviceNums <- enumerateServices $ map clCaseId rows
 
-  writeJSON $ map (\m -> m { clServiceSerial = serviceNums ! clServiceId m} :: ClosingServiceInfo)
-                  rows
+  writeJSON $ map (\m -> m { clServiceSerial = serviceNums ! clServiceId m
+                          } :: ClosingServiceInfo
+                  ) rows
 
 
 enumerateServices :: [Int] -> AppHandler (Map.Map Int Int)
@@ -202,3 +235,54 @@ enumerateServices caseIds = fmap Map.fromList <$> query [sql|
     FROM servicetbl
     WHERE parentid in ?
   |] $ Only $ In caseIds
+
+
+inside :: Int -> Int -> Int -> Int
+inside low high v =
+    if v > high
+    then high
+    else if v < low
+         then low
+         else v
+
+
+getServices :: Int -> AppHandler ()
+getServices uid = do
+  offset <- inside 0 (maxBound :: Int) . fromMaybe 0
+           <$> getIntParam "offset"
+  limit <- inside 1 maxLimit . fromMaybe defaultLimit
+          <$> getIntParam "limit"
+
+  rows :: [ServiceInfo] <- query [sql|
+    SELECT
+        servicetbl.parentid
+      , servicetbl.id
+      , 0 as serviceSerial
+      , times_expectedservicestart
+      , st.label AS typeofservice
+      , coalesce(make.label || ' / ' ||
+                 regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text
+      , coalesce(casetbl.caseaddress_address, '')::text
+      , coalesce(pt.label, '')::text
+    FROM servicetbl
+    LEFT OUTER JOIN "ServiceType"   st    ON st.id = type
+    LEFT OUTER JOIN "ServiceStatus" ss    ON ss.id = status
+    LEFT OUTER JOIN "PaymentType"   pt    ON pt.id = paytype
+    LEFT OUTER JOIN casetbl               ON casetbl.id = parentid
+    LEFT OUTER JOIN "CarMake"       make  ON make.id = casetbl.car_make
+    LEFT OUTER JOIN "CarModel"      model ON model.id = casetbl.car_model
+    LEFT OUTER JOIN "CasePartner"   cp    ON
+         cp.partner = servicetbl.contractor_partnerid
+    WHERE cp.uid = ?
+    ORDER BY times_expectedservicestart DESC
+    LIMIT ? OFFSET ?
+  |] ( uid
+     , limit
+     , offset
+     )
+
+  serviceNums <- enumerateServices $ map caseId rows
+
+  writeJSON $ map (\m -> m { serviceSerial = serviceNums ! serviceId m
+                          } :: ServiceInfo
+                  ) rows

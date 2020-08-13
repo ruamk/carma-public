@@ -30,6 +30,10 @@ apiLogin, apiLogout :: ByteString
 apiLogin  = "/api/v1/login"
 apiLogout = "/api/v1/logout"
 
+
+apiGetServices :: ByteString
+apiGetServices = "/api/v1/services/all"
+
 apiGetLatestCurrentServices :: ByteString
 apiGetLatestCurrentServices = "/api/v1/services/current"
 
@@ -83,6 +87,7 @@ handleApiLogout = ifTop $ do
 routes :: [(ByteString, Handler App App ())]
 routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiLogout, method POST handleApiLogout)
+         , (apiGetServices, method POST $ Ss.latestServices All)
          , (apiGetLatestCurrentServices, Ss.latestServices Current)
          , (apiGetLatestClosingServices, Ss.latestServices Closing)
          , (apiGetService, method GET S.handleApiGetService)
