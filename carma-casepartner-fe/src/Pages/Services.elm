@@ -355,8 +355,7 @@ view global model =
             , username = global.username
             , buttons =
                 [ ( True, NavbarMsg model.navbarState, "Текущие заявки" )
-
-                -- , ( False, SearchCases, "Поиск заявок" )
+                , ( False, SearchCases, "Поиск заявок" )
                 ]
             }
           <|

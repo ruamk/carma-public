@@ -767,8 +767,7 @@ view global model =
             , username = global.username
             , buttons =
                 [ ( False, Cases, "Текущие заявки" )
-
-                --                , ( False, SearchCases, "Поиск заявок" )
+                , ( False, SearchCases, "Поиск заявок" )
                 ]
             }
           <|

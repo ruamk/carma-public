@@ -6,6 +6,7 @@ module Api exposing
     , getLatestCurrentCases
     , getService
     , getServiceComments
+    , getServices
     , login
     , postPartnerDelay
     , postServiceComment
@@ -43,6 +44,7 @@ import Types
         , CurrentCaseInfo
         , Dictionary
         , ServiceDescription
+        , ServiceInfo
         )
 
 
@@ -59,7 +61,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    ""
+    "/elm-live"
 
 
 apiLogin : String
@@ -70,6 +72,11 @@ apiLogin =
 apiLogout : String
 apiLogout =
     prefix ++ "/api/v1/logout"
+
+
+apiGetServices : String
+apiGetServices =
+    prefix ++ "/api/v1/services/all"
 
 
 apiGetLatestCurrentCases : String
@@ -211,6 +218,24 @@ latestClosingCasesDecoder =
     list decodeClosingCaseInfo
 
 
+servicesDecoder : Decoder (List ServiceInfo)
+servicesDecoder =
+    let
+        decodeServiceInfo : Decoder ServiceInfo
+        decodeServiceInfo =
+            succeed ServiceInfo
+                |> required "caseId" int
+                |> required "serviceId" int
+                |> required "serviceSerial" int
+                |> required "callDate" (nullable ISO8601.decode)
+                |> required "typeOfService" string
+                |> required "makeModel" string
+                |> required "breakdownPlace" string
+                |> required "payType" string
+    in
+    list decodeServiceInfo
+
+
 getLatestCurrentCases : (Result Http.Error (List CurrentCaseInfo) -> msg) -> Cmd msg
 getLatestCurrentCases message =
     HttpBuilder.post apiGetLatestCurrentCases
@@ -222,6 +247,21 @@ getLatestClosingCases : (Result Http.Error (List ClosingCaseInfo) -> msg) -> Cmd
 getLatestClosingCases message =
     HttpBuilder.post apiGetLatestClosingCases
         |> HttpBuilder.withExpect (Http.expectJson message latestClosingCasesDecoder)
+        |> HttpBuilder.request
+
+
+getServices : Int -> Int -> (Result Http.Error (List ServiceInfo) -> msg) -> Cmd msg
+getServices offset limit message =
+    let
+        postBody : List ( String, String )
+        postBody =
+            [ ( "offset", String.fromInt offset )
+            , ( "limit", String.fromInt limit )
+            ]
+    in
+    HttpBuilder.post apiGetServices
+        |> HttpBuilder.withUrlEncodedBody postBody
+        |> HttpBuilder.withExpect (Http.expectJson message servicesDecoder)
         |> HttpBuilder.request
 
 
@@ -464,7 +504,7 @@ postPartnerDelay :
     -> Cmd msg
 postPartnerDelay service { minutes, reason, comment } message =
     let
-        params : List (String, String)
+        params : List ( String, String )
         params =
             [ ( "minutes", String.fromInt minutes )
             , ( "reason", String.fromInt reason )
