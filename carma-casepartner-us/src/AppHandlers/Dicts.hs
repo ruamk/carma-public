@@ -18,7 +18,7 @@ import AppHandlers.Util
 
 
 getDict :: String -> AppHandler (M.Map Int Text)
-getDict dictName = query_ q >>= return . M.fromList
+getDict dictName = M.fromList <$> query_ q
   where q = fromString $ "SELECT id, label FROM \"" ++ dictName ++ "\""
 
 

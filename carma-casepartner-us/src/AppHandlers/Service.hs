@@ -217,10 +217,10 @@ postPartnerDelay = checkAuthCasePartner $ do
   serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
   minutes <- fromMaybe (error "invalid minutes") <$> getIntParam "minutes"
   reason <- fromMaybe (error "invalid reason") <$> getIntParam "reason"
-  comment <- (\c -> case c of 
-                        Just s  -> Just $ T.strip $ TE.decodeUtf8 s
-                        Nothing -> Nothing
-                      )
+  comment <- (\case
+              Just s  -> Just $ T.strip $ TE.decodeUtf8 s
+              Nothing -> Nothing
+            )
             <$> getParam "comment"
 
   [Only (partnerId :: Int)] <-
