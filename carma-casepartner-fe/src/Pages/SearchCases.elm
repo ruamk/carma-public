@@ -364,7 +364,11 @@ viewServicesTitle model title pageNumber =
                     ]
                     [ text "<" ]
                 , ButtonGroup.button
-                    [ Button.primary ]
+                    [ Button.primary
+                    , Button.attrs
+                        [ style "width" "50px"
+                        ]
+                    ]
                     [ if model.showSpinner then
                         Ui.viewSpinner spinnerSize
 
