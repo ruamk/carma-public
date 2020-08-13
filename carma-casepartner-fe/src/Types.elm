@@ -5,6 +5,7 @@ module Types exposing
     , CurrentCaseInfo
     , Dictionary
     , ServiceDescription
+    , ServiceInfo
     , emptyServiceDescription
     )
 
@@ -14,6 +15,18 @@ import ISO8601 exposing (Time)
 
 
 -- для списка заявок
+
+
+type alias ServiceInfo =
+    { caseId : Int
+    , serviceId : Int
+    , serviceSerial : Int
+    , callDate : Maybe Time
+    , typeOfService : String
+    , makeModel : String
+    , breakdownPlace : String
+    , payType : String
+    }
 
 
 type alias CurrentCaseInfo =
