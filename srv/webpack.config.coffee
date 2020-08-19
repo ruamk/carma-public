@@ -67,7 +67,7 @@ module.exports =
       finch: "finchjs/coffee/finch"
       "normalize-css": "normalize.css/normalize.css"
 
-    extensions: [".js", ".coffee"]
+    extensions: [".js", ".coffee", ".tsx", ".ts"]
 
   output:
     path: path.join RES_DIR, "static", "build", "frontend"
@@ -136,6 +136,8 @@ module.exports =
       }
 
       { test: /\.coffee$/, use: "coffee-loader" }
+
+      { test: /\.tsx?$/, use: 'ts-loader', exclude: /node_modules/ }
 
       {
         test: /([a-zA-Z0-9]P|\/p|-p)recompiled\.coffee$/

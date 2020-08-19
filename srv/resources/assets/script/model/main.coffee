@@ -29,6 +29,9 @@ Idents       = require "carma/lib/idents"
 {Config}     = require "carma/lib/config"
 {ajaxUpload} = require "carma/lib/upload"
 
+CustomerFeedbackModal = require "carma/components/CustomerFeedback"
+
+
 mainSetup = (localDictionaries, hooks, user, pubSub) ->
 
   dictCache = dict.buildCache localDictionaries
@@ -191,6 +194,19 @@ buildKVM = (model, options = {}) ->
       # Determines the sync state with the server
       kvm["#{n}Sync"] = ko.observable false
       kvm["#{n}InvalidDate"] = ko.observable false
+
+      if f.meta?.widget is "customer-feedback"
+        kvm["#{n}BtnClick"] = ->
+          if f.modelName == "Case"
+            CustomerFeedbackModal.show(
+              parseInt kvm.id(),
+              null,
+              f.readonly)
+          else # Service
+            CustomerFeedbackModal.show(
+              kvm.parentId(),
+              parseInt kvm.id(),
+              f.readonly)
 
       # Read image from file or clipboard as base64 and store it to kvm[n]
       if f.meta?.widget is "image-uploader"
