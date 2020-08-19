@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "alwaysStrict": true,
+    "importHelpers": true,
+    "jsxFactory": "h",
+    "jsx": "react",
+    "lib": ["dom", "es2015"],
+    "module": "commonjs",
+    "sourceMap": true,
+    "target": "es5"
+  }
+}
