@@ -266,8 +266,7 @@ include _form_utils.pug
   .row
     .col-sm-4
     .col-sm-4(style="margin-bottom: 10px")
-      img(src="https://picsum.photos/200" style="max-height:128px"
-        data-bind=`attr: { src: {{name}} }`)
+      img(style="max-height:128px" data-bind=`attr: { src: {{name}} }`)
     .col-sm-4
       b(data-bind=`text: {{name}}Warning`)
 
@@ -1156,3 +1155,13 @@ mixin caseFilesList
         +dictInputChevron("Local", "glyphicon-chevron-down")
       .help-block(data-bind="visible: {{name}}InRush")
         | В этом городе аврал
+
+.field-template#customer-feedback
+  .form-group
+    label.col-sm-4.control-label
+      +labelWithInfo("{{name}}")
+    .col-sm-8
+      .input-group.input-group-sm
+        button.btn.btn-info(href="#"
+          data-bind="click: {{name}}BtnClick")
+          | Открыть в модальном окне
