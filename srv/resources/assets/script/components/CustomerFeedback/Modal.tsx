@@ -1,12 +1,17 @@
-import {h, render, FunctionalComponent} from "preact"
+import {h, FunctionalComponent} from "preact"
 import {useState} from "preact/hooks"
 import cls from "classnames"
 
+import {Spinner} from "./Spinner"
+
 type F<T> = FunctionalComponent<T>;
 
-interface Props {
+interface Closable {
+  onClose: () => void
+}
+
+interface Props extends Closable {
   title: string,
-  onClose: () => void,
   onSave:  () => Promise<any>,
   canSave: boolean,
 }
@@ -20,10 +25,6 @@ const Header: F<Props> = ({title, onClose}) =>
     </button>
     <h4 class="modal-title">{title}</h4>
   </div>;
-
-
-const Spinner: F<{}> = (_) =>
-  <span class="mr-2 glyphicon glyphicon-refresh glyphicon-refresh-animate"/>;
 
 
 const Footer: F<Props> = ({onClose, onSave, canSave}) => {
@@ -53,19 +54,26 @@ const Footer: F<Props> = ({onClose, onSave, canSave}) => {
 }
 
 
-// TODO: handle Escape btn
-export const Modal: F<Props> = (props) =>
+export const ModalWrapper: F<Closable> = (props) =>
+  // NB. `stopPropagation` is to prevent modal from closing when clicked
+  // somewere on the dialog itself.
   <div>
-    <div class="modal-backdrop fade active in" onClick={props.onClose}/>
-    <div class="modal show active in" role="dialog">
-      <div class="modal-dialog" role="document">
+    <div class="modal-backdrop fade active in"/>
+    <div class="modal show" role="dialog" onClick={props.onClose}>
+      <div class="modal-dialog" role="document" onClick={e => e.stopPropagation()}>
         <div class="modal-content">
-          <Header {...props} />
-          <div class="modal-body">
-            {props.children}
-          </div>
-          <Footer {...props} />
+          {props.children}
         </div>
       </div>
     </div>
   </div>;
+
+
+export const Modal: F<Props> = (props) =>
+  <ModalWrapper onClose={props.onClose}>
+    <Header {...props} />
+    <div class="modal-body">
+      {props.children}
+    </div>
+    <Footer {...props} />
+  </ModalWrapper>;

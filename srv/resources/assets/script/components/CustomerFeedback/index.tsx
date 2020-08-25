@@ -1,27 +1,38 @@
-import {h, render, FunctionalComponent} from "preact"
+import {h, render, FunctionalComponent } from "preact"
 import {useState} from "preact/hooks"
+import moment from "moment"
 
-import {Modal} from "./Modal"
+import {Modal, ModalWrapper} from "./Modal"
+import {Spinner} from "./Spinner"
 import {Selector, Item} from "./Selector"
 
 
+interface Feedback {
+  value: number,
+  comment: string,
+  ctime: null | string,
+  realName: null | string,
+  login: null | string,
+}
+
 interface Props {
+  data: null | Feedback,
+  onSave: (Feedback) => Promise<any>,
   onClose: () => void,
 }
 
+
 const CustomerFeedback: FunctionalComponent<Props> = (props) => {
-  const [value, setValue] = useState(null);
-  const [comment, setComment] = useState("");
-  const [readonly, setReadonly] = useState(false);
+  const {data} = props;
+  const [value, setValue] = useState(data ? data.value : null);
+  const [comment, setComment] = useState(data ? data.comment : "");
+  const [readonly, setReadonly] = useState(!!data);
 
   const onSave = async () => {
     setReadonly(true);
     try {
-      await new Promise((resolve, reject) => {
-        setTimeout(
-          () => reject(new Error("Что-то пошло не так.")),
-          1000);
-      });
+      await props.onSave({value, comment});
+      props.onClose();
     } finally {
       setReadonly(false);
     }
@@ -33,6 +44,12 @@ const CustomerFeedback: FunctionalComponent<Props> = (props) => {
     {val: 3, label: "🤐 Клиент не отвечает"}
   ];
 
+  const field = (lbl, val) =>
+    <div>
+      <label>{lbl}:&nbsp;</label>
+      <span>{val}</span>
+    </div>;
+
   return (
     <Modal
       title="Оценка качества обслуживания"
@@ -41,6 +58,13 @@ const CustomerFeedback: FunctionalComponent<Props> = (props) => {
       canSave={value && !readonly}
     >
       <form>
+        { data && [
+          field("Оператор", `${data.realName} (${data.login})`),
+          field(
+            "Отзыв оставлен",
+            moment(data.ctime).format("YYYY-MM-DD HH:mm"))
+        ]}
+
         <Selector>
           { values.map(({val, label}) =>
             <Item
@@ -66,15 +90,56 @@ const CustomerFeedback: FunctionalComponent<Props> = (props) => {
 }
 
 
-export function show(
+const GENERIC_ERROR = new Error("Что-то пошло не так");
+
+async function loadFeedback(caseId, serviceId) {
+  const r = await fetch(
+    "/customerFeedback?" + new URLSearchParams({caseId, serviceId})
+  );
+  if(!r.ok) throw GENERIC_ERROR;
+  else return r.json();
+}
+
+
+function saveFeedback(caseId, serviceId) {
+  return async ({value, comment}) => {
+    const r = await fetch("/customerFeedback", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({caseId, serviceId, value, comment})
+    });
+
+    if(!r.ok) throw GENERIC_ERROR;
+    else return r.json();
+  };
+}
+
+
+export async function show(
   caseId: number,
   serviceId: number | null,
   readonly: boolean
 ) {
   const container = document.getElementById("injected-modal");
-  let modal = null;
-  const destroy = () => render(null, container, modal);
+  const destroy = () => render(null, container);
 
-  const dialog = <CustomerFeedback onClose={destroy}/>;
-  modal = render(dialog, container);
+  // FIXME: cancel loadFeedback in onClose
+  const spinner = <ModalWrapper onClose={destroy}>
+    <Spinner /> Загрузка...
+  </ModalWrapper>;
+
+  render(spinner, container);
+
+  const fb = await loadFeedback(caseId, serviceId);
+  // FIXME: catch err and show it
+
+  const dialog = <CustomerFeedback
+    data={fb.length > 0 ? fb[0] : null}
+    onClose={destroy}
+    onSave={saveFeedback(caseId, serviceId)}/>;
+
+  render(dialog, container);
 }
