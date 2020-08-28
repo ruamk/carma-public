@@ -311,7 +311,26 @@ CREATE VIEW "CaseHistory" AS
             lat,
             accuracy
         FROM "LocationSharingResponse" rs, "LocationSharingRequest" rq
-          where rs.requestId = rq.id
+          WHERE rs.requestId = rq.id
+        ) row
+
+    UNION ALL
+
+    SELECT row.caseId
+         , row.datetime
+         , row.userId
+         , ROW_TO_JSON(row)
+    FROM (
+        SELECT
+            'customerFeedback' as "type",
+            cf.caseId,
+            cf.ctime as datetime,
+            cf.userId,
+            cf.value,
+            sf.label,
+            cf."comment"
+        FROM "CustomerFeedback" cf, "Satisfaction" sf
+          WHERE cf.value = sf.id
         ) row
 
     ) AS united,

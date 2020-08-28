@@ -253,6 +253,9 @@ setupHistory = (kvm) ->
         when i.json.type.startsWith('locationSharing') \
              and not kvm.histShowLocationSharing()
           return false
+        when i.json.type is 'customerFeedback' \
+             and not kvm.histShowCustomerFeedback()
+          return false
 
       filterVal = kvm['historyFilter']()
       matchesFilter = (s) ->

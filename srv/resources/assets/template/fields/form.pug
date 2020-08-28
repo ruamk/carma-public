@@ -821,6 +821,13 @@ mixin caseFilesList
                 click : histToggleLocationSharing,
               `)
                 i.glyphicon.glyphicon-map-marker
+            .btn.btn-default(
+              title="Показать отзывы клиентов ",
+              data-bind=`
+                css   : {active: histShowCustomerFeedback},
+                click : histToggleCustomerFeedback,
+              `)
+                i.glyphicon.glyphicon-star
           |
           |
           input.form-control(
@@ -1076,6 +1083,20 @@ mixin caseFilesList
                     | Скопировать в буфер обмена
                   | )
                 div(style="clear:both")
+              // /ko
+              // ko if: $data.type === 'customerFeedback'
+              div
+                i.glyphicon.glyphicon-star
+                | &nbsp;
+                b
+                  | Отзыв клиента:&nbsp;
+                span(data-bind=`text: label`)
+              // ko if: $data.comment
+              div
+                b
+                  | Комментарий:&nbsp;
+                span(data-bind=`text: comment`)
+              // /ko
               // /ko
         // /ko
         // ko if: !endOfHistory()
