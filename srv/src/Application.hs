@@ -69,6 +69,7 @@ data App = App
     , weatherCfg  :: W.Config
     , extMap      :: TVar (Map.Map Extension (IdentI Usermeta))
       -- ^ AVAYA extensions map
+    , proxiesCfg  :: 
     }
 
 
