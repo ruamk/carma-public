@@ -50,7 +50,7 @@ type CarmaIO = ReaderT (CarmaOptions, HandleStream String) IO
 
 runCarma :: CarmaOptions -> CarmaIO a -> IO a
 runCarma opts action =
-    bracket (openStream localhost (carmaPort opts))
+    bracket (openStream (carmaHost opts) (carmaPort opts))
             close
             (\s -> runReaderT action (opts, s))
 
