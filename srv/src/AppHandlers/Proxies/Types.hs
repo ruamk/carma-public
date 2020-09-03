@@ -2,13 +2,12 @@
 --
 -- Types that must be shared with proxies and other parts of program.
 --
+-- Mostly for better program structure.
+--
 -- Copyright (C) ...
 
 module AppHandlers.Proxies.Types where
 
--- |Configuration for POST request proxy.
-data PostProxyCfg = PostProxyCfg
-     { postProxyHeaders          :: [(String, String)] -- ^ Header name and header value.
-     , postProxyURI              :: String             -- ^ URI to redirect requests to.
-     }
-     deriving Show
+-- |The token for dadata.ru.
+type DadataToken = String
+

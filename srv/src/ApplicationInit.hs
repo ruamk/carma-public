@@ -193,6 +193,8 @@ appInit = makeSnaplet "app" "Forms application" Nothing $ do
 
   wkey <- liftIO $ Cfg.lookupDefault "" cfg "weather-key"
 
+  dadata <- liftIO $ Cfg.lookupDefault "" cfg "dadata-token"
+
   h <- nestSnaplet "heist" heist $ heistInit ""
   addTemplatesAt h "/" "resources/static/build/backendPages"
 
@@ -231,4 +233,4 @@ appInit = makeSnaplet "app" "Forms application" Nothing $ do
 
   em <- liftIO $ newTVarIO Map.empty
 
-  pure $ App h s authMgr c tm fu ch g ad ad2 search' opts msgr (initApi wkey) em
+  pure $ App h s authMgr c tm fu ch g ad ad2 search' opts msgr (initApi wkey) em dadata

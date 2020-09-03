@@ -37,6 +37,8 @@ import           Snaplet.Search
 import           Snaplet.Messenger
 import           Snaplet.Messenger.Class
 
+import           AppHandlers.Proxies.Types
+
 
 -- | Global application options.
 data AppOptions = AppOptions
@@ -69,7 +71,7 @@ data App = App
     , weatherCfg  :: W.Config
     , extMap      :: TVar (Map.Map Extension (IdentI Usermeta))
       -- ^ AVAYA extensions map
-    , proxiesCfg  :: 
+    , dadataToken :: DadataToken
     }
 
 
