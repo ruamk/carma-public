@@ -27,6 +27,7 @@ import           DMCC
 import qualified WeatherApi as W
 
 import           Snaplet.Auth.Class
+import           Snaplet.Autoteka
 import           Snaplet.ChatManager
 import           Snaplet.SiteConfig
 import           Snaplet.SiteConfig.Class
@@ -56,6 +57,7 @@ data App = App
     { _heist      :: Snaplet (Heist App)
     , _session    :: Snaplet SessionManager
     , _auth       :: Snaplet (AuthManager App)
+    , _autoteka   :: Snaplet (Autoteka App)
     , _siteConfig :: Snaplet (SiteConfig App)
     , _taskMgr    :: Snaplet (TaskManager App)
     , _fileUpload :: Snaplet (FileUpload App)

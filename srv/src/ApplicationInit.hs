@@ -29,6 +29,7 @@ import qualified PgNotify
 import qualified WeatherApi.OpenWeatherMap as Weather
 
 ------------------------------------------------------------------------------
+import           Snaplet.Autoteka    (autotekaInit)
 import           Snaplet.ChatManager (chatInit)
 import           Snaplet.FileUpload  (fileUploadInit)
 import           Snaplet.Geo         (geoInit)
@@ -215,6 +216,7 @@ appInit = makeSnaplet "app" "Forms application" Nothing $ do
        (let lifetime = Just $ 365 * 24 * 60 * 60 -- One year in seconds
         in initCookieSessionManager sesKey "_session" Nothing lifetime)
     <*> nestSnaplet "auth" auth (initPostgresAuth session ad)
+    <*> nestSnaplet "autoteka" autoteka (autotekaInit auth db)
     <*> nestSnaplet "cfg" siteConfig
        (initSiteConfig "resources/site-config" auth db)
     <*> nestSnaplet "tasks" taskMgr taskManagerInit
