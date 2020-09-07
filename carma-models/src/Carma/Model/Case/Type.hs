@@ -7,6 +7,7 @@ module Carma.Model.Case.Type where
 
 import GHC.Generics (Generic)
 
+import Data.Aeson as Aeson
 import Data.Text
 import Data.Time.Calendar
 import Data.Time.Clock
@@ -161,7 +162,8 @@ data Case = Case
     :: F (Maybe Text) "car_liters" "Объём двигателя"
   , car_class
     :: F (Maybe (IdentI CarClass)) "car_class" "Класс автомобиля"
-
+  , car_detailsFromAutoteka
+    :: EF (Maybe Aeson.Value) "car_detailsFromAutoteka" "Информация от Автотеки"
   , vinChecked
     :: F (Maybe (IdentI ContractCheckStatus)) "vinChecked" "Участие в программе"
   , city -- Also known as "Город ближайший к месту поломки"

@@ -64,7 +64,9 @@ caseSearchParams
 
 instance Model Case where
   type TableName Case = "casetbl"
-  modelInfo = mkModelInfo Case Case.ident `customizeRead`  fillServices
+  modelInfo = mkModelInfo Case Case.ident
+    `customizeRead` fillServices
+    `customizeRead` fillAutoteka
   modelView = \case
       "search" -> Just
         $ modifyView (searchView caseSearchParams)
@@ -86,12 +88,13 @@ instance Model Case where
           , widget "city-dict-with-rush-badge" city
           , widget "city-dict-with-rush-badge" caseAddress_city
           , widget "coords-with-button" caseAddress_coords
+          , widget "detailsFromAutoteka" car_detailsFromAutoteka
           ]
       _ -> Nothing
 
 
 fillServices :: Patch Case -> IdentI Case -> PG.Connection -> IO (Patch Case)
-fillServices p idt c = do
+fillServices p caseId c = do
   [[svcs]] <- PG.query c
     [sql|
       select coalesce(string_agg(value || ':' || id, ','), '')
@@ -103,8 +106,25 @@ fillServices p idt c = do
             where s.parentid = ?
             order by s.id
           ) x
-    |] (PG.Only idt)
+    |] [caseId]
   return $ P.put services svcs p
+
+
+fillAutoteka :: Patch Case -> IdentI Case -> PG.Connection -> IO (Patch Case)
+fillAutoteka p caseId c = do
+  res <- PG.query c
+    [sql|
+      select row_to_json(r.*)
+        from "AutotekaResponse" r
+        where caseId = ?
+        order by ctime desc
+        limit 1
+    |] [caseId]
+
+  let x = case res of
+            [[jsn]] -> Just jsn
+            _ -> Nothing
+  return $ P.put car_detailsFromAutoteka x p
 
 
 caseDicts :: [(Text, FieldView -> FieldView) :@ Case]
