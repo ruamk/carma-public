@@ -1,0 +1,56 @@
+name:        carma-proxies
+version:     1.0.0.0
+license:     BSD3
+author:      Serguey Zefirov
+maintainer:  <sergueyz@gmail.com>
+category:    Web
+synopsis:    Assoerted proxies.
+
+description:
+  Proxies for dadata.ru and, in future, some other services.
+
+dependencies:
+  - aeson
+  - attoparsec
+  - base
+  - bytestring
+  - carma-monads
+  - carma-utils
+  - configurator
+  - containers
+  - directory
+  - exceptions
+  - hashable
+  - http-api-data
+  - http-client
+  - http-client-tls
+  - lifted-base
+  - monad-control
+  - monad-logger
+  - mtl
+  - qm-interpolated-string
+  - servant
+  - servant-client
+  - servant-server
+  - servant-swagger
+  - swagger2
+  - text
+  - time
+  - transformers-base
+  - unordered-containers
+  - warp
+
+ghc-options:
+  - -Wall
+  - -Werror
+  - -O2
+  - -funbox-strict-fields
+
+default-extensions:
+  - MonoLocalBinds
+
+executables:
+  carma-proxies:
+    source-dirs: app
+    main: Main.hs
+    ghc-options: [-threaded]
