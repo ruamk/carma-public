@@ -1172,6 +1172,8 @@ mixin infoField(name, value)
   .form-group.has-feedback
     label.col-sm-4.control-label
       // ko if: searchInAutotekaBtn.inProgress()
+      span(data-bind="text: searchInAutotekaBtn.elapsedTime")
+      | сек.&nbsp;&nbsp;
       span.glyphicon.glyphicon-refresh.glyphicon-refresh-animate
       // /ko
     .col-sm-8

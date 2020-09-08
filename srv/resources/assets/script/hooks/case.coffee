@@ -378,15 +378,21 @@ module.exports =
     kvm.searchInAutotekaBtn =
       tooltip:
         'Поиск по регистрационному номеру'
+      inProgress: ko.observable(false)
+      elapsedTime: ko.observable(0)
       click: ->
-        kvm.searchInAutotekaBtn.inProgress(true)
+        btn = kvm.searchInAutotekaBtn
+        btn.inProgress(true)
+        start = new Date()
+        update = -> btn.elapsedTime(((new Date() - start) / 1000).toFixed(1))
+        int = setInterval update, 1000
         fetch("/autoteka/report/#{parseInt kvm.id()}", {
           method: "POST"
           headers:
             Accept: 'application/json'
         }).then((r) -> r.json())
           .then((r) ->
-            kvm.searchInAutotekaBtn.inProgress(false)
+            btn.inProgress(false)
             kvm.car_detailsFromAutoteka(r)
+            clearInterval int
           )
-      inProgress: ko.observable(false)
