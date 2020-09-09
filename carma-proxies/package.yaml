@@ -48,6 +48,11 @@ ghc-options:
 
 default-extensions:
   - MonoLocalBinds
+  - BangPatterns
+  - LambdaCase
+  - TemplateHaskell
+  - QuasiQuotes
+  - DataKinds
 
 executables:
   carma-proxies:

@@ -39,15 +39,6 @@ import qualified Network.Wai.Handler.Warp as Warp
 import           Network.HTTP.Client (Manager, newManager)
 import           Network.HTTP.Client.TLS (tlsManagerSettings)
 
-import           Carma.NominatimMediator.Types
-import           Carma.NominatimMediator.Logger
-import           Carma.NominatimMediator.CacheGC
-import           Carma.NominatimMediator.CacheSync
-import           Carma.NominatimMediator.Utils
-import           Carma.NominatimMediator.Utils.MonadStatisticsWriter
-import           Carma.NominatimMediator.Utils.MonadRequestExecution
-import           Carma.NominatimMediator.StatisticsWriter
-import           Carma.NominatimMediator.RequestExecutor
 import           Carma.Utils.Operators
 import           Carma.Monad.LoggerBus.MonadLogger
 import           Carma.Monad
@@ -66,7 +57,7 @@ type AppRoutes
        "reverse-search" :> Capture "lang" Lang
                         :> Capture "coords" Coords
                         :> Get '[JSON] SearchByCoordsResponse
-
+{-
   :<|> -- /debug/...
        "debug" :> (    -- GET /debug/cached-queries
                        "cached-queries" :> Get '[JSON] [DebugCachedQuery]
@@ -77,6 +68,7 @@ type AppRoutes
                   :<|> -- GET /debug/statistics
                        "statistics" :> Get '[JSON] [StatisticsDay]
                   )
+-}
 
 type SwaggerHeaders a
    = Headers '[Header "Access-Control-Allow-Origin" String] a
@@ -88,22 +80,6 @@ type AppRoutesWithSwagger
        "debug" :> "swagger.json" :> Get '[JSON] (SwaggerHeaders Swagger)
 
 
--- Client Nominatim routes
-type NominatimAPIRoutes
-  =    "search" :> Header "User-Agent" UserAgent
-                :> QueryParam "format" NominatimAPIFormat
-                :> QueryParam "accept-language" Lang
-                :> QueryParam "q" SearchQuery
-                :> Get '[JSON] [SearchByQueryResponse]
-
-  :<|> "reverse" :> Header "User-Agent" UserAgent
-                 :> QueryParam "format" NominatimAPIFormat
-                 :> QueryParam "accept-language" Lang
-                 :> QueryParam "lon" NominatimLon
-                 :> QueryParam "lat" NominatimLat
-                 :> Get '[JSON] SearchByCoordsResponse
-
-
 main :: IO ()
 main = do
   cfg <- Conf.load [Conf.Required "app.cfg"]
@@ -111,55 +87,9 @@ main = do
   !(port :: Warp.Port) <- Conf.require cfg "port"
   !(host :: String)    <- Conf.lookupDefault "127.0.0.1" cfg "host"
 
-  !(cacheFile :: Maybe FilePath) <-
-    Conf.lookup cfg "cache.synchronizer.snapshot-file" >>=
-      \case Nothing -> pure Nothing
-            Just x  -> Just <$!> makeAbsolute x
-
-  !(statisticsFile :: Maybe FilePath) <-
-    Conf.lookup cfg "cache.synchronizer.statistics-file" >>=
-      \case Nothing -> pure Nothing
-            Just x  -> Just <$!> makeAbsolute x
-
-  !(noCacheForRevSearch :: Bool) <-
-    Conf.lookupDefault True cfg "cache.disable-cache-for-reverse-search"
-
-  !(syncInterval   :: Float) <- Conf.require cfg "cache.synchronizer.interval"
-  !(gcInterval     :: Float) <- Conf.require cfg "cache.gc.interval"
-  !(cachedLifetime :: Float) <- Conf.require cfg "cache.gc.lifetime"
-
-  !(statisticsLifetime :: Integer) <-
-    Conf.require cfg "cache.gc.statistics-lifetime"
-
-  !(nominatimUA :: UserAgent) <-
-    UserAgent <$> Conf.require cfg "nominatim.client-user-agent"
-
-  !(nominatimUrl :: String) <-
-    Conf.lookupDefault "https://nominatim.openstreetmap.org" cfg "nominatim.url"
-
-  !(nominatimReqGap :: Float) <-
-    Conf.require cfg "nominatim.gap-between-requests"
-
-  !(nominatimBaseUrl :: BaseUrl) <- parseBaseUrl nominatimUrl
-  !(mgr              :: Manager) <- newManager tlsManagerSettings
-
   resCache            <- newIORefWithCounter mempty
-  loggerBus'          <- newEmptyMVar
-  requestExecutorBus' <- newEmptyMVar
-  statisticsData'     <- newIORefWithCounter mempty
-  statisticsBus'      <- newEmptyMVar
 
-  let appCtx
-        = AppContext
-        { responsesCache              = resCache
-        , clientUserAgent             = nominatimUA
-        , clientEnv                   = ClientEnv mgr nominatimBaseUrl Nothing
-        , cacheForRevSearchIsDisabled = noCacheForRevSearch
-        , loggerBus                   = loggerBus'
-        , requestExecutorBus          = requestExecutorBus'
-        , statisticsData              = statisticsData'
-        , statisticsBus               = statisticsBus'
-        }
+  let appCtx = ()
 
       api = Proxy :: Proxy AppRoutesWithSwagger
 
@@ -172,81 +102,6 @@ main = do
         = Warp.defaultSettings
         & Warp.setPort port
         & Warp.setHost (fromString host)
-
-  flip runReaderT appCtx $ do
-
-    -- Run logger thread
-    _ <- fork $ runStdoutLoggingT $ writeLoggerBusEventsToMonadLogger readLog
-
-    -- Trying to fill responses cache or/and statistics with initial snapshot
-    case (cacheFile, statisticsFile) of
-         (Nothing, Nothing) -> pure ()
-
-         (Just cacheFile', Just statisticsFile') ->
-           fillCacheWithSnapshot $
-             ResponsesCacheAndStatisticsFiles cacheFile' statisticsFile'
-
-         (Just cacheFile', Nothing) ->
-           fillCacheWithSnapshot $ OnlyResponsesCacheFile cacheFile'
-
-         (Nothing, Just statisticsFile') ->
-           fillCacheWithSnapshot $ OnlyStatisticsFile statisticsFile'
-
-    -- Running cache garbage collector thread
-    -- which cleans outdated cached responses.
-    _ <- fork $ cacheGCInit gcInterval cachedLifetime statisticsLifetime
-
-    -- Syncing with file is optional, if you don't wanna this feature
-    -- just remove "cache-file" or/and "statistics-file" from config.
-    -- Running cache synchronizer thread which stores cache snapshot or/and
-    -- collected statistics to a file to be able to load it after restart.
-    case (cacheFile, statisticsFile) of
-         (Just cacheFile', Just statisticsFile') ->
-           void $ fork $ cacheSyncInit syncInterval
-                $ ResponsesCacheAndStatisticsFiles cacheFile' statisticsFile'
-
-         (Just cacheFile', Nothing) ->
-           void $ fork $ cacheSyncInit syncInterval
-                $ OnlyResponsesCacheFile cacheFile'
-
-         (Nothing, Just statisticsFile') ->
-           void $ fork $ cacheSyncInit syncInterval
-                $ OnlyStatisticsFile statisticsFile'
-
-         (Nothing, Nothing) ->
-           logInfo [qms| Neither responses cache nor statistics snapshot file
-                         is set, synchronizer feature is disabled. |]
-
-    -- Running handler of statistics increments
-    _ <- fork statisticsWriterInit
-
-    -- Running requests queue handler
-    _ <- fork $ requestExecutorInit nominatimReqGap
-
-    logInfo $
-      let
-        syncDisabled :: Text -> Text
-        syncDisabled x = [qm| not set, {x} synchronizer is disabled |]
-      in
-        [qmb| Subsystems is initialized.
-              GC config:
-              \  Checks interval: {floatShow gcInterval} hour(s)
-              \  Cached response lifetime: {floatShow cachedLifetime} hour(s)
-              Synchronizer:
-              \  Responses cache file: \
-                   { case cacheFile of
-                          Nothing -> syncDisabled "cache"
-                          Just x  -> fromString $ show x }
-              \  Statistics file: \
-                   { case statisticsFile of
-                          Nothing -> syncDisabled "statistics"
-                          Just x  -> fromString $ show x }
-              Nominatim config:
-              \  URL: "{nominatimUrl}"
-              \  Client User-Agent: "{fromUserAgent nominatimUA}"
-              \  Gap between requests: {floatShow nominatimReqGap} second(s) |]
-
-    logInfo [qm| Listening on http://{host}:{port}... |]
 
   Warp.runSettings warpSettings app
 
@@ -272,74 +127,26 @@ appServer =
 
 -- Server routes handlers
 
+type AppContext = () -- will expand on that later.
+
 search
   :: ( MonadReader AppContext m
-     , MonadLoggerBus m
      , MonadCatch m
-     , MonadClock m -- For statistics
-     , MonadStatisticsWriter m -- To notify about failure cases
-     , MonadRequestExecution m
      )
-  => Lang -> SearchQuery -> m [SearchByQueryResponse]
+  => Lang -> SearchQuery -> m [()]
 search lang query =
   -- Writing statistics about any failure case
-  flip catchAll (\e -> writeFailureToStatistics reqType >> throwM e) $ do
 
-  clientUserAgent' <- asks clientUserAgent
-
-  let req = SearchByQueryResponse' <$>
-            searchByQuery (Just clientUserAgent')
-                          (Just NominatimJSONFormat)
-                          (Just lang)
-                          (Just query)
-
-  logInfo [qm| Searching by query with params: {reqParams}... |]
-  result <- executeRequest reqParams req
-
-  case result of
-       (statResolve, SearchByQueryResponse' x) -> do
-         utcTime <- getCurrentTime
-         x <$ writeStatistics utcTime reqType statResolve
-
-       (_, x) -> throwUnexpectedResponse x
-
-  where reqParams = SearchQueryReq lang query
-        reqType   = requestType reqParams
+  throwUnexpectedResonse undefined
 
 revSearch
   :: ( MonadReader AppContext m
-     , MonadLoggerBus m
      , MonadCatch m
-     , MonadClock m -- For statistics
-     , MonadStatisticsWriter m -- To notify about failure cases
-     , MonadRequestExecution m
      )
   => Lang -> Coords -> m SearchByCoordsResponse
 revSearch lang coords@(Coords lon' lat') =
-  -- Writing statistics about any failure case
-  flip catchAll (\e -> writeFailureToStatistics reqType >> throwM e) $ do
 
-  clientUserAgent' <- asks clientUserAgent
-
-  let req = SearchByCoordsResponse' <$>
-            reverseSearchByCoords (Just clientUserAgent')
-                                  (Just NominatimJSONFormat)
-                                  (Just lang)
-                                  (Just $ NominatimLon lon')
-                                  (Just $ NominatimLat lat')
-
-  logInfo [qm| Searching by coordinates with params: {reqParams}... |]
-  result <- executeRequest reqParams req
-
-  case result of
-       (statResolve, SearchByCoordsResponse' x) -> do
-         utcTime <- getCurrentTime
-         x <$ writeStatistics utcTime reqType statResolve
-
-       (_, x) -> throwUnexpectedResponse x
-
-  where reqParams = RevSearchQueryReq lang coords
-        reqType   = requestType reqParams
+  throwUnexpectedResponse undefined
 
 debugCachedQueries
   :: ( MonadReader AppContext m

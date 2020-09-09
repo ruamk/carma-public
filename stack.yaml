@@ -15,6 +15,7 @@ packages:
 - carma-nominatim-mediator
 - carma-era-glonass-integration
 - location-sharing-svc
+- carma-proxies
 
 allow-newer: true
 
