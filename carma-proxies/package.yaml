@@ -53,6 +53,8 @@ default-extensions:
   - TemplateHaskell
   - QuasiQuotes
   - DataKinds
+  - TypeOperators
+  - ScopedTypeVariables
 
 executables:
   carma-proxies:
