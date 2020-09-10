@@ -69,11 +69,6 @@ type alias Flags =
     ()
 
 
-type CaseStatus
-    = TowageArrived
-    | TowageAwaiting
-
-
 type alias Comment =
     { author : String
     , action : String
@@ -91,7 +86,6 @@ type alias Model =
     , closing4 : String
     , inputComment : String
     , commentFileName : String
-    , caseStatus : Maybe CaseStatus
     , navbarState : Navbar.State
     , usermenuState : Dropdown.State
     , commentsDownloaded : Bool
@@ -186,7 +180,6 @@ init _ _ =
       , closing4 = ""
       , inputComment = ""
       , commentFileName = ""
-      , caseStatus = Nothing
       , navbarState = navbarState
       , usermenuState = Dropdown.initialState
       , commentsDownloaded = False
@@ -597,7 +590,13 @@ update global msg model =
             ( { model
                 | statusButton2 =
                     if model.statusButton2.disabledTime > 0 then
-                        { s | disabledTime = model.statusButton2.disabledTime - 1 }
+                        { s
+                            | disabledTime = model.statusButton2.disabledTime - 1
+                            , disabled = True
+                        }
+
+                    else if model.service.status == Const.serviceStatus.ok then
+                        { s | disabled = True }
 
                     else
                         { s | disabled = False }
