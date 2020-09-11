@@ -59,7 +59,6 @@ connectToCase url caseId =
         chatUrl =
             protocol
                 ++ url.host
-                ++ port_
                 ++ "/chat/Case:"
                 ++ String.fromInt caseId
     in
