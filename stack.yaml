@@ -31,6 +31,8 @@ extra-deps:
 - snaplet-postgresql-simple-1.2.0.0
 - stm-lifted-2.5.0.0
 - xmlhtml-0.2.5.2
+- github: ruamk/autoteka
+  commit: 442adfaa25b17e03fd073887c8fbd54e68b5c777
 - git: https://github.com/ruamk/dmcc.git
   commit: afdc7aefdddb644cdcdcfa69262129b698493f04
 - git: https://github.com/ruamk/hs-weather-api.git
