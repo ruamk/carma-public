@@ -163,7 +163,7 @@ data Case = Case
   , car_class
     :: F (Maybe (IdentI CarClass)) "car_class" "Класс автомобиля"
   , car_detailsFromAutoteka
-    :: EF (Maybe Aeson.Value) "car_detailsFromAutoteka" "Информация от Автотеки"
+    :: EF Aeson.Value "car_detailsFromAutoteka" "Информация от Автотеки"
   , vinChecked
     :: F (Maybe (IdentI ContractCheckStatus)) "vinChecked" "Участие в программе"
   , city -- Also known as "Город ближайший к месту поломки"

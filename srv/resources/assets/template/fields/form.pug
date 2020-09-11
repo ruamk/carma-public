@@ -1165,10 +1165,10 @@ mixin infoField(name, value)
       .input-group.input-group-sm
         input.form-control(
           readonly=true,
-          data-bind=`value: car_detailsFromAutoteka().response.r_data.${value}`)
+          data-bind=`value: car_detailsFromAutoteka().report.r_data.${value}`)
 
 .field-template#detailsFromAutoteka-field-template
-  // ko if: !car_detailsFromAutoteka() && car_plateNum()
+  // ko if: !car_detailsFromAutoteka().report && car_plateNum()
   .form-group.has-feedback
     label.col-sm-4.control-label
       // ko if: searchInAutotekaBtn.inProgress()
@@ -1185,15 +1185,19 @@ mixin infoField(name, value)
         | Поискать в Автотеке по госномеру
   // /ko
 
-  // ko if: car_detailsFromAutoteka
+  // ko if: car_detailsFromAutoteka().error
+  .form-group.has-feedback
+    .col-sm-4
+    .col-sm-8
+      span.label.label-danger Поиск завершился с ошибкой
+  // /ko
+
+  // ko if: car_detailsFromAutoteka().report
   .form-group.has-feedback
     .col-sm-4
     .col-sm-8
       h4
         | Результаты поиска в Автотеке
-  // /ko
-
-  // ko if: car_detailsFromAutoteka
   +infoField("VIN",                "head.vin")
   +infoField("Марка",              "equipment.brand.value")
   +infoField("Модель",             "equipment.model.value")

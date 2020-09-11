@@ -8,7 +8,9 @@ import           Prelude hiding ((.))
 import           BasicPrelude
 import qualified Data.Aeson as Aeson
 import qualified Data.Configurator as Cfg
+import qualified Data.Text as T
 
+import           Control.Exception.Lifted (try)
 import           Control.Concurrent (threadDelay, forkIO)
 import           Control.Concurrent.MVar
 import           Control.Monad.State (gets)
@@ -20,7 +22,7 @@ import qualified Servant.Client as Servant
 import           Snap.Core
 import           Snap.Snaplet
 import           Snap.Snaplet.Auth (AuthManager)
-import           Snap.Snaplet.PostgresqlSimple (Postgres, execute, query)
+import           Snap.Snaplet.PostgresqlSimple (Postgres, query)
 import           Snaplet.Auth.Class
 import           Snaplet.Auth.PGUsers (currentUserMetaId)
 
@@ -28,6 +30,8 @@ import           Database.PostgreSQL.Simple.SqlQQ
 import           Carma.Utils.Snap (getIntParam, writeJSON, withLens)
 
 import qualified Autoteka as Att
+
+import           Util (syslogJSON, logExceptions, Priority(Info, Error))
 
 
 
@@ -56,8 +60,7 @@ autotekaInit auth db = makeSnaplet "autoteka" "Car details searching" Nothing $ 
   ss <- liftIO $ startTokenRefreshThread env clientId clientSecret
 
   addRoutes
-    [ ("/report/:caseId", method POST getReport)
-    ]
+    [("/report/:caseId", method POST getReport)]
   pure $ Autoteka auth db env ss
 
 
@@ -72,12 +75,88 @@ startTokenRefreshThread env clientId clientSecret = do
   ss <- newEmptyMVar
   void $ forkIO $ forever
     $ getToken >>= \case
-      Left _err -> threadDelay (60 * seconds) -- 1 min
+      Left err -> do
+        syslogJSON Error "Autoteka"
+          [("msg", "Token refresh failed")
+          ,("err", toJsonStr err)
+          ]
+        threadDelay (60 * seconds) -- 1 min
       Right s' -> do
+        syslogJSON Info "Autoteka" [("msg", "Token refresh ok")]
         emp <- isEmptyMVar ss
         if emp then putMVar ss s' else void $ swapMVar ss s'
         threadDelay (20 * 60 * seconds) -- 20 min
   return ss
+
+
+
+getReport :: Handler b (Autoteka b) ()
+getReport = do
+  Just caseId <- getIntParam "caseId"
+  Just uid <- currentUserMetaId
+  syslogJSON Info "Autoteka" [("caseId", toJsonStr caseId)]
+
+  [(reqId, plateNum)] <- withLens db $ query
+    [sql|
+      insert into "AutotekaRequest"
+        (caseId, userId, plateNumber)
+        select id, ?, car_plateNum from casetbl where id = ?
+        returning id, plateNumber
+    |]
+    (uid, caseId)
+
+  report <- try
+    $ logExceptions "Autoteka"
+    $ getReport' plateNum
+
+  let (rep, err) = case report of
+        Right res -> (Just res, Nothing)
+        Left ex ->
+          ( Nothing
+          , Just $ Aeson.object
+            [("msg", toJsonStr (ex :: SomeException))]
+          )
+
+  [[response]] <- withLens db $ query
+    [sql|
+      update "AutotekaRequest" r
+        set report = ?, error = ?, mtime = now()
+        where id = ?
+        returning row_to_json(r.*)
+    |]
+    (rep, err, reqId :: Int)
+  writeJSON (response :: Aeson.Value)
+
+
+-- This may take some time to execute (up to several minutes) and we expect that
+-- session `ss` can't suddenly expire during the execution. To ensure this we
+-- refresh session long before it expires.
+getReport' :: Text -> Handler b (Autoteka b) Aeson.Value
+getReport' plateNum = runAPI $ \ss -> do
+  pid <- Att.createPreview ss $ Att.RegNumber plateNum
+  syslogJSON Info "Autoteka" [("previewId", toJsonStr pid)]
+
+  p <- loop (1 * seconds)
+    (not . isFinal . Att.p_status)
+    (Att.getPreview ss pid)
+
+  syslogJSON Info "Autoteka"
+    [("preview", Aeson.toJSON p)]
+
+  rep <- Att.createReport ss (Att.p_previewId p)
+  syslogJSON Info "Autoteka" [("reportId", toJsonStr rep)]
+
+  r <- loop (1 * seconds)
+    (not . isFinal . Att.r_status)
+    (Att.getReport ss $ Att.r_reportId rep)
+  return $ Aeson.toJSON r
+
+
+isFinal :: Text -> Bool
+isFinal s = s /= "processing" && s /= "wait"
+
+toJsonStr :: Show s => s -> Aeson.Value
+toJsonStr = Aeson.String . T.pack .show
 
 
 runAPI
@@ -86,54 +165,8 @@ runAPI
 runAPI f = do
   ss <- gets session >>= liftIO . readMVar
   env <- gets clientEnv
-  -- FIXME: catch err
   Right res <- liftIO $ Servant.runClientM (f ss) env
   return res
-
-
-getReport :: Handler b (Autoteka b) ()
-getReport = do
-  Just caseId <- getIntParam "caseId"
-  Just uid <- currentUserMetaId
-
-  [[plateNum]] <- withLens db $ query
-    [sql|
-      select car_plateNum from casetbl where id = ?
-    |]
-    [caseId]
-
-  [[reqId]] <- withLens db $ query
-    [sql|
-      insert into "AutotekaRequest"
-        (caseId, userId, plateNumber)
-        values (?, ?, ?)
-        returning id
-    |]
-    (caseId, uid, plateNum :: Text)
-
-  p <- runAPI $ \ss -> do
-    pid <- Att.createPreview ss $ Att.RegNumber plateNum
-    loop (1 * seconds)
-      (\p -> Att.p_status p == "processing")
-      (Att.getPreview ss pid)
-
-  r <- runAPI $ \ss -> do
-    rep <- Att.createReport ss (Att.p_previewId p)
-    loop (1 * seconds)
-      (\r -> Att.r_status r == "processing")
-      (Att.getReport ss $ Att.r_reportId rep)
-
-  let response = Aeson.toJSON r
-  void $ withLens db $ execute
-    [sql|
-      insert into "AutotekaResponse"
-        (requestId, caseId, response)
-        values (?, ?, ?)
-    |]
-    (reqId :: Int, caseId, response)
-  writeJSON $ Aeson.object
-    [ ("response",  response)
-    ]
 
 
 seconds :: Int

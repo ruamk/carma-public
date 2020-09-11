@@ -115,15 +115,18 @@ fillAutoteka p caseId c = do
   res <- PG.query c
     [sql|
       select row_to_json(r.*)
-        from "AutotekaResponse" r
+        from "AutotekaRequest" r
         where caseId = ?
         order by ctime desc
         limit 1
     |] [caseId]
 
   let x = case res of
-            [[jsn]] -> Just jsn
-            _ -> Nothing
+            [[jsn]] -> jsn
+            _ -> Aeson.object
+              [("report", Aeson.Null)
+              ,("error", Aeson.Null)
+              ]
   return $ P.put car_detailsFromAutoteka x p
 
 

@@ -385,7 +385,7 @@ module.exports =
         btn.inProgress(true)
         start = new Date()
         update = -> btn.elapsedTime(((new Date() - start) / 1000).toFixed(1))
-        int = setInterval update, 1000
+        int = setInterval update, 600
         fetch("/autoteka/report/#{parseInt kvm.id()}", {
           method: "POST"
           headers:
@@ -394,5 +394,10 @@ module.exports =
           .then((r) ->
             btn.inProgress(false)
             kvm.car_detailsFromAutoteka(r)
+            clearInterval int
+          )
+          .catch((err) ->
+            btn.inProgress(false)
+            kvm.car_detailsFromAutoteka({error: err})
             clearInterval int
           )
