@@ -10,22 +10,27 @@
 
 module Main (main) where
 
-import qualified Data.Configurator as Conf
-import           Data.String (fromString)
-import           Data.Aeson (ToJSON)
-import           Data.Proxy
-import           Data.Text (Text)
-
-import           Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
+import           Control.Lens
+import           Control.Monad.Reader (MonadReader, ReaderT, runReaderT, ask)
 import           Control.Monad.Catch (MonadCatch)
 import           Control.Monad.Trans.Control (MonadBaseControl)
 import           Control.Monad.Base (MonadBase)
-import           Control.Monad.IO.Class (MonadIO)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+
+
+import           Data.Aeson
+import           Data.Aeson.Lens (key)
+import qualified Data.Configurator as Conf
+import           Data.Proxy
+import qualified Data.Map as Map -- to use its JSON encoding.
+import           Data.String (fromString)
+import           Data.Text (Text)
+import           Data.Text.Encoding (encodeUtf8)
 
 import           Servant
 import qualified Network.Wai.Handler.Warp as Warp
 
-import           Carma.Utils.Operators
+import qualified Network.Wreq as WReq
 
 
 -- Server routes
@@ -99,9 +104,20 @@ type AppContext = Text -- will expand on that later.
 search
   :: ( MonadReader AppContext m
      , MonadCatch m
+     , MonadIO m
      )
   => SearchQuery -> m SearchResponse
-search _query = return $ SearchResponse ["nada", "nope", "нет"]
+search (SearchQuery query) = do
+  token <- ask
+  let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
+  r <- liftIO $ WReq.postWith opts
+                                   "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
+                                   (toJSON $ Map.fromList [("query" :: Text, query)])
+  let body = r ^. WReq.responseBody
+  case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
+    Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
+    Just (Just (Error err)) -> error $ "invalid json parsing: "++show err
+    _ -> error "can't decode body"
 
 newtype SearchQuery = SearchQuery Text
   deriving (Eq, Ord, Show)
