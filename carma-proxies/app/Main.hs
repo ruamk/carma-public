@@ -38,7 +38,7 @@ type AppRoutes
   =    -- Search coordinates by search query.
        -- Example: GET /search/ru-RU,ru/foobarbaz
        "search":> Capture "query" SearchQuery
-                :> Get '[JSON] SearchResponse
+                :> Post '[JSON] SearchResponse
 
 {-
   :<|> -- Search addresses by coordinates
@@ -65,7 +65,7 @@ main = do
 
   !(port :: Warp.Port) <- Conf.require cfg "port"
   !(host :: String)    <- Conf.lookupDefault "127.0.0.1" cfg "host"
-  !(token :: Text)     <- Conf.require cfg "dadata_token"
+  !(token :: Text)     <- Conf.require cfg "dadata-token"
 
   let appCtx = token
 
@@ -109,10 +109,13 @@ search
   => SearchQuery -> m SearchResponse
 search (SearchQuery query) = do
   token <- ask
+  liftIO $ putStrLn $ "token: "++show token
+  liftIO $ putStrLn $ "query: "++show query
   let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
   r <- liftIO $ WReq.postWith opts
                                    "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
                                    (toJSON $ Map.fromList [("query" :: Text, query)])
+  liftIO $ putStrLn $ "dadata's response: "++show r
   let body = r ^. WReq.responseBody
   case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
