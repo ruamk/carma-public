@@ -37,7 +37,7 @@ import qualified Network.Wreq as WReq
 type AppRoutes
   =    -- Search coordinates by search query.
        -- Example: GET /search/ru-RU,ru/foobarbaz
-       "search":> Capture "query" SearchQuery
+       "search":> QueryParam' '[Required] "query" SearchQuery
                 :> Post '[JSON] SearchResponse
 
 {-
@@ -128,8 +128,8 @@ newtype SearchQuery = SearchQuery Text
 instance FromHttpApiData SearchQuery where
   parseQueryParam = Right . SearchQuery
 
-newtype SearchResponse = SearchResponse [Text]
-  deriving (Eq, Ord, Show)
+newtype SearchResponse = SearchResponse Value
+  deriving (Show)
 
 deriving instance ToJSON SearchResponse
 
