@@ -586,7 +586,7 @@ viewSearchPanel model =
             ]
         , Grid.row [ Row.attrs [ Spacing.pt3, Flex.row ] ]
             [ Grid.col [ Col.attrs [ Flex.alignSelfCenter ] ]
-                [ h4 [] [ text "Дата звонка:" ] ]
+                [ h4 [] [ text "Дата подачи:" ] ]
             ]
         , Grid.row [ Row.attrs [ Flex.row ] ]
             [ Grid.col [ Col.attrs [ Flex.alignSelfCenter ] ]

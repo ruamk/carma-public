@@ -262,14 +262,18 @@ getServices uid = do
   let q v = "'" ++ T.unpack v ++ "'"
       condition :: String =
           case (sId, callDateStart, callDateEnd) of
-               (Just i, _, _)      -> "AND servicetbl.parentid = " ++ show i
+               (Just i, _, _)      ->
+                   "AND servicetbl.parentid = " ++ show i
 
-               (_, Just s, Just e) -> "AND casetbl.calldate BETWEEN " ++ q s ++
-                                     " AND " ++ q e
+               (_, Just s, Just e) ->
+                   "AND times_expectedservicestart BETWEEN " ++ q s ++
+                   " AND " ++ q e
 
-               (_, Just s, _)      -> "AND casetbl.calldate >= " ++ q s
+               (_, Just s, _)      ->
+                   "AND times_expectedservicestart >= " ++ q s
 
-               (_, _, Just e)      -> "AND casetbl.calldate <= " ++ q e
+               (_, _, Just e)      ->
+                   "AND times_expectedservicestart <= " ++ q e
 
                _                   -> ""
 
