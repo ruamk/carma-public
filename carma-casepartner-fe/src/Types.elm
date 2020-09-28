@@ -154,9 +154,5 @@ type alias CaseComment =
     }
 
 
-type CaseComments
-    = List CaseComment
-
-
 type alias Dictionary =
     Dict.Dict String String

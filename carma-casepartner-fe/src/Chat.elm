@@ -21,7 +21,7 @@ import Json.Decode
         )
 import Json.Decode.Pipeline exposing (required)
 import Ports
-import Url as Url exposing (Url)
+import Url exposing (Url)
 
 
 type alias ChatUser =

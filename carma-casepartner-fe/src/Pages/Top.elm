@@ -10,6 +10,7 @@ import Html exposing (h1, text)
 import Html.Attributes exposing (attribute, style)
 import Page exposing (Document, Page)
 import Time
+import Url
 
 
 type alias Flags =
@@ -36,8 +37,9 @@ page =
 
 
 init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
-init model flags =
+init model _ =
     let
+        url : Url.Url
         url =
             model.url
     in

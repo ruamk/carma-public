@@ -6,7 +6,6 @@ import Bootstrap.Button as Button
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
-import Bootstrap.Form.InputGroup as InputGroup
 import Bootstrap.Form.Select as Select
 import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
@@ -22,8 +21,6 @@ import Const
 import Dict
 import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
-import FontAwesome.Solid as Icon
-import FontAwesome.Styles as Icon
 import Generated.Route as Route
 import Global
 import Html
@@ -49,6 +46,7 @@ import Html.Attributes
         )
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
+import ISO8601
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
 import Time
@@ -78,6 +76,20 @@ type alias Comment =
     }
 
 
+type alias StatusButton1 =
+    { disabled : Bool
+    , message : Maybe Msg
+    }
+
+
+type alias StatusButton2 =
+    { label : String
+    , disabled : Bool
+    , disabledTime : Int
+    , message : Maybe Msg
+    }
+
+
 type alias Model =
     { service : ServiceDescription
     , closing1 : String
@@ -90,16 +102,8 @@ type alias Model =
     , usermenuState : Dropdown.State
     , commentsDownloaded : Bool
     , comments : List CaseComment
-    , statusButton1 :
-        { disabled : Bool
-        , message : Maybe Msg
-        }
-    , statusButton2 :
-        { label : String
-        , disabled : Bool
-        , disabledTime : Int
-        , message : Maybe Msg
-        }
+    , statusButton1 : StatusButton1
+    , statusButton2 : StatusButton2
     , modalAlertVisibility : Modal.Visibility
     , latenessVisibility : Modal.Visibility
     , latenessHours : String
@@ -255,6 +259,7 @@ update global msg model =
             case result of
                 Err _ ->
                     let
+                        messageToast : MessageToast Msg
                         messageToast =
                             model.messageToast
                                 |> MessageToast.danger
@@ -270,6 +275,7 @@ update global msg model =
 
                 Ok service ->
                     let
+                        statusButton1 : StatusButton1
                         statusButton1 =
                             if service.status == Const.serviceStatus.ordered then
                                 { disabled = False
@@ -281,6 +287,7 @@ update global msg model =
                                 , message = Nothing
                                 }
 
+                        statusButton2 : StatusButton2
                         statusButton2 =
                             if service.status == Const.serviceStatus.ordered then
                                 { label = "На месте"
@@ -316,6 +323,7 @@ update global msg model =
             case result of
                 Err _ ->
                     let
+                        messageToast : MessageToast Msg
                         messageToast =
                             model.messageToast
                                 |> MessageToast.danger
@@ -419,6 +427,7 @@ update global msg model =
             case result of
                 Err _ ->
                     let
+                        messageToast : MessageToast Msg
                         messageToast =
                             model.messageToast
                                 |> MessageToast.danger
@@ -584,6 +593,7 @@ update global msg model =
 
         Tick _ ->
             let
+                s : StatusButton2
                 s =
                     model.statusButton2
             in
@@ -639,6 +649,7 @@ update global msg model =
 
                 Ok unknown ->
                     let
+                        messageToast : MessageToast Msg
                         messageToast =
                             model.messageToast
                                 |> MessageToast.warning
@@ -654,6 +665,7 @@ update global msg model =
 
                 Err _ ->
                     let
+                        messageToast : MessageToast Msg
                         messageToast =
                             model.messageToast
                                 |> MessageToast.danger
@@ -828,8 +840,8 @@ viewModalLatenessAsk model =
         -}
         reasons : List (Select.Item msg)
         reasons =
-            [ ( "", "" ) ]
-                ++ Dict.toList model.latenessReasons
+            ( "", "" )
+                :: Dict.toList model.latenessReasons
                 |> List.sortBy Tuple.second
                 |> List.map (\( v, k ) -> Select.item [ value v ] [ text k ])
     in
@@ -910,14 +922,6 @@ viewModalLatenessAsk model =
         |> Modal.view model.latenessVisibility
 
 
-nameStyle =
-    [ class "name" ]
-
-
-valueStyle =
-    [ class "value" ]
-
-
 asUl : Maybe (Dict.Dict String Bool) -> Html Msg
 asUl l =
     case l of
@@ -939,15 +943,19 @@ viewCasePanel model =
 viewCaseVerbose : Model -> Html Msg
 viewCaseVerbose model =
     let
+        c : ServiceDescription
         c =
             model.service
 
+        name : String -> Html Msg
         name t =
-            div nameStyle [ text t ]
+            div [ class "name" ] [ text t ]
 
+        value : Html Msg -> Html Msg
         value t =
-            div valueStyle [ t ]
+            div [ class "value" ] [ t ]
 
+        field : String -> Html Msg -> Html Msg
         field n v =
             Grid.row [ Row.attrs [ Spacing.p1 ] ]
                 [ Grid.col [ Col.sm5 ]
@@ -956,6 +964,7 @@ viewCaseVerbose model =
                     [ value v ]
                 ]
 
+        optionalField : String -> String -> Html Msg
         optionalField n v =
             if String.isEmpty v then
                 br [] []
@@ -963,9 +972,11 @@ viewCaseVerbose model =
             else
                 field n <| text v
 
+        caseId : String
         caseId =
             formatServiceSerial model
 
+        vin : String
         vin =
             case c.vin of
                 Just v ->
@@ -974,6 +985,7 @@ viewCaseVerbose model =
                 Nothing ->
                     "отсутствует"
 
+        formatTime_ : Maybe ISO8601.Time -> String
         formatTime_ t =
             case t of
                 Just tt ->
@@ -1042,6 +1054,7 @@ viewCaseVerbose model =
                     , Grid.col [ Col.attrs [ class "text-center" ] ]
                         [ div [] [ text "Изменить статус" ]
                         , let
+                            width : Html.Attribute Msg
                             width =
                                 style "width" "150px"
                           in
@@ -1222,14 +1235,14 @@ viewDetails { details } =
                     ]
 
                 Just (CaseCommentAvayaEvent { aeType, aeCall, aeInterLocutors }) ->
-                    [ field "Событие AVAYA" aeType ]
-                        ++ (if List.isEmpty aeInterLocutors then
-                                []
+                    [ field "Событие AVAYA" aeType
+                    , if List.isEmpty aeInterLocutors then
+                        []
 
-                            else
-                                [ field "Второй абонент" <| String.join " " aeInterLocutors ]
-                           )
-                        ++ [ field "Идентификатор звонка" aeCall ]
+                      else
+                        field "Второй абонент" <| String.join " " aeInterLocutors
+                    , field "Идентификатор звонка" aeCall
+                    ]
 
                 Just (CaseCommentCall { callType }) ->
                     [ field "Звонок" callType ]
@@ -1305,7 +1318,7 @@ viewLog model =
                                     ""
                     in
                     Alert.simpleLight [] <|
-                        [ Grid.row []
+                        Grid.row []
                             [ Grid.col [ Col.sm4 ]
                                 [ text dt ]
                             , Grid.col
@@ -1316,8 +1329,7 @@ viewLog model =
                                     [ text <| Maybe.withDefault "" l.who ]
                                 ]
                             ]
-                        ]
-                            ++ viewDetails l
+                            :: viewDetails l
                 )
                 model.comments
 

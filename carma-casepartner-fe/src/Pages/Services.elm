@@ -161,6 +161,7 @@ update _ msg model =
             case result of
                 Err _ ->
                     let
+                        messageToast : MessageToast Msg
                         messageToast =
                             model.messageToast
                                 |> MessageToast.danger
@@ -191,6 +192,7 @@ update _ msg model =
             case result of
                 Err _ ->
                     let
+                        messageToast : MessageToast Msg
                         messageToast =
                             model.messageToast
                                 |> MessageToast.danger
@@ -215,6 +217,7 @@ update _ msg model =
             case t of
                 Current ->
                     let
+                        currentCasesPage : Int
                         currentCasesPage =
                             if model.currentCasesPage > 1 then
                                 model.currentCasesPage - 1
@@ -231,6 +234,7 @@ update _ msg model =
 
                 Closing ->
                     let
+                        closingCasesPage : Int
                         closingCasesPage =
                             if model.closingCasesPage > 1 then
                                 model.closingCasesPage - 1
@@ -249,6 +253,7 @@ update _ msg model =
             case t of
                 Current ->
                     let
+                        currentCasesPage : Int
                         currentCasesPage =
                             if
                                 model.currentCasesPage
@@ -271,6 +276,7 @@ update _ msg model =
 
                 Closing ->
                     let
+                        closingCasesPage : Int
                         closingCasesPage =
                             if
                                 model.closingCasesPage
@@ -413,30 +419,37 @@ casesTableAttrs =
     ]
 
 
+hC : Table.CellOption Msg
 hC =
     Table.cellAttr <| class "text-center"
 
 
+vC : Table.CellOption Msg
 vC =
     Table.cellAttr <| class "align-middle"
 
 
+thW : Int -> Table.CellOption Msg
 thW w =
     Table.cellAttr <| attribute "width" (String.fromInt w ++ "%")
 
 
+cellAttrDanger : Table.CellOption msg
 cellAttrDanger =
     Table.cellAttr <| class "table-danger"
 
 
+cellAttrWarning : Table.CellOption msg
 cellAttrWarning =
     Table.cellAttr <| class "table-warning"
 
 
+cellAttrSuccess : Table.CellOption msg
 cellAttrSuccess =
     Table.cellAttr <| class "table-success"
 
 
+cellAttrInfo : Table.CellOption msg
 cellAttrInfo =
     Table.cellAttr <| class "table-info"
 
@@ -454,6 +467,7 @@ colorOfPay payType =
             []
 
 
+hideMobile : Table.CellOption msg
 hideMobile =
     Table.cellAttr <| class "d-none d-md-table-cell"
 
@@ -539,6 +553,7 @@ viewCurrentCases model =
                     { options = casesTableAttrs
                     , thead =
                         let
+                            ha : List (Table.CellOption Msg)
                             ha =
                                 [ hC, vC ]
                         in
@@ -609,6 +624,7 @@ viewClosingCases model =
                     { options = casesTableAttrs
                     , thead =
                         let
+                            ha : List (Table.CellOption Msg)
                             ha =
                                 [ hC, vC ]
                         in
