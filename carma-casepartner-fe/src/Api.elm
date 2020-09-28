@@ -1,5 +1,6 @@
 module Api exposing
-    ( Session
+    ( SearchCondition(..)
+    , Session
     , decodeSession
     , getLatenessReasons
     , getLatestClosingCases
@@ -250,14 +251,41 @@ getLatestClosingCases message =
         |> HttpBuilder.request
 
 
-getServices : Int -> Int -> (Result Http.Error (List ServiceInfo) -> msg) -> Cmd msg
-getServices offset limit message =
+type SearchCondition
+    = SearchAll
+    | SearchServiceId String
+    | SearchCallDate ( String, String )
+
+
+getServices : SearchCondition -> Int -> Int -> (Result Http.Error (List ServiceInfo) -> msg) -> Cmd msg
+getServices condition offset limit message =
     let
         postBody : List ( String, String )
         postBody =
-            [ ( "offset", String.fromInt offset )
-            , ( "limit", String.fromInt limit )
-            ]
+            (case condition of
+                SearchAll ->
+                    []
+
+                SearchServiceId i ->
+                    [ ( "serviceId", i ) ]
+
+                SearchCallDate ( s, e ) ->
+                    (if String.isEmpty s then
+                        []
+
+                     else
+                        [ ( "callDateStart", s ) ]
+                    )
+                        ++ (if String.isEmpty e then
+                                []
+
+                            else
+                                [ ( "callDateEnd", e ) ]
+                           )
+            )
+                ++ [ ( "offset", String.fromInt offset )
+                   , ( "limit", String.fromInt limit )
+                   ]
     in
     HttpBuilder.post apiGetServices
         |> HttpBuilder.withUrlEncodedBody postBody
@@ -506,16 +534,16 @@ postPartnerDelay service { minutes, reason, comment } message =
     let
         params : List ( String, String )
         params =
-            [ ( "minutes", String.fromInt minutes )
-            , ( "reason", String.fromInt reason )
-            ]
-                ++ (case comment of
-                        Just comment_ ->
-                            [ ( "comment", comment_ ) ]
+            (case comment of
+                Just comment_ ->
+                    [ ( "comment", comment_ ) ]
 
-                        Nothing ->
-                            []
-                   )
+                Nothing ->
+                    []
+            )
+                ++ [ ( "minutes", String.fromInt minutes )
+                   , ( "reason", String.fromInt reason )
+                   ]
 
         expect : (Result Http.Error Int -> msg) -> Http.Expect msg
         expect toMsg =

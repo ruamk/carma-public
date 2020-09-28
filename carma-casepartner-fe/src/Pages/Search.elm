@@ -9,12 +9,14 @@
 -}
 
 
-module Pages.SearchCases exposing (Flags, Model, Msg, page)
+module Pages.Search exposing (Flags, Model, Msg, page)
 
 import Api
 import Bootstrap.Button as Button
 import Bootstrap.ButtonGroup as ButtonGroup
 import Bootstrap.Dropdown as Dropdown
+import Bootstrap.Form.Input as Input
+import Bootstrap.Form.InputGroup as InputGroup
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
@@ -23,30 +25,26 @@ import Bootstrap.Table as Table
 import Bootstrap.Text as Text
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Spacing as Spacing
+import FontAwesome.Attributes as Icon
+import FontAwesome.Icon as Icon
+import FontAwesome.Solid as Icon
+import FontAwesome.Styles as Icon
 import Generated.Route as Route
 import Global
 import Html
     exposing
         ( Html
-        , b
         , br
         , div
-        , h2
         , h3
-        , hr
-        , li
-        , p
+        , h4
         , text
-        , ul
         )
 import Html.Attributes
     exposing
-        ( action
-        , attribute
+        ( attribute
         , class
-        , placeholder
         , style
-        , value
         )
 import Html.Events exposing (onClick)
 import Http
@@ -59,11 +57,6 @@ import Ui
 pageSize : Int
 pageSize =
     20
-
-
-maxServices : Int
-maxServices =
-    pageSize * 100
 
 
 spinnerSize : String
@@ -82,20 +75,31 @@ type alias Model =
     , showSpinner : Bool
     , services : List ServiceInfo
     , servicesPage : Int
+    , serviceId : String
+    , startDate : String
+    , endDate : String
+    , searchCondition : Api.SearchCondition
     }
 
 
 type Msg
     = NavbarMsg Navbar.State
+    | ClearServiceId
+    | ClearStartDate
+    | ClearEndDate
+    | InputServiceId String
+    | InputStartDate String
+    | InputEndDate String
     | Logout
-    | UsermenuMsg Dropdown.State
+    | Search
     | Services
     | Service Int
-    | UpdateCustomMessageToast (MessageToast Msg)
     | ServicesDownloaded (Result Http.Error (List ServiceInfo))
     | ServicesFirstPage
     | ServicesPrevPage
     | ServicesNextPage
+    | UpdateCustomMessageToast (MessageToast Msg)
+    | UsermenuMsg Dropdown.State
 
 
 page : Page Flags Model Msg
@@ -109,7 +113,7 @@ page =
 
 
 init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
-init global flags =
+init _ _ =
     let
         ( navbarState, navbarCmd ) =
             Navbar.initialState NavbarMsg
@@ -124,6 +128,10 @@ init global flags =
       , showSpinner = True
       , services = []
       , servicesPage = 1
+      , serviceId = ""
+      , startDate = ""
+      , endDate = ""
+      , searchCondition = Api.SearchAll
       }
     , navbarCmd
     , Cmd.none
@@ -131,16 +139,65 @@ init global flags =
 
 
 update : Global.Model -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
-update global msg model =
+update _ msg model =
     case msg of
         -- Entry point
         NavbarMsg state ->
             ( { model | navbarState = state }
-            , Api.getServices ((model.servicesPage - 1) * pageSize)
+            , Api.getServices model.searchCondition
+                ((model.servicesPage - 1) * pageSize)
                 pageSize
                 ServicesDownloaded
             , Cmd.none
             )
+
+        ClearServiceId ->
+            ( { model | serviceId = "" }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        ClearStartDate ->
+            ( { model | startDate = "" }, Cmd.none, Cmd.none )
+
+        ClearEndDate ->
+            ( { model | endDate = "" }, Cmd.none, Cmd.none )
+
+        InputServiceId s ->
+            -- Only positive integer value is valid
+            let
+                serviceId : Maybe Int
+                serviceId =
+                    String.toInt s
+            in
+            ( { model
+                | serviceId =
+                    case serviceId of
+                        Just i ->
+                            if i > 0 then
+                                s
+
+                            else
+                                model.serviceId
+
+                        _ ->
+                            if String.isEmpty s then
+                                s
+
+                            else
+                                model.serviceId
+                , startDate = ""
+                , endDate = ""
+              }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        InputStartDate s ->
+            ( { model | startDate = s }, Cmd.none, Cmd.none )
+
+        InputEndDate s ->
+            ( { model | endDate = s }, Cmd.none, Cmd.none )
 
         Logout ->
             ( model
@@ -151,6 +208,36 @@ update global msg model =
         UsermenuMsg state ->
             ( { model | usermenuState = state }
             , Cmd.none
+            , Cmd.none
+            )
+
+        Search ->
+            let
+                searchCondition : Api.SearchCondition
+                searchCondition =
+                    if String.isEmpty model.serviceId then
+                        case ( model.startDate, model.endDate ) of
+                            ( "", "" ) ->
+                                Api.SearchAll
+
+                            _ ->
+                                Api.SearchCallDate
+                                    ( model.startDate
+                                    , model.endDate
+                                    )
+
+                    else
+                        Api.SearchServiceId model.serviceId
+            in
+            ( { model
+                | servicesPage = 1
+                , searchCondition = searchCondition
+              }
+            , Api.getServices
+                searchCondition
+                0
+                pageSize
+                ServicesDownloaded
             , Cmd.none
             )
 
@@ -179,6 +266,7 @@ update global msg model =
             case result of
                 Err _ ->
                     let
+                        messageToast : MessageToast Msg
                         messageToast =
                             model.messageToast
                                 |> MessageToast.danger
@@ -203,11 +291,14 @@ update global msg model =
 
         ServicesFirstPage ->
             let
+                servicesPage : Int
                 servicesPage =
                     1
             in
             ( { model | servicesPage = servicesPage }
-            , Api.getServices ((servicesPage - 1) * pageSize)
+            , Api.getServices
+                model.searchCondition
+                ((servicesPage - 1) * pageSize)
                 pageSize
                 ServicesDownloaded
             , Cmd.none
@@ -215,6 +306,7 @@ update global msg model =
 
         ServicesPrevPage ->
             let
+                servicesPage : Int
                 servicesPage =
                     if model.servicesPage > 1 then
                         model.servicesPage - 1
@@ -226,7 +318,9 @@ update global msg model =
                 | servicesPage = servicesPage
                 , showSpinner = True
               }
-            , Api.getServices ((servicesPage - 1) * pageSize)
+            , Api.getServices
+                model.searchCondition
+                ((servicesPage - 1) * pageSize)
                 pageSize
                 ServicesDownloaded
             , Cmd.none
@@ -234,6 +328,7 @@ update global msg model =
 
         ServicesNextPage ->
             let
+                servicesPage : Int
                 servicesPage =
                     if List.length model.services == pageSize then
                         model.servicesPage + 1
@@ -245,7 +340,9 @@ update global msg model =
                 | servicesPage = servicesPage
                 , showSpinner = True
               }
-            , Api.getServices ((servicesPage - 1) * pageSize)
+            , Api.getServices
+                model.searchCondition
+                ((servicesPage - 1) * pageSize)
                 pageSize
                 ServicesDownloaded
             , Cmd.none
@@ -253,7 +350,7 @@ update global msg model =
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
-subscriptions global model =
+subscriptions _ model =
     Sub.batch
         [ Dropdown.subscriptions model.usermenuState UsermenuMsg
         ]
@@ -277,7 +374,10 @@ view global model =
             }
           <|
             div []
-                [ viewServices model
+                [ Grid.row []
+                    [ Grid.col [ Col.sm2 ] [ viewSearchPanel model ]
+                    , Grid.col [ Col.sm10 ] [ viewServices model ]
+                    ]
                 , br [] []
                 , div []
                     [ model.messageToast
@@ -293,18 +393,22 @@ view global model =
     }
 
 
+hC : Table.CellOption msg
 hC =
     Table.cellAttr <| class "text-center"
 
 
+vC : Table.CellOption msg
 vC =
     Table.cellAttr <| class "align-middle"
 
 
+hideMobile : Table.CellOption msg
 hideMobile =
     Table.cellAttr <| class "d-none d-md-table-cell"
 
 
+thW : Int -> Table.CellOption msg
 thW w =
     Table.cellAttr <| attribute "width" (String.fromInt w ++ "%")
 
@@ -322,6 +426,7 @@ colorOfPay payType =
             []
 
 
+cellAttrWarning : Table.CellOption msg
 cellAttrWarning =
     Table.cellAttr <| class "table-warning"
 
@@ -390,16 +495,15 @@ viewServices : Model -> Html Msg
 viewServices model =
     Grid.row []
         [ Grid.col []
-            [ viewServicesTitle model
-                "Все заявки"
-                (String.fromInt model.servicesPage)
-            , Table.table
+            [ Table.table
                 { options = servicesTableAttrs
                 , thead =
                     let
+                        ha : List (Table.CellOption msg)
                         ha =
                             [ hC, vC ]
 
+                        th : String -> Table.Cell Msg
                         th t =
                             Table.th ha [ text t ]
                     in
@@ -435,5 +539,121 @@ viewServices model =
                                 )
                                 model.services
                 }
+            , viewServicesTitle model
+                ""
+                (String.fromInt model.servicesPage)
+            ]
+        ]
+
+
+viewSearchPanel : Model -> Html Msg
+viewSearchPanel model =
+    div
+        [ style "padding-left" "10px"
+        , style "padding-top" "20px"
+        , style "padding-bottom" "20px"
+        ]
+        [ Grid.row [ Row.attrs [ Spacing.pt3, Flex.row ] ]
+            [ Grid.col [ Col.attrs [ Flex.alignSelfCenter ] ]
+                [ h4 [] [ text "Номер заявки:" ] ]
+            ]
+        , Grid.row [ Row.attrs [ Flex.row ] ]
+            [ Grid.col [ Col.attrs [ Flex.alignSelfCenter ] ]
+                [ InputGroup.config
+                    (InputGroup.text
+                        [ Input.value model.serviceId
+                        , Input.onInput InputServiceId
+                        ]
+                    )
+                    |> InputGroup.successors
+                        [ InputGroup.button
+                            [ Button.outlineSecondary
+                            , Button.attrs
+                                [ onClick ClearServiceId
+                                , Spacing.pl3
+                                , Spacing.pr3
+                                , style "border-color" "#ced4da"
+                                ]
+                            ]
+                            [ Icon.times
+                                |> Icon.present
+                                |> Icon.styled [ Icon.sm ]
+                                |> Icon.view
+                            ]
+                        ]
+                    |> InputGroup.view
+                ]
+            ]
+        , Grid.row [ Row.attrs [ Spacing.pt3, Flex.row ] ]
+            [ Grid.col [ Col.attrs [ Flex.alignSelfCenter ] ]
+                [ h4 [] [ text "Дата звонка:" ] ]
+            ]
+        , Grid.row [ Row.attrs [ Flex.row ] ]
+            [ Grid.col [ Col.attrs [ Flex.alignSelfCenter ] ]
+                [ InputGroup.config
+                    (InputGroup.date
+                        [ Input.onInput InputStartDate
+                        , Input.value model.startDate
+                        ]
+                    )
+                    |> InputGroup.successors
+                        [ InputGroup.button
+                            [ Button.outlineSecondary
+                            , Button.attrs
+                                [ onClick ClearStartDate
+                                , Spacing.pl3
+                                , Spacing.pr3
+                                , style "border-color" "#ced4da"
+                                ]
+                            ]
+                            [ Icon.times
+                                |> Icon.present
+                                |> Icon.styled [ Icon.sm ]
+                                |> Icon.view
+                            ]
+                        ]
+                    |> InputGroup.view
+                ]
+            ]
+        , Grid.row [ Row.attrs [ Spacing.pt1, Flex.row ] ]
+            [ Grid.col [ Col.attrs [ Flex.alignSelfCenter ] ]
+                [ InputGroup.config
+                    (InputGroup.date
+                        [ Input.onInput InputEndDate
+                        , Input.value model.endDate
+                        ]
+                    )
+                    |> InputGroup.successors
+                        [ InputGroup.button
+                            [ Button.outlineSecondary
+                            , Button.attrs
+                                [ onClick ClearEndDate
+                                , Spacing.pl3
+                                , Spacing.pr3
+                                , style "border-color" "#ced4da"
+                                ]
+                            ]
+                            [ Icon.times
+                                |> Icon.present
+                                |> Icon.styled [ Icon.sm ]
+                                |> Icon.view
+                            ]
+                        ]
+                    |> InputGroup.view
+                ]
+            ]
+        , Grid.row [ Row.attrs [ Spacing.pt3, Flex.row ] ]
+            [ Grid.col
+                [ Col.sm12
+                , Col.attrs [ Flex.alignSelfCenter ]
+                , Col.textAlign Text.alignXsCenter
+                ]
+                [ Button.button
+                    [ Button.primary
+                    , Button.large
+                    , Button.attrs [ onClick Search ]
+                    ]
+                    [ text "Искать" ]
+                ]
             ]
         ]
