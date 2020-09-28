@@ -103,7 +103,7 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , ("/login",           redirect "/")
          , ("/services",        redirect "/")
          , ("/show-service",    redirect "/")
-         , ("/search-services", redirect "/")
+         , ("/search",          redirect "/")
 
          , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
