@@ -344,7 +344,7 @@ update global msg model =
         SearchCases ->
             ( model
             , Cmd.none
-            , Global.navigate Route.SearchCases
+            , Global.navigate Route.Search
             )
 
         Closing1 s ->
