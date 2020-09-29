@@ -10,7 +10,9 @@ import qualified Data.Map as Map
 import           Data.Map ((!))
 import           Data.Maybe (fromMaybe)
 import qualified Data.Text as T
+import           Data.Time (Day)
 import           Data.Time.LocalTime (ZonedTime)
+import           Data.Time.Format (defaultTimeLocale, formatTime)
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.SqlQQ
 import           GHC.Generics (Generic)
@@ -256,24 +258,25 @@ getServices uid = do
           <$> getIntParam "limit"
 
   sId           <- getIntParam "serviceId"
-  callDateStart <- getParamT   "callDateStart"
-  callDateEnd   <- getParamT   "callDateEnd"
+  callDateStart <- getParamDate "callDateStart"
+  callDateEnd   <- getParamDate "callDateEnd"
 
-  let q v = "'" ++ T.unpack v ++ "'"
+  let ds v = formatTime defaultTimeLocale "'%Y-%m-%d'" v
+      de v = formatTime defaultTimeLocale "'%Y-%m-%d 23:59:59'" v
       condition :: String =
-          case (sId, callDateStart, callDateEnd) of
+          case (sId, callDateStart :: Maybe Day, callDateEnd :: Maybe Day) of
                (Just i, _, _)      ->
                    "AND servicetbl.parentid = " ++ show i
 
                (_, Just s, Just e) ->
-                   "AND times_expectedservicestart BETWEEN " ++ q s ++
-                   " AND " ++ q e
+                   "AND times_expectedservicestart BETWEEN " ++ ds s ++
+                   " AND " ++ de e
 
                (_, Just s, _)      ->
-                   "AND times_expectedservicestart >= " ++ q s
+                   "AND times_expectedservicestart >= " ++ ds s
 
                (_, _, Just e)      ->
-                   "AND times_expectedservicestart <= " ++ q e
+                   "AND times_expectedservicestart <= " ++ de e
 
                _                   -> ""
 
