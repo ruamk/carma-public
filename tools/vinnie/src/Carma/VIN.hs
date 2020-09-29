@@ -438,6 +438,13 @@ processField (pid, _) (FM iname (FFAcc (FA c) stag _ _ defAcc _) cols) =
             protoUpdateWithFun cn "pg_temp.numordead" [cn'] >>
             pass
           , sqlCast cn "int")
+      SModel ->
+          ( -- Try to recognize model depending on maker
+            protoModelCleanup iname cn (identModelName defAcc) >>
+            protoModelLookup iname cn (identModelName defAcc) >>
+            protoUpdateWithFun cn "pg_temp.numordead" [cn'] >>
+            pass
+          , sqlCast cn "int")
       SSubprogram ->
           ( -- Try to recognize references to subprograms
             protoSubprogramLookup pid iname cn >>
