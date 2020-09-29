@@ -12,6 +12,8 @@ import qualified Data.ByteString.Char8 as B
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import Data.Time (Day)
+import Data.Time.Format (defaultTimeLocale, parseTimeM)
 
 import Snap
 import Util
@@ -43,6 +45,14 @@ mkMap fields = map $ Map.fromList . zip fields . map (fromMaybe "")
 
 getParamT :: ByteString -> Handler a b (Maybe Text)
 getParamT = fmap (fmap T.decodeUtf8) . getParam
+
+getParamDate :: ByteString -> Handler a b (Maybe Day)
+getParamDate p =
+  getParam p >>= \v ->
+      return $ case v of
+                 Just d -> parseTimeM False defaultTimeLocale "%Y-%m-%d" $
+                          B.unpack d
+                 _      -> Nothing
 
 
 getIntParam :: ByteString -> Handler a b (Maybe Int)
