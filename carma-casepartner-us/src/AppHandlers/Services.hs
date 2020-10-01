@@ -46,7 +46,7 @@ data CurrentServiceInfo = CurrentServiceInfo
     , cuServiceId :: Int -- идентификатор услуги
     , cuServiceSerial :: Int -- номер услуги в списке услуг для заявки
     , _cuCallDate :: Maybe ZonedTime
-    , _cuTypeOfService :: String
+    , _cuTypeOfService :: Maybe String
     , _cuStatus :: String
     , _cuAccordTime :: String
     , _cuMakeModel :: String
@@ -76,7 +76,7 @@ data ClosingServiceInfo = ClosingServiceInfo
     , clServiceId :: Int -- идентификатор услуги
     , clServiceSerial :: Int -- номер услиги в списке услуг для заявки
     , _clCallDate :: Maybe ZonedTime
-    , _clTypeOfService :: String
+    , _clTypeOfService :: Maybe String
     , _clMakeModel :: String
     , _clBreakdownPlace :: String
     , _clPayType :: String
