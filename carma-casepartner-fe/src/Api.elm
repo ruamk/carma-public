@@ -8,6 +8,7 @@ module Api exposing
     , getService
     , getServiceComments
     , getServices
+    , getTypeOfServiceSynonym
     , login
     , postPartnerDelay
     , postServiceComment
@@ -126,6 +127,11 @@ apiStatusServicePerformed serviceId =
 apiGetLatenessReasons : String
 apiGetLatenessReasons =
     prefix ++ "/api/v1/dict/PartnerDelay_Reason"
+
+
+apiGetTypeOfServiceSynonym : String
+apiGetTypeOfServiceSynonym =
+    prefix ++ "/api/v1/dict/TypeOfServiceSynonym"
 
 
 decodeSession : String -> Session
@@ -606,8 +612,18 @@ dictionaryDecoder =
     dict string
 
 
-getLatenessReasons : (Result Http.Error Dictionary -> msg) -> Cmd msg
-getLatenessReasons message =
-    HttpBuilder.get apiGetLatenessReasons
+getDictionary : String -> (Result Http.Error Dictionary -> msg) -> Cmd msg
+getDictionary url message =
+    HttpBuilder.get url
         |> HttpBuilder.withExpect (Http.expectJson message dictionaryDecoder)
         |> HttpBuilder.request
+
+
+getLatenessReasons : (Result Http.Error Dictionary -> msg) -> Cmd msg
+getLatenessReasons message =
+    getDictionary apiGetLatenessReasons message
+
+
+getTypeOfServiceSynonym : (Result Http.Error Dictionary -> msg) -> Cmd msg
+getTypeOfServiceSynonym message =
+    getDictionary apiGetTypeOfServiceSynonym message

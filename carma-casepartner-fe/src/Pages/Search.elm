@@ -25,6 +25,7 @@ import Bootstrap.Table as Table
 import Bootstrap.Text as Text
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Spacing as Spacing
+import Dict
 import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
@@ -50,7 +51,7 @@ import Html.Events exposing (onClick)
 import Http
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
-import Types exposing (ServiceInfo)
+import Types exposing (Dictionary, ServiceInfo)
 import Ui
 
 
@@ -79,6 +80,7 @@ type alias Model =
     , startDate : String
     , endDate : String
     , searchCondition : Api.SearchCondition
+    , typeOfServiceSynonym : Dictionary
     }
 
 
@@ -98,6 +100,7 @@ type Msg
     | ServicesFirstPage
     | ServicesPrevPage
     | ServicesNextPage
+    | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
     | UpdateCustomMessageToast (MessageToast Msg)
     | UsermenuMsg Dropdown.State
 
@@ -132,6 +135,7 @@ init _ _ =
       , startDate = ""
       , endDate = ""
       , searchCondition = Api.SearchAll
+      , typeOfServiceSynonym = Dict.empty
       }
     , navbarCmd
     , Cmd.none
@@ -144,10 +148,13 @@ update _ msg model =
         -- Entry point
         NavbarMsg state ->
             ( { model | navbarState = state }
-            , Api.getServices model.searchCondition
-                ((model.servicesPage - 1) * pageSize)
-                pageSize
-                ServicesDownloaded
+            , Cmd.batch
+                [ Api.getTypeOfServiceSynonym TypeOfServiceSynonymDownloaded
+                , Api.getServices model.searchCondition
+                    ((model.servicesPage - 1) * pageSize)
+                    pageSize
+                    ServicesDownloaded
+                ]
             , Cmd.none
             )
 
@@ -284,6 +291,22 @@ update _ msg model =
                     ( { model
                         | showSpinner = False
                         , services = services
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+        TypeOfServiceSynonymDownloaded result ->
+            case result of
+                Err _ ->
+                    ( model
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok typeOfServiceSynonym ->
+                    ( { model
+                        | typeOfServiceSynonym = typeOfServiceSynonym
                       }
                     , Cmd.none
                     , Cmd.none
@@ -527,7 +550,15 @@ viewServices model =
                                             theCase.serviceSerial
                                         ]
                                     , Table.td [ hC, vC, thW 5 ] [ Ui.dateCell theCase.callDate ]
-                                    , Table.td [ hC, vC, thW 10 ] [ Ui.cell theCase.typeOfService ]
+                                    , Table.td [ hC, vC, thW 10 ]
+                                        [ Ui.cell <|
+                                            case Dict.get theCase.typeOfService model.typeOfServiceSynonym of
+                                                Just v ->
+                                                    v
+
+                                                Nothing ->
+                                                    theCase.typeOfService
+                                        ]
                                     , Table.td [ hC, vC, thW 15 ] [ Ui.cell theCase.makeModel ]
                                     , Table.td [ hideMobile, vC ] [ Ui.addressCell theCase.breakdownPlace ]
                                     , Table.td
