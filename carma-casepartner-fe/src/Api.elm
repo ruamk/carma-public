@@ -197,7 +197,7 @@ latestCurrentCasesDecoder =
                 |> required "cuServiceId" int
                 |> required "cuServiceSerial" int
                 |> required "cuCallDate" (nullable ISO8601.decode)
-                |> required "cuTypeOfService" string
+                |> required "cuTypeOfService" (nullable string)
                 |> required "cuStatus" string
                 |> required "cuAccordTime" string
                 |> required "cuMakeModel" string
@@ -217,7 +217,7 @@ latestClosingCasesDecoder =
                 |> required "clServiceId" int
                 |> required "clServiceSerial" int
                 |> required "clCallDate" (nullable ISO8601.decode)
-                |> required "clTypeOfService" string
+                |> required "clTypeOfService" (nullable string)
                 |> required "clMakeModel" string
                 |> required "clBreakdownPlace" string
                 |> required "clPayType" string
@@ -235,7 +235,7 @@ servicesDecoder =
                 |> required "serviceId" int
                 |> required "serviceSerial" int
                 |> required "callDate" (nullable ISO8601.decode)
-                |> required "typeOfService" string
+                |> required "typeOfService" (nullable string)
                 |> required "makeModel" string
                 |> required "breakdownPlace" string
                 |> required "payType" string
