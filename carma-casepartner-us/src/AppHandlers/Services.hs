@@ -28,6 +28,7 @@ import           Application
 import           AppHandlers.Users
 import           AppHandlers.Util
 import qualified Carma.Model.ServiceStatus as SS
+import qualified Carma.Model.ServiceType as ST
 import           Types
 
 
@@ -100,7 +101,7 @@ data ServiceInfo = ServiceInfo
     , serviceId :: Int -- идентификатор услуги
     , serviceSerial :: Int -- номер услиги в списке услуг для заявки
     , _callDate :: Maybe ZonedTime
-    , _typeOfService :: String
+    , _typeOfService :: Maybe String
     , _makeModel :: String
     , _breakdownPlace :: String
     , _payType :: String
@@ -135,33 +136,44 @@ latestServices serviceType = checkAuthCasePartner $ do
 
 getLatestCurrentServices :: Int -> AppHandler ()
 getLatestCurrentServices uid = do
-  let [ordered, delayed, inProgress] = map (\(Ident i) -> i)
-                                       [SS.ordered, SS.delayed, SS.inProgress]
+  let [ordered, delayed, inProgress] =
+          map (\(Ident i) -> i) [SS.ordered, SS.delayed, SS.inProgress]
+      [tech, towage, bikeTowage] =
+          map (\(Ident i) -> i) [ST.tech, ST.towage, ST.bikeTowage]
 
   rows :: [CurrentServiceInfo] <- query [sql|
     SELECT
         servicetbl.parentid
       , servicetbl.id
       , 0 as serviceSerial
-      , times_expectedservicestart
-      , st.label AS typeofservice
+      , servicetbl.times_expectedservicestart
+      , CASE 
+          WHEN servicetbl.type = ?
+               THEN st.label || ' - '::text || tt.label
+          WHEN servicetbl.type = ?
+               THEN st.label || ' - '::text || ts.label
+          WHEN servicetbl.type = ?
+               THEN st.label || ' - '::text || btt.label
+          ELSE
+               st.label
+        END AS typeofservice
       , ss.label AS status
       , CASE
           WHEN servicetbl.status = ?
                THEN 'В работе'
-          WHEN times_expectedservicestart is null
+          WHEN servicetbl.times_expectedservicestart is null
                THEN 'Ошибка'
-          WHEN now() > times_expectedservicestart AND
+          WHEN now() > servicetbl.times_expectedservicestart AND
                servicetbl.status IN ?
                THEN 'Опоздание'
-          WHEN now() < times_expectedservicestart AND
+          WHEN now() < servicetbl.times_expectedservicestart AND
                servicetbl.status IN ?
                -- returns: 'days hours minutes'
-               THEN (extract(day from (times_expectedservicestart - now())::interval)
+               THEN (extract(day from (servicetbl.times_expectedservicestart - now())::interval)
                     || ' ' ||
-                    extract(hour from times_expectedservicestart - now())::text
+                    extract(hour from servicetbl.times_expectedservicestart - now())::text
                     || ' ' ||
-                    to_char(extract(minute from times_expectedservicestart - now()), '00FM')
+                    to_char(extract(minute from servicetbl.times_expectedservicestart - now()), '00FM')
                     )
         END
       , coalesce(make.label || ' / ' ||
@@ -169,19 +181,26 @@ getLatestCurrentServices uid = do
       , coalesce(casetbl.caseaddress_address, '')::text
       , coalesce(pt.label, '')::text
     FROM servicetbl
-    LEFT OUTER JOIN "ServiceType" st ON st.id = type
-    LEFT OUTER JOIN "ServiceStatus" ss ON ss.id = status
-    LEFT OUTER JOIN "PaymentType" pt ON pt.id = paytype
-    LEFT OUTER JOIN casetbl ON casetbl.id = parentid
-    LEFT OUTER JOIN "CarMake" make ON make.id = casetbl.car_make
-    LEFT OUTER JOIN "CarModel" model ON model.id = casetbl.car_model
-    LEFT OUTER JOIN "CasePartner" cp
-                 ON cp.partner = servicetbl.contractor_partnerid
-    WHERE (servicetbl.status IN ?)
-      AND cp.uid = ?
+    LEFT OUTER JOIN casetbl               ON casetbl.id = parentid
+    LEFT OUTER JOIN techtbl               ON techtbl.id = servicetbl.id
+    LEFT OUTER JOIN towagetbl             ON towagetbl.id = servicetbl.id
+    LEFT OUTER JOIN "BikeTowage"          ON "BikeTowage".id = servicetbl.id
+    LEFT OUTER JOIN "BikeTowType"   btt   ON btt.id = "BikeTowage".biketowtype
+    LEFT OUTER JOIN "CarMake"       make  ON make.id = casetbl.car_make
+    LEFT OUTER JOIN "CarModel"      model ON model.id = casetbl.car_model
+    LEFT OUTER JOIN "CasePartner"   cp    ON cp.partner = servicetbl.contractor_partnerid
+    LEFT OUTER JOIN "PaymentType"   pt    ON pt.id = servicetbl.paytype
+    LEFT OUTER JOIN "ServiceStatus" ss    ON ss.id = servicetbl.status
+    LEFT OUTER JOIN "ServiceType"   st    ON st.id = servicetbl.type
+    LEFT OUTER JOIN "TechType"      tt    ON tt.id = techtbl.techtype
+    LEFT OUTER JOIN "TowSort"       ts    ON ts.id = towagetbl.towsort
+    WHERE (servicetbl.status IN ?) AND cp.uid = ?
     ORDER BY times_expectedservicestart ASC
     LIMIT ?
-  |] ( inProgress
+  |] ( tech
+     , towage
+     , bikeTowage
+     , inProgress
      , In [ordered, delayed]
      , In [ordered, delayed]
      , In [ordered, delayed, inProgress]
@@ -197,31 +216,49 @@ getLatestCurrentServices uid = do
 
 getLatestClosingServices :: Int -> AppHandler ()
 getLatestClosingServices uid = do
+  let [tech, towage, bikeTowage] =
+          map (\(Ident i) -> i) [ST.tech, ST.towage, ST.bikeTowage]
   rows :: [ClosingServiceInfo] <- query [sql|
     SELECT
         servicetbl.parentid
       , servicetbl.id
       , 0 as serviceSerial
-      , times_expectedservicestart
-      , st.label AS typeofservice
+      , servicetbl.times_expectedservicestart
+      , CASE 
+          WHEN servicetbl.type = ?
+               THEN st.label || ' - '::text || tt.label
+          WHEN servicetbl.type = ?
+               THEN st.label || ' - '::text || ts.label
+          WHEN servicetbl.type = ?
+               THEN st.label || ' - '::text || btt.label
+          ELSE
+               st.label
+        END AS typeofservice
       , coalesce(make.label || ' / ' ||
                  regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text
       , coalesce(casetbl.caseaddress_address, '')::text
       , coalesce(pt.label, '')::text
     FROM servicetbl
-    LEFT OUTER JOIN "ServiceType"   st    ON st.id = type
-    LEFT OUTER JOIN "ServiceStatus" ss    ON ss.id = status
-    LEFT OUTER JOIN "PaymentType"   pt    ON pt.id = paytype
     LEFT OUTER JOIN casetbl               ON casetbl.id = parentid
+    LEFT OUTER JOIN techtbl               ON techtbl.id = servicetbl.id
+    LEFT OUTER JOIN towagetbl             ON towagetbl.id = servicetbl.id
+    LEFT OUTER JOIN "BikeTowage"          ON "BikeTowage".id = servicetbl.id
+    LEFT OUTER JOIN "BikeTowType"   btt   ON btt.id = "BikeTowage".biketowtype
     LEFT OUTER JOIN "CarMake"       make  ON make.id = casetbl.car_make
     LEFT OUTER JOIN "CarModel"      model ON model.id = casetbl.car_model
-    LEFT OUTER JOIN "CasePartner"   cp    ON
-         cp.partner = servicetbl.contractor_partnerid
-    WHERE (servicetbl.status IN ?)
-      AND cp.uid = ?
-    ORDER BY createTime DESC
+    LEFT OUTER JOIN "CasePartner"   cp    ON cp.partner = servicetbl.contractor_partnerid
+    LEFT OUTER JOIN "PaymentType"   pt    ON pt.id = servicetbl.paytype
+    LEFT OUTER JOIN "ServiceStatus" ss    ON ss.id = servicetbl.status
+    LEFT OUTER JOIN "ServiceType"   st    ON st.id = servicetbl.type
+    LEFT OUTER JOIN "TechType"      tt    ON tt.id = techtbl.techtype
+    LEFT OUTER JOIN "TowSort"       ts    ON ts.id = towagetbl.towsort
+    WHERE (servicetbl.status IN ?) AND cp.uid = ?
+    ORDER BY servicetbl.createTime DESC
     LIMIT ?
-  |] (In $ map (\(Ident i) -> i) [SS.ok] :: In [Int]
+  |] ( tech
+     , towage
+     , bikeTowage
+     , In $ map (\(Ident i) -> i) [SS.ok] :: In [Int]
      , uid
      , servicesLimit
      )
@@ -280,34 +317,49 @@ getServices uid = do
 
                _                   -> ""
 
+  let [tech, towage, bikeTowage] =
+          map (\(Ident i) -> i) [ST.tech, ST.towage, ST.bikeTowage]
 
-  let sqlQuery = (fromString $ unwords $
+      sqlQuery = (fromString $ unwords $
           [ "SELECT "
           , "  servicetbl.parentid"
           , ", servicetbl.id"
           , ", 0 as serviceSerial"
-          , ", times_expectedservicestart"
-          , ", st.label AS typeofservice"
-          , ", coalesce(make.label || ' / ' ||"
-          , "           regexp_replace(model.label, '^([^/]*)/.*','\1'), '')::text"
+          , ", servicetbl.times_expectedservicestart"
+          , ", CASE"
+          , "    WHEN servicetbl.type = ?"
+          , "         THEN st.label || ' - '::text || coalesce(tt.label,'')::text"
+          , "    WHEN servicetbl.type = ?"
+          , "         THEN st.label || ' - '::text || coalesce(ts.label,'')::text"
+          , "    WHEN servicetbl.type = ?"
+          , "         THEN st.label || ' - '::text || coalesce(btt.label,'')::text"
+          , "    ELSE st.label"
+          , "  END AS typeofservice"
+          , ", coalesce(make.label || ' / ' || regexp_replace(model.label, '^([^/]*)/.*','\\1'), '')::text"
           , ", coalesce(casetbl.caseaddress_address, '')::text"
           , ", coalesce(pt.label, '')::text"
-          , " FROM servicetbl"
-          , " LEFT OUTER JOIN \"ServiceType\"   st    ON st.id = type"
-          , " LEFT OUTER JOIN \"ServiceStatus\" ss    ON ss.id = status"
-          , " LEFT OUTER JOIN \"PaymentType\"   pt    ON pt.id = paytype"
-          , " LEFT OUTER JOIN casetbl               ON casetbl.id = parentid"
-          , " LEFT OUTER JOIN \"CarMake\"       make  ON make.id = casetbl.car_make"
-          , " LEFT OUTER JOIN \"CarModel\"      model ON model.id = casetbl.car_model"
-          , " LEFT OUTER JOIN \"CasePartner\"   cp    ON"
-          , "    cp.partner = servicetbl.contractor_partnerid"
-          , " WHERE cp.uid = ? "
-          ] ++ [condition] ++
-          [ " ORDER BY times_expectedservicestart DESC"
-          , " LIMIT ? OFFSET ?"
+          , "FROM servicetbl"
+          , "LEFT OUTER JOIN casetbl                 ON casetbl.id = parentid"
+          , "LEFT OUTER JOIN techtbl                 ON techtbl.id = servicetbl.id"
+          , "LEFT OUTER JOIN towagetbl               ON towagetbl.id = servicetbl.id"
+          , "LEFT OUTER JOIN \"BikeTowage\"          ON \"BikeTowage\".id = servicetbl.id"
+          , "LEFT OUTER JOIN \"BikeTowType\"   btt   ON btt.id = \"BikeTowage\".biketowtype"
+          , "LEFT OUTER JOIN \"CarMake\"       make  ON make.id = casetbl.car_make"
+          , "LEFT OUTER JOIN \"CarModel\"      model ON model.id = casetbl.car_model"
+          , "LEFT OUTER JOIN \"CasePartner\"   cp    ON cp.partner = servicetbl.contractor_partnerid"
+          , "LEFT OUTER JOIN \"PaymentType\"   pt    ON pt.id = servicetbl.paytype"
+          , "LEFT OUTER JOIN \"ServiceStatus\" ss    ON ss.id = servicetbl.status"
+          , "LEFT OUTER JOIN \"ServiceType\"   st    ON st.id = servicetbl.type"
+          , "LEFT OUTER JOIN \"TechType\"      tt    ON tt.id = techtbl.techtype"
+          , "LEFT OUTER JOIN \"TowSort\"       ts    ON ts.id = towagetbl.towsort"
+          , "WHERE cp.uid = ? " ++ condition
+          , "ORDER BY servicetbl.times_expectedservicestart DESC"
+          , "LIMIT ? OFFSET ?"
           ]) :: Query
 
-  rows :: [ServiceInfo] <- query sqlQuery (uid, limit, offset)
+  rows :: [ServiceInfo] <- query sqlQuery ( tech, towage, bikeTowage
+                                        , uid, limit, offset
+                                        )
 
   serviceNums <- enumerateServices $ map caseId rows
 

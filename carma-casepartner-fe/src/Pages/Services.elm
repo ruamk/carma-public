@@ -12,6 +12,7 @@ import Bootstrap.Table as Table
 import Bootstrap.Text as Text
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Spacing as Spacing
+import Dict
 import Generated.Route as Route
 import Global
 import Html
@@ -34,7 +35,7 @@ import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
 import Task
 import Time
-import Types exposing (ClosingCaseInfo, CurrentCaseInfo)
+import Types exposing (ClosingCaseInfo, CurrentCaseInfo, Dictionary)
 import Ui
 
 
@@ -70,6 +71,7 @@ type alias Model =
     , usermenuState : Dropdown.State
     , nowMillis : Int
     , messageToast : MessageToast Msg
+    , typeOfServiceSynonym : Dictionary
     }
 
 
@@ -79,19 +81,20 @@ type CasesType
 
 
 type Msg
-    = CurrentCase Int
-    | ClosingCase Int
-    | SearchCases
-    | GetCurrentCases (Result Http.Error (List CurrentCaseInfo))
-    | GetClosingCases (Result Http.Error (List ClosingCaseInfo))
+    = CasesNextPage CasesType
     | CasesPrevPage CasesType
-    | CasesNextPage CasesType
-    | NavbarMsg Navbar.State
-    | UsermenuMsg Dropdown.State
+    | ClosingCase Int
+    | CurrentCase Int
+    | GetClosingCases (Result Http.Error (List ClosingCaseInfo))
+    | GetCurrentCases (Result Http.Error (List CurrentCaseInfo))
     | Logout
+    | NavbarMsg Navbar.State
     | NowTime Time.Posix
+    | SearchCases
     | Tick Time.Posix
+    | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
     | UpdateCustomMessageToast (MessageToast Msg)
+    | UsermenuMsg Dropdown.State
 
 
 page : Page Flags Model Msg
@@ -124,6 +127,7 @@ init _ _ =
                 { delayInMs = 2000
                 , toastsToShow = 10
                 }
+      , typeOfServiceSynonym = Dict.empty
       }
     , navbarCmd
     , Cmd.none
@@ -299,7 +303,10 @@ update _ msg model =
 
         NavbarMsg state ->
             ( { model | navbarState = state }
-            , Api.getLatestCurrentCases GetCurrentCases
+            , Cmd.batch
+                [ Api.getTypeOfServiceSynonym TypeOfServiceSynonymDownloaded
+                , Api.getLatestCurrentCases GetCurrentCases
+                ]
             , Cmd.none
             )
 
@@ -332,6 +339,22 @@ update _ msg model =
             , Api.getLatestCurrentCases GetCurrentCases
             , Cmd.none
             )
+
+        TypeOfServiceSynonymDownloaded result ->
+            case result of
+                Err _ ->
+                    ( model
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok typeOfServiceSynonym ->
+                    ( { model
+                        | typeOfServiceSynonym = typeOfServiceSynonym
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
 
         UpdateCustomMessageToast updatedMessageToast ->
             ( { model | messageToast = updatedMessageToast }
@@ -579,7 +602,15 @@ viewCurrentCases model =
                                                 theCase.cuServiceSerial
                                             ]
                                         , Table.td [ hC, vC, thW 5 ] [ Ui.timeCell theCase.cuCallDate ]
-                                        , Table.td [ hC, vC, thW 10 ] [ Ui.cell theCase.cuTypeOfService ]
+                                        , Table.td [ hC, vC, thW 10 ]
+                                            [ Ui.cell <|
+                                                case Dict.get theCase.cuTypeOfService model.typeOfServiceSynonym of
+                                                    Just v ->
+                                                        v
+
+                                                    Nothing ->
+                                                        theCase.cuTypeOfService
+                                            ]
                                         , Table.td [ hideMobile, hC, vC, thW 5 ] [ Ui.cell theCase.cuStatus ]
                                         , Table.td
                                             (colorOfTimer theCase.cuAccordTime
@@ -648,7 +679,15 @@ viewClosingCases model =
                                                 theCase.clServiceSerial
                                             ]
                                         , Table.td [ hC, vC, thW 5 ] [ Ui.dateCell theCase.clCallDate ]
-                                        , Table.td [ hC, vC, thW 10 ] [ Ui.cell theCase.clTypeOfService ]
+                                        , Table.td [ hC, vC, thW 10 ]
+                                            [ Ui.cell <|
+                                                case Dict.get theCase.clTypeOfService model.typeOfServiceSynonym of
+                                                    Just v ->
+                                                        v
+
+                                                    Nothing ->
+                                                        theCase.clTypeOfService
+                                            ]
                                         , Table.td [ hC, vC, thW 15 ] [ Ui.cell theCase.clMakeModel ]
                                         , Table.td [ hideMobile, vC ] [ Ui.addressCell theCase.clBreakdownPlace ]
                                         , Table.td

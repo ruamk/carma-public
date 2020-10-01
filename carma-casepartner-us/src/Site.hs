@@ -61,6 +61,9 @@ apiPostPartnerDelay = "/api/v1/service/:serviceId/partnerdelay"
 apiDictPartnerDelayReason :: ByteString
 apiDictPartnerDelayReason = "/api/v1/dict/PartnerDelay_Reason"
 
+apiMapTypeOfService :: ByteString
+apiMapTypeOfService = "/api/v1/dict/TypeOfServiceSynonym"
+
 
 -- | Handle login API
 handleApiLogin :: AppHandler ()
@@ -99,6 +102,7 @@ routes = [ (apiLogin,  method POST handleApiLogin)
 
          , (apiPostPartnerDelay,       method POST S.postPartnerDelay)
          , (apiDictPartnerDelayReason, D.partnerDelayReason)
+         , (apiMapTypeOfService,       D.typeOfService)
 
          , ("/login",           redirect "/")
          , ("/services",        redirect "/")
