@@ -552,12 +552,17 @@ viewServices model =
                                     , Table.td [ hC, vC, thW 5 ] [ Ui.dateCell theCase.callDate ]
                                     , Table.td [ hC, vC, thW 10 ]
                                         [ Ui.cell <|
-                                            case Dict.get theCase.typeOfService model.typeOfServiceSynonym of
-                                                Just v ->
-                                                    v
+                                            case theCase.typeOfService of
+                                                Just tos ->
+                                                    case Dict.get tos model.typeOfServiceSynonym of
+                                                        Just v ->
+                                                            v
+
+                                                        Nothing ->
+                                                            tos
 
                                                 Nothing ->
-                                                    theCase.typeOfService
+                                                    ""
                                         ]
                                     , Table.td [ hC, vC, thW 15 ] [ Ui.cell theCase.makeModel ]
                                     , Table.td [ hideMobile, vC ] [ Ui.addressCell theCase.breakdownPlace ]

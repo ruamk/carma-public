@@ -604,12 +604,17 @@ viewCurrentCases model =
                                         , Table.td [ hC, vC, thW 5 ] [ Ui.timeCell theCase.cuCallDate ]
                                         , Table.td [ hC, vC, thW 10 ]
                                             [ Ui.cell <|
-                                                case Dict.get theCase.cuTypeOfService model.typeOfServiceSynonym of
-                                                    Just v ->
-                                                        v
+                                                case theCase.cuTypeOfService of
+                                                    Just tos ->
+                                                        case Dict.get tos model.typeOfServiceSynonym of
+                                                            Just v ->
+                                                                v
+
+                                                            Nothing ->
+                                                                tos
 
                                                     Nothing ->
-                                                        theCase.cuTypeOfService
+                                                        ""
                                             ]
                                         , Table.td [ hideMobile, hC, vC, thW 5 ] [ Ui.cell theCase.cuStatus ]
                                         , Table.td
@@ -681,12 +686,17 @@ viewClosingCases model =
                                         , Table.td [ hC, vC, thW 5 ] [ Ui.dateCell theCase.clCallDate ]
                                         , Table.td [ hC, vC, thW 10 ]
                                             [ Ui.cell <|
-                                                case Dict.get theCase.clTypeOfService model.typeOfServiceSynonym of
-                                                    Just v ->
-                                                        v
+                                                case theCase.clTypeOfService of
+                                                    Just tos ->
+                                                        case Dict.get tos model.typeOfServiceSynonym of
+                                                            Just v ->
+                                                                v
+
+                                                            Nothing ->
+                                                                tos
 
                                                     Nothing ->
-                                                        theCase.clTypeOfService
+                                                        ""
                                             ]
                                         , Table.td [ hC, vC, thW 15 ] [ Ui.cell theCase.clMakeModel ]
                                         , Table.td [ hideMobile, vC ] [ Ui.addressCell theCase.clBreakdownPlace ]

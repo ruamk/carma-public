@@ -22,7 +22,7 @@ type alias ServiceInfo =
     , serviceId : Int
     , serviceSerial : Int
     , callDate : Maybe Time
-    , typeOfService : String
+    , typeOfService : Maybe String
     , makeModel : String
     , breakdownPlace : String
     , payType : String
@@ -34,7 +34,7 @@ type alias CurrentCaseInfo =
     , cuServiceId : Int
     , cuServiceSerial : Int
     , cuCallDate : Maybe Time
-    , cuTypeOfService : String
+    , cuTypeOfService : Maybe String
     , cuStatus : String
     , cuAccordTime : String
     , cuMakeModel : String
@@ -48,7 +48,7 @@ type alias ClosingCaseInfo =
     , clServiceId : Int
     , clServiceSerial : Int
     , clCallDate : Maybe Time
-    , clTypeOfService : String
+    , clTypeOfService : Maybe String
     , clMakeModel : String
     , clBreakdownPlace : String
     , clPayType : String
