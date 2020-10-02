@@ -21,7 +21,9 @@ class AddressesDict extends m.dict
     @addresses = []
     @suggestions = []
     @kvm[@address_field].subscribe(((newValue) -> this.trySetCoords(newValue)), this)
-    @mapModule = null
+    @mapModule = null # to require/load afterwards.
+    port = if @opts.proxy_port? then @opts.proxy_port else "8167"
+    @search_url = "https://" + window.location.hostname + ":" + port + "/search"
 
   trySetCoords: (newValue) ->
     foundExact = (x for x in @suggestions when x.value == newValue)
@@ -44,19 +46,16 @@ class AddressesDict extends m.dict
     # too short a query
     return cb({}) if q.length < 4 and not opt?.force
 
-    # query is not short and not in suggestions.
-    dataForDD =
-           query: q
+    # query is not short.
     objForDD =
-           url: "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
+           url: @search_url + "?query=" + encodeURIComponent(q)
            type: "post"
-           contentType: "application/json"
-           data: JSON.stringify(dataForDD)
-           headers:
-                    Authorization: "Token e0fb6d9a7a7920405c3eeefde7e7d6b529b2b2b9"
+           crossDomain: true
+           #contentType: "application/json"
            dataType: "json"
            success:  (data) => # https://coffeescript.org/#fat-arrow as Max suggested.
                                @processAnswer data, cb
+    console.log("obj for DD:"+JSON.stringify(objForDD))
     $.ajax (objForDD)
 
   processAnswer: (data, cb) ->

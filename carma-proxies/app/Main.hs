@@ -32,32 +32,15 @@ import qualified Network.Wai.Handler.Warp as Warp
 
 import qualified Network.Wreq as WReq
 
-
--- Server routes
-type AppRoutes
-  =    -- Search coordinates by search query.
+type SearchRoute =
+       -- Search coordinates by search query.
        -- Example: GET /search/ru-RU,ru/foobarbaz
-       "search":> QueryParam' '[Required] "query" SearchQuery
-                :> Post '[JSON] SearchResponse
+       ("search" :> QueryParam' '[Required] "query" SearchQuery
+                 :> Post '[JSON] SearchResponse)
+-- Preflight route for search.
+type PreflightRoute = ("search" :> Options)
 
-{-
-  :<|> -- Search addresses by coordinates
-       -- Example: GET /reverse-search/ru-RU,ru/52.32,3.45
-       "reverse-search" :> Capture "lang" Lang
-                        :> Capture "coords" Coords
-                        :> Get '[JSON] SearchByCoordsResponse
-  :<|> -- /debug/...
-       "debug" :> (    -- GET /debug/cached-queries
-                       "cached-queries" :> Get '[JSON] [DebugCachedQuery]
-
-                  :<|> -- GET /debug/cached-responses
-                       "cached-responses" :> Get '[JSON] [DebugCachedResponse]
-
-                  :<|> -- GET /debug/statistics
-                       "statistics" :> Get '[JSON] [StatisticsDay]
-                  )
--}
-
+type AppRoutes = SearchRoute :<|> PreflightRoute
 
 main :: IO ()
 main = do
@@ -71,7 +54,9 @@ main = do
 
       api = Proxy :: Proxy AppRoutes
 
-      app = serve api $ hoistServer api withReader appServer
+      app = serve api $
+                    hoistServer (Proxy :: Proxy SearchRoute) withReader searchServer
+               :<|> serve (Proxy :: Proxy PreflightRoute) searchPreflight
         where
           withReader :: ReaderT AppContext Handler a -> Handler a
           withReader r = runReaderT r appCtx
@@ -84,18 +69,15 @@ main = do
   Warp.runSettings warpSettings app
 
 
-appServer
+searchServer
   :: ( MonadReader AppContext m
      , MonadCatch m
      , MonadBaseControl IO m
      , MonadBase IO m
      , MonadIO m
      )
-  => ServerT AppRoutes m
-appServer =
-  ( search
-  )
-
+  => ServerT SearchRoute m
+searchServer = search
 
 -- Server routes handlers
 
@@ -121,6 +103,13 @@ search (SearchQuery query) = do
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
     Just (Just (Error err)) -> error $ "invalid json parsing: "++show err
     _ -> error "can't decode body"
+
+searchPreflight
+  :: ( MonadIO m
+     )
+  => m ()
+searchPreflight = do
+  return ()
 
 newtype SearchQuery = SearchQuery Text
   deriving (Eq, Ord, Show)
