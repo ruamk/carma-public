@@ -27,12 +27,10 @@ import qualified Data.Text as T
 
 import           Database.PostgreSQL.Simple hiding ( execute
                                                    , execute_
-                                                   , formatQuery
                                                    , query
                                                    , query_)
 import qualified Database.PostgreSQL.Simple as PG ( execute
                                                   , execute_
-                                                  , formatQuery
                                                   , query
                                                   , query_)
 import qualified Database.PostgreSQL.Simple.Copy as PG (copy)
@@ -96,13 +94,6 @@ execute_ :: Query -> Import Int64
 execute_ q = asks connection >>= \conn -> liftIO $ PG.execute_ conn q
 
 
-formatQuery :: (MonadIO m, ToRow q) => Query -> q -> ReaderT ImportContext m ()
-formatQuery q p = asks connection
-              >>= \conn -> do
-                r <- liftIO $ PG.formatQuery conn q p
-                liftIO $  putStrLn $ show r
-
-
 query :: (FromRow r, ToRow p) => Query -> p -> Import [r]
 query q p = asks connection >>= \conn -> liftIO $ PG.query conn q p
 
@@ -123,15 +114,13 @@ minimalValidSince :: Text
 minimalValidSince = "01-01-2009"
 
 
-internalNamePrefix :: String
-internalNamePrefix = "field"
 -- | Produce unique internal names from a CSV header.
 mkInternalNames :: [ColumnTitle] -> [InternalName]
 mkInternalNames columns =
     map (\(col, num) ->
              if col == errorsTitle
              then "errors"
-             else fromString (internalNamePrefix ++ show num)) $
+             else fromString ("field" ++ show num)) $
     zip columns ([1..] :: [Int])
 
 
@@ -416,71 +405,6 @@ protoDictLookup iname cname dictTableName =
         , PT iname
         , tKid
         , tKid)
-
-
--- | Clear bad dictionary element references.
-protoModelCleanup :: InternalName
-                 -> ContractFieldName
-                 -> Text
-                 -- ^ Dictionary table name.
-                 -> Import Int64
-protoModelCleanup iname cname dictTableName = do
-  execute
-    [sql|
-     CREATE OR REPLACE TEMPORARY VIEW dict_syn_cache AS
-     SELECT DISTINCT
-      -- TODO label/synonyms field names
-      lower(trim(both ' ' from (unnest(ARRAY[label] || synonyms)))) as label
-      FROM "?";
-
-     CREATE OR REPLACE TEMPORARY VIEW dict_labels AS
-     SELECT
-     lower(trim(both ' ' from ?)) as label,
-     ? as id
-     FROM vinnie_pristine;
-
-     UPDATE vinnie_proto SET ?=null
-     FROM vinnie_pristine s
-     WHERE NOT EXISTS
-     (SELECT 1 FROM dict_syn_cache, dict_labels
-      WHERE vinnie_proto.? = dict_labels.id
-      AND dict_labels.label = dict_syn_cache.label)
-     AND vinnie_proto.? = s.?;
-     |] ( PT dictTableName
-        , PT iname
-        , tKid
-        , cname
-        , tKid
-        , tKid
-        , tKid)
-
--- | Replace dictionary label references with dictionary element ids.
-protoModelLookup :: InternalName
-                 -> ContractFieldName
-                 -> Text
-                 -- ^ Dictionary table name.
-                 -> Import Int64
-protoModelLookup iname cname dictTableName =
-  execute [sql|
-     WITH dict AS
-     (SELECT DISTINCT ON (label, parent) id AS did,
-      -- TODO label/synonyms field names
-      lower(trim(both ' ' from (unnest(ARRAY[label] || synonyms)))) AS label,
-      parent
-      FROM "?" ORDER BY label, parent, did)
-     UPDATE vinnie_proto SET ? = dict.did
-     FROM dict, vinnie_pristine s
-     WHERE length(lower(trim(both ' ' from ?))) > 0
-     AND dict.label=lower(trim(both ' ' from ?))
-     AND vinnie_proto.? = s.?
-     AND vinnie_proto.make = dict.parent::text;
-   |] ( PT dictTableName
-      , cname
-      , PT iname
-      , PT iname
-      , tKid
-      , tKid
-      )
 
 
 -- | Clear bad partner references.

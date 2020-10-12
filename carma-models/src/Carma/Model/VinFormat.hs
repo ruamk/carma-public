@@ -57,7 +57,7 @@ mkVinFormat  [ FF SName   Contract.name
              , FF SDate   Contract.validUntil
              , FF SMileage Contract.startMileage
              , FF SDict   Contract.make
-             , FF SModel  Contract.model
+             , FF SDict   Contract.model
              , FF SDict   Contract.generation
              , FF SYear   Contract.makeYear
              , FF SDict   Contract.carClass
@@ -118,7 +118,6 @@ ffaTitles (FFAcc _ sTag _ _ _ tAcc) vf =
                  SName       -> vecProj
                  SDate       -> textProj
                  SDict       -> textProj
-                 SModel      -> textProj
                  SDealer     -> vecProj
                  SSubprogram -> textProj
     in
