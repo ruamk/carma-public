@@ -225,34 +225,6 @@ module.exports =
         u.getProgramDesc (parseInt knockVM['program']()),
                          (parseInt knockVM['subprogram']?())
 
-  caseHistory: (model, kvm) ->
-    kvm['historyFilter'] = ko.observable()
-    kvm['histShowActi'] = ko.observable true
-    kvm['histShowComm'] = ko.observable true
-    kvm['histShowCanc'] = ko.observable true
-    kvm['histShowDelay'] = ko.observable true
-    kvm['histShowCall'] = ko.observable true
-    kvm['histShowPartnerSms'] = ko.observable true
-    kvm['histShowEGCallCard'] = ko.observable true
-    kvm['histShowLocationSharing'] = ko.observable true
-    kvm['histShowCustomerFeedback'] = ko.observable true
-    kvm['histToggleActi'] = -> kvm['histShowActi'] not kvm['histShowActi']()
-    kvm['histToggleComm'] = -> kvm['histShowComm'] not kvm['histShowComm']()
-    kvm['histToggleCanc'] = -> kvm['histShowCanc'] not kvm['histShowCanc']()
-    kvm['histToggleDelay'] = -> kvm['histShowDelay'] not kvm['histShowDelay']()
-    kvm['histToggleCall'] = -> kvm['histShowCall'] not kvm['histShowCall']()
-    kvm['histTogglePartnerSms'] =
-      -> kvm['histShowPartnerSms'] not kvm['histShowPartnerSms']()
-    kvm['histToggleEGCallCard'] =
-      -> kvm['histShowEGCallCard'] not kvm['histShowEGCallCard']()
-    kvm['histToggleLocationSharing'] =
-      -> kvm['histShowLocationSharing'] not kvm['histShowLocationSharing']()
-    kvm['histToggleCustomerFeedback'] =
-      -> kvm['histShowCustomerFeedback'] not kvm['histShowCustomerFeedback']()
-    kvm['historyItems'] = ko.observableArray()
-    kvm['endOfHistory'] = ko.observable true
-    kvm['lookBackInHistory'] = ->
-
   caseDiag: (model, kvm) ->
     kvm._canDiag = ko.observable false
     kvm._canStartDiag = ko.observable false

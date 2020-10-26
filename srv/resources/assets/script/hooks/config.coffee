@@ -49,7 +49,6 @@ module.exports =
 
       "Case" : [ k.descsKbHook
                , k.programDesc
-               , k.caseHistory
                , k.caseDiag
                , k.cityStatsHook
                , k.regionHook

@@ -10,6 +10,9 @@ main     = require "carma/model/main"
 OSM      = require "carma/map"
 Contract = require "carma/components/contract"
 
+preact      = require "preact"
+{CaseHistory} = require "carma/components/CaseHistory"
+
 template = require "carma-tpl/screens/case.pug"
 Flds     = require "carma-tpl/fields/form.pug"
 
@@ -148,122 +151,62 @@ setupDiagTree = (kvm) ->
 
 # History pane
 setupHistory = (kvm) ->
-  historyDatetimeFormat = "dd.MM.yyyy HH:mm:ss"
-  historyLimit = 30
-  kvm['lookBackInHistory'] = ->
-    historyLimit += 30
-    do refreshHistory
+  processRawHistory = (res) ->
+    # scan items in reverse order and set cumulative partner delays
+    partnerDelays = {}
+    for i in [].concat(res).reverse()
+      json = i[2]
+      if json.type == 'partnerDelay'
+        if !partnerDelays[json.serviceid]
+          partnerDelays[json.serviceid] = 0
+        partnerDelays[json.serviceid] += json.delayminutes
+        json.delayminutes = partnerDelays[json.serviceid]
 
-  refreshHistory = ->
-    $.getJSON "/caseHistory/#{kvm.id()}?limit=#{historyLimit}", (res) ->
-      kvm['endOfHistory'] res.length < historyLimit
-      do kvm['historyItems'].removeAll
+    # Process every history item
+    _.map res, ([timestamp, who, json]) ->
+      if json.tasks
+        # We expect `isChecked` field to be present in each task,
+        # but is is not always the case due to the bug fixed in
+        # b0e4ce19b330cfafa05ba33a92234f24bd6bfe65
+        json.tasks.forEach (task) -> task.isChecked = Boolean task.isChecked
+
+      if json.aeinterlocutors?
+        json.aeinterlocutors =
+          _.map(json.aeinterlocutors, utils.internalToDisplayed).join ", "
 
       # List of service id's for colorizing actions
       svcs =
         _.map kvm.services()?.split(','),
           (s) -> parseInt s.split(':')?[1]
 
-      # scan items in reverse order and set cumulative partner delays
-      partnerDelays = {}
-      for i in [].concat(res).reverse()
-        json = i[2]
-        if json.type == 'partnerDelay'
-          if !partnerDelays[json.serviceid]
-            partnerDelays[json.serviceid] = 0
-          partnerDelays[json.serviceid] += json.delayminutes
-          json.delayminutes = partnerDelays[json.serviceid]
+      color =
+        if json.serviceid?
+          utils.palette[svcs.indexOf(json.serviceid) %
+            utils.palette.length]
+        else
+          null
 
-      # Process every history item
-      for i in res
-        json = i[2]
+      if json.delayminutes
+        hours   = String Math.floor json.delayminutes / 60
+        minutes = String json.delayminutes % 60
+        hours   = "0#{hours}"   if hours.length   < 2
+        minutes = "0#{minutes}" if minutes.length < 2
+        json.delayminutes = hours + ':' + minutes
 
-        if json.tasks
-          # We expect `isChecked` field to be present in each task,
-          # but is is not always the case due to the bug fixed in
-          # b0e4ce19b330cfafa05ba33a92234f24bd6bfe65
-          json.tasks.forEach (task) -> task.isChecked = Boolean task.isChecked
+      { timestamp, who, data: json, color }
 
-        if json.aeinterlocutors?
-          json.aeinterlocutors =
-            _.map(json.aeinterlocutors, utils.internalToDisplayed).join ", "
-        color = ko.observable \
-          if json.serviceid?
-            utils.palette[svcs.indexOf(json.serviceid) %
-              utils.palette.length]
-          else
-            null
-
-        if json.delayminutes
-          hours   = String Math.floor json.delayminutes / 60
-          minutes = String json.delayminutes % 60
-          hours   = "0#{hours}"   if hours.length   < 2
-          minutes = "0#{minutes}" if minutes.length < 2
-          json.delayminutes = hours + ':' + minutes
-
-        if json.type is "smsForPartner"
-          json.mtime =
-            moment.utc(json.mtime).local().format "DD.MM.YYYY HH:mm:ss"
-
-        if json.type is "locationSharingResponse"
-          json.lonlat = json.lon.toPrecision(7) + ',' + json.lat.toPrecision(7)
-          json.mapUrl = 'https://maps.yandex.ru/?z=18&l=map&pt=' + json.lonlat
-          json.copyToClipboard = do (json) ->
-            ->
-              # see https://stackoverflow.com/questions/400212
-              textArea = document.createElement 'textarea'
-              textArea.style = 'position: fixed; top: 0; left: 0'
-              textArea.value = json.mapUrl
-              document.body.appendChild textArea
-              do textArea.focus
-              do textArea.select
-              document.execCommand 'copy'
-              document.body.removeChild textArea
-
-        item = {
-          datetime: new Date(i[0]).toString historyDatetimeFormat
-          who: i[1]
-          json
-          color
-        }
-
-        item.visible = ko.computed showHistoryItem item
-        kvm['historyItems'].push item
-
-
-  showHistoryItem = (i) ->
-    ->
-      switch
-        when i.json.type is 'action' and not kvm.histShowActi()
-          return false
-        when i.json.type is 'comment' and not kvm.histShowComm()
-          return false
-        when i.json.type is 'partnerCancel' and not kvm.histShowCanc()
-          return false
-        when i.json.type is 'partnerDelay' and not kvm.histShowDelay()
-          return false
-        when i.json.type is 'smsForPartner' and not kvm.histShowPartnerSms()
-          return false
-        when i.json.type is 'eraGlonassIncomingCallCard' \
-             and not kvm.histShowEGCallCard()
-          return false
-        when (i.json.type is 'call' or i.json.type is 'avayaEvent') \
-             and not kvm.histShowCall()
-          return false
-        when i.json.type.startsWith('locationSharing') \
-             and not kvm.histShowLocationSharing()
-          return false
-        when i.json.type is 'customerFeedback' \
-             and not kvm.histShowCustomerFeedback()
-          return false
-
-      filterVal = kvm['historyFilter']()
-      matchesFilter = (s) ->
-        _.isEmpty(filterVal) || new RegExp(filterVal, "i").test(s)
-      _.any [i.who, i.datetime].concat(_.values i.json), matchesFilter
+  historyLimit = 30
+  url = "/caseHistory/#{kvm.id()}?limit=#{historyLimit}"
+  refreshHistory = ->
+    fetch(url, credentials: "same-origin")
+      .then (response) -> response.json()
+      .then (res) ->
+        data = processRawHistory res
+        component = preact.h CaseHistory, {items: () => data}
+        preact.render component, document.getElementById("case-history")
 
   kvm['refreshHistory'] = refreshHistory
-  kvm['contact_phone1']?.subscribe refreshHistory
+  kvm['contact_phone1']?.subscribe refreshHistory # FIXME: throttle
 
 
 setupElmPhotos = (kvm) ->
