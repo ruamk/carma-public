@@ -1170,26 +1170,19 @@ mixin infoField(name, value)
 .field-template#detailsFromAutoteka-field-template
   // ko if: !car_detailsFromAutoteka().report && car_plateNum()
   .form-group.has-feedback
+    // ko if: searchInAutoteka.inProgress()
     label.col-sm-4.control-label
-      // ko if: searchInAutotekaBtn.inProgress()
-      span(data-bind="text: searchInAutotekaBtn.elapsedTime")
-      | сек.&nbsp;&nbsp;
       span.glyphicon.glyphicon-refresh.glyphicon-refresh-animate
-      // /ko
     .col-sm-8
-      button.btn.btn-small(
-        data-bind="\
-          click: searchInAutotekaBtn.click,\
-          attr: { title: searchInAutotekaBtn.tooltip },\
-          disabled: searchInAutotekaBtn.inProgress")
-        | Поискать в Автотеке по госномеру
+      | Поиск в Автотеке по госномеру
+    // /ko
   // /ko
 
   // ko if: car_detailsFromAutoteka().error
   .form-group.has-feedback
     .col-sm-4
     .col-sm-8
-      span.label.label-danger Поиск завершился с ошибкой
+      span.label.label-danger Поиск в Автотеке завершился с ошибкой
   // /ko
 
   // ko if: car_detailsFromAutoteka().report

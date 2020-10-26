@@ -115,9 +115,11 @@ fillAutoteka p caseId c = do
   res <- PG.query c
     [sql|
       select row_to_json(r.*)
-        from "AutotekaRequest" r
-        where caseId = ?
-        order by ctime desc
+        from "AutotekaRequest" r, casetbl c
+        where r.caseId = ?
+          and c.id = r.caseId
+          and c.car_plateNum = r.plateNumber
+        order by r.ctime desc
         limit 1
     |] [caseId]
 
