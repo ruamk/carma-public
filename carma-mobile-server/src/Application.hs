@@ -641,9 +641,10 @@ geoAppInit = makeSnaplet "geo" "Geoservices" Nothing $ do
       sslClientCertificate sslClientCertificateInit
 
   cfg <- getSnapletUserConfig
-  cp  <- liftIO $ lookupDefault 8000 cfg "carma_port"
+  cHost <- liftIO $ lookupDefault "127.0.0.1" cfg "carma_host"
+  cPort <- liftIO $ lookupDefault 8000 cfg "carma_port"
 
-  let cOpts   = defaultCarmaOptions { carmaPort = cp }
+  let cOpts   = defaultCarmaOptions { carmaHost = cHost, carmaPort = cPort }
       defDict = T.unpack $ modelName (modelInfo :: ModelInfo City.City)
 
   dName <- liftIO $ lookupDefault defDict cfg "cities-dictionary"
