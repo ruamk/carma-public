@@ -375,29 +375,24 @@ module.exports =
         disabled: ko.observable(false)
 
   autoteka: (model, kvm) ->
-    kvm.searchInAutotekaBtn =
-      tooltip:
-        'Поиск по регистрационному номеру'
+    kvm.searchInAutoteka =
       inProgress: ko.observable(false)
-      elapsedTime: ko.observable(0)
-      click: ->
-        btn = kvm.searchInAutotekaBtn
-        btn.inProgress(true)
-        start = new Date()
-        update = -> btn.elapsedTime(((new Date() - start) / 1000).toFixed(1))
-        int = setInterval update, 600
-        fetch("/autoteka/report/#{parseInt kvm.id()}", {
-          method: "POST"
-          headers:
-            Accept: 'application/json'
-        }).then((r) -> r.json())
-          .then((r) ->
-            btn.inProgress(false)
-            kvm.car_detailsFromAutoteka(r)
-            clearInterval int
-          )
-          .catch((err) ->
-            btn.inProgress(false)
-            kvm.car_detailsFromAutoteka({error: err})
-            clearInterval int
-          )
+      start: ->
+        kvm.car_detailsFromAutoteka({report: null, error: null})
+        # search only if plateNum is valid
+        if kvm.car_plateNumRegexp() == false
+          kvm.searchInAutoteka.inProgress(true)
+          fetch("/autoteka/report/#{parseInt kvm.id()}/#{kvm.car_plateNum()}", {
+            method: "POST"
+            headers:
+              Accept: 'application/json'
+          }).then((r) -> r.json())
+            .then((r) ->
+              kvm.searchInAutoteka.inProgress(false)
+              kvm.car_detailsFromAutoteka(r)
+            )
+            .catch((err) ->
+              kvm.searchInAutoteka.inProgress(false)
+              kvm.car_detailsFromAutoteka({report: null, error: err})
+            )
+    kvm.car_plateNum.subscribe(_.debounce(kvm.searchInAutoteka.start, 1300))
