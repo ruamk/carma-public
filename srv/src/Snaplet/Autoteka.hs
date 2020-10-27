@@ -27,7 +27,7 @@ import           Snaplet.Auth.Class
 import           Snaplet.Auth.PGUsers (currentUserMetaId)
 
 import           Database.PostgreSQL.Simple.SqlQQ
-import           Carma.Utils.Snap (getIntParam, writeJSON, withLens)
+import           Carma.Utils.Snap (getParamT, getIntParam, writeJSON, withLens)
 
 import qualified Autoteka as Att
 
@@ -60,7 +60,7 @@ autotekaInit auth db = makeSnaplet "autoteka" "Car details searching" Nothing $ 
   ss <- liftIO $ startTokenRefreshThread env clientId clientSecret
 
   addRoutes
-    [("/report/:caseId", method POST getReport)]
+    [("/report/:caseId/:plateNum", method POST getReport)]
   pure $ Autoteka auth db env ss
 
 
@@ -93,18 +93,22 @@ startTokenRefreshThread env clientId clientSecret = do
 getReport :: Handler b (Autoteka b) ()
 getReport = do
   Just caseId <- getIntParam "caseId"
+  Just plateNum <- getParamT "plateNum"
   Just uid <- currentUserMetaId
-  syslogJSON Info "Autoteka" [("caseId", toJsonStr caseId)]
+  syslogJSON Info "Autoteka"
+    [("caseId", toJsonStr caseId)
+    ,("plateNum", Aeson.String plateNum)
+    ]
 
-  [(reqId, plateNum)] <- withLens db $ query
+  [[reqId]] <- withLens db $ query
     [sql|
       insert into "AutotekaRequest"
-        (caseId, userId, plateNumber)
-        select id, ?, car_plateNum from casetbl where id = ?
-        returning id, plateNumber
+        (caseId, userId, plateNumber) values (?, ?, ?)
+        returning id
     |]
-    (uid, caseId)
+    (caseId, uid, plateNum)
 
+  -- FIXME: hanlde 404 exception and update Request table with error message
   report <- try
     $ logExceptions "Autoteka"
     $ getReport' plateNum
