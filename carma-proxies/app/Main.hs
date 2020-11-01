@@ -37,10 +37,6 @@ type SearchRoute =
        -- Example: GET /search/ru-RU,ru/foobarbaz
        ("search" :> QueryParam' '[Required] "query" SearchQuery
                  :> Post '[JSON] SearchResponse)
--- Preflight route for search.
-type PreflightRoute = ("search" :> Options)
-
-type AppRoutes = SearchRoute :<|> PreflightRoute
 
 main :: IO ()
 main = do
@@ -52,11 +48,9 @@ main = do
 
   let appCtx = token
 
-      api = Proxy :: Proxy AppRoutes
+      --api = Proxy :: Proxy AppRoutes
 
-      app = serve api $
-                    hoistServer (Proxy :: Proxy SearchRoute) withReader searchServer
-               :<|> serve (Proxy :: Proxy PreflightRoute) searchPreflight
+      app =     serve (Proxy :: Proxy SearchRoute) (hoistServer (Proxy :: Proxy SearchRoute) withReader searchServer)
         where
           withReader :: ReaderT AppContext Handler a -> Handler a
           withReader r = runReaderT r appCtx
@@ -103,13 +97,6 @@ search (SearchQuery query) = do
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
     Just (Just (Error err)) -> error $ "invalid json parsing: "++show err
     _ -> error "can't decode body"
-
-searchPreflight
-  :: ( MonadIO m
-     )
-  => m ()
-searchPreflight = do
-  return ()
 
 newtype SearchQuery = SearchQuery Text
   deriving (Eq, Ord, Show)
