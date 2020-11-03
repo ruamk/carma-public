@@ -23,7 +23,7 @@ class AddressesDict extends m.dict
     @kvm[@address_field].subscribe(((newValue) -> this.trySetCoords(newValue)), this)
     @mapModule = null # to require/load afterwards.
     port = if @opts.proxy_port? then @opts.proxy_port else "8167"
-    @search_url = "https://" + window.location.hostname + ":" + port + "/search"
+    @search_url = "https://" + window.location.hostname + "/search"
 
   trySetCoords: (newValue) ->
     foundExact = (x for x in @suggestions when x.value == newValue)
@@ -59,8 +59,8 @@ class AddressesDict extends m.dict
     $.ajax (objForDD)
 
   processAnswer: (data, cb) ->
-    @addresses = (x.value for x in data.suggestions)
-    @suggestions = data.suggestions
+    @addresses = (x.value for x in data)
+    @suggestions = data
     return cb(@addresses)
 
   id2val: (i) ->

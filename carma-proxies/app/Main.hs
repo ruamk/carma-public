@@ -29,6 +29,7 @@ import           Data.Text.Encoding (encodeUtf8)
 
 import           Servant
 import qualified Network.Wai.Handler.Warp as Warp
+import           Network.Wai.Logger       (withStdoutLogger)
 
 import qualified Network.Wreq as WReq
 
@@ -45,22 +46,23 @@ main = do
   !(port :: Warp.Port) <- Conf.require cfg "port"
   !(host :: String)    <- Conf.lookupDefault "127.0.0.1" cfg "host"
   !(token :: Text)     <- Conf.require cfg "dadata-token"
+  withStdoutLogger $ \aplogger -> do
+    let appCtx = token
 
-  let appCtx = token
+        --api = Proxy :: Proxy AppRoutes
 
-      --api = Proxy :: Proxy AppRoutes
+        app =     serve (Proxy :: Proxy SearchRoute) (hoistServer (Proxy :: Proxy SearchRoute) withReader searchServer)
+          where
+            withReader :: ReaderT AppContext Handler a -> Handler a
+            withReader r = runReaderT r appCtx
 
-      app =     serve (Proxy :: Proxy SearchRoute) (hoistServer (Proxy :: Proxy SearchRoute) withReader searchServer)
-        where
-          withReader :: ReaderT AppContext Handler a -> Handler a
-          withReader r = runReaderT r appCtx
+        warpSettings
+          = Warp.setLogger aplogger $
+              Warp.defaultSettings
+            & Warp.setPort port
+            & Warp.setHost (fromString host)
 
-      warpSettings
-        = Warp.defaultSettings
-        & Warp.setPort port
-        & Warp.setHost (fromString host)
-
-  Warp.runSettings warpSettings app
+    Warp.runSettings warpSettings app
 
 
 searchServer
