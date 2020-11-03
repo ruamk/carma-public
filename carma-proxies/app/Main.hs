@@ -29,7 +29,6 @@ import           Data.Text.Encoding (encodeUtf8)
 
 import           Servant
 import qualified Network.Wai.Handler.Warp as Warp
-import           Network.Wai.Logger       (withStdoutLogger)
 
 import qualified Network.Wreq as WReq
 
@@ -46,23 +45,20 @@ main = do
   !(port :: Warp.Port) <- Conf.require cfg "port"
   !(host :: String)    <- Conf.lookupDefault "127.0.0.1" cfg "host"
   !(token :: Text)     <- Conf.require cfg "dadata-token"
-  withStdoutLogger $ \aplogger -> do
-    let appCtx = token
+  let appCtx = token
 
-        --api = Proxy :: Proxy AppRoutes
 
-        app =     serve (Proxy :: Proxy SearchRoute) (hoistServer (Proxy :: Proxy SearchRoute) withReader searchServer)
+      app =     serve (Proxy :: Proxy SearchRoute) (hoistServer (Proxy :: Proxy SearchRoute) withReader searchServer)
           where
             withReader :: ReaderT AppContext Handler a -> Handler a
             withReader r = runReaderT r appCtx
 
-        warpSettings
-          = Warp.setLogger aplogger $
-              Warp.defaultSettings
+      warpSettings
+          =   Warp.defaultSettings
             & Warp.setPort port
             & Warp.setHost (fromString host)
 
-    Warp.runSettings warpSettings app
+  Warp.runSettings warpSettings app
 
 
 searchServer
@@ -87,13 +83,10 @@ search
   => SearchQuery -> m SearchResponse
 search (SearchQuery query) = do
   token <- ask
-  liftIO $ putStrLn $ "token: "++show token
-  liftIO $ putStrLn $ "query: "++show query
   let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
   r <- liftIO $ WReq.postWith opts
                                    "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
                                    (toJSON $ Map.fromList [("query" :: Text, query)])
-  liftIO $ putStrLn $ "dadata's response: "++show r
   let body = r ^. WReq.responseBody
   case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
