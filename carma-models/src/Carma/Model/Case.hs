@@ -204,7 +204,6 @@ caseMod = [
   ,regexp regexpDate car_firstSaleDate
 
   ,mainToo contact_contactOwner
-  ,mainToo car_plateNum
 
   ,setMeta "filterBy" "active" program
   ,setMeta "filterBy" "active" subprogram
