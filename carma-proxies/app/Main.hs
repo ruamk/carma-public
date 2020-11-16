@@ -34,8 +34,12 @@ import qualified Network.Wreq as WReq
 
 type SearchRoute =
        -- Search coordinates by search query.
-       -- Example: GET /search/ru-RU,ru/foobarbaz
-       ("search" :> QueryParam' '[Required] "query" SearchQuery
+       -- Example: POST /search?query=bubuka%20zlobnaya
+            ("search" :> QueryParam' '[Required] "query" SearchQuery
+                 :> Post '[JSON] SearchResponse)
+       -- Reverse search addresses by coordinates.
+       -- Example: POSt /search?lon=65.10&lat=48.20
+       :<|> ("revsearch" :> QueryParam' '[Required] "lon" SearchLon :> QueryParam' '[Required] "lat" SearchLat
                  :> Post '[JSON] SearchResponse)
 
 main :: IO ()
@@ -69,7 +73,7 @@ searchServer
      , MonadIO m
      )
   => ServerT SearchRoute m
-searchServer = search
+searchServer = search :<|> revSearch
 
 -- Server routes handlers
 
@@ -103,6 +107,36 @@ newtype SearchResponse = SearchResponse Value
   deriving (Show)
 
 deriving instance ToJSON SearchResponse
+
+revSearch
+  :: ( MonadReader AppContext m
+     , MonadCatch m
+     , MonadIO m
+     )
+  => SearchLon -> SearchLat -> m SearchResponse
+revSearch (SearchQuery query) = do
+  token <- ask
+  let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
+  r <- liftIO $ WReq.postWith opts
+                                   "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
+                                   (toJSON $ Map.fromList [("query" :: Text, query)])
+  let body = r ^. WReq.responseBody
+  case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
+    Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
+    Just (Just (Error err)) -> error $ "invalid json parsing: "++show err
+    _ -> error "can't decode body"
+
+newtype SearchLon = SearchLon Text
+  deriving (Eq, Ord, Show)
+
+instance FromHttpApiData SearchLon where
+  parseQueryParam = Right . SearchLon
+
+newtype SearchLat = SearchLat Text
+  deriving (Eq, Ord, Show)
+
+instance FromHttpApiData SearchLat where
+  parseQueryParam = Right . SearchLat
 
 {-
 dadataAbbrevProxy :: AppHandler ()
