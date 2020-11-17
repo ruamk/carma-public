@@ -25,6 +25,7 @@ import           Data.Proxy
 import qualified Data.Map as Map -- to use its JSON encoding.
 import           Data.String (fromString)
 import           Data.Text (Text)
+import qualified Data.Text as Text
 import           Data.Text.Encoding (encodeUtf8)
 
 import           Servant
@@ -117,10 +118,13 @@ revSearch
 revSearch (SearchLon lon) (SearchLat lat)= do
   token <- ask
   let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
-  r <- liftIO $ WReq.postWith opts
-                                   "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
-                                   (toJSON $ Map.fromList [("query" :: Text, lon <> ", " <> lat)])
+      params = Text.unpack $ "lon=" <> lon <> "&lat=" <> lat
+ 
+  liftIO $ putStrLn $ show params
+  r <- liftIO $ WReq.getWith opts
+                                   ("https://suggestions.dadata.ru/suggestions/api/4_1/rs/geolocate/address?" <> params)
   let body = r ^. WReq.responseBody
+  liftIO $ putStrLn $ show body
   case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
     Just (Just (Error err)) -> error $ "invalid json parsing: "++show err
