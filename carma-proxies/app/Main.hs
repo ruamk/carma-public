@@ -114,12 +114,12 @@ revSearch
      , MonadIO m
      )
   => SearchLon -> SearchLat -> m SearchResponse
-revSearch (SearchQuery query) = do
+revSearch (SearchLon lon) (SearchLat lat)= do
   token <- ask
   let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
   r <- liftIO $ WReq.postWith opts
                                    "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
-                                   (toJSON $ Map.fromList [("query" :: Text, query)])
+                                   (toJSON $ Map.fromList [("query" :: Text, lon <> ", " <> lat)])
   let body = r ^. WReq.responseBody
   case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
