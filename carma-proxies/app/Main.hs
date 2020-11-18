@@ -120,11 +120,11 @@ revSearch (SearchLon lon) (SearchLat lat)= do
   let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
       params = Text.unpack $ "lon=" <> lon <> "&lat=" <> lat
  
-  liftIO $ putStrLn $ show params
+  --liftIO $ putStrLn $ show params
   r <- liftIO $ WReq.getWith opts
                                    ("https://suggestions.dadata.ru/suggestions/api/4_1/rs/geolocate/address?" <> params)
   let body = r ^. WReq.responseBody
-  liftIO $ putStrLn $ show body
+  --liftIO $ putStrLn $ show body
   case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
     Just (Just (Error err)) -> error $ "invalid json parsing: "++show err
@@ -141,14 +141,4 @@ newtype SearchLat = SearchLat Text
 
 instance FromHttpApiData SearchLat where
   parseQueryParam = Right . SearchLat
-
-{-
-dadataAbbrevProxy :: AppHandler ()
-dadataAbbrevProxy = logExceptions ("handler/abbrevproxy") $ do
-  _token <- gets dadataToken
-  Just js <- fmap decode $ readRequestBody 10000 :: AppHandler (Maybe Value)
-  r <- liftIO $ NW.postWith (NW.defaults) "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address" js
-  return ()
-
--}
 

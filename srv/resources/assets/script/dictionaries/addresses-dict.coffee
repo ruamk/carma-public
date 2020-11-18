@@ -20,10 +20,13 @@ class AddressesDict extends m.dict
     @Dict = require "carma/dictionaries"
     @addresses = []
     @suggestions = []
+    @revsuggestions = []
     @kvm[@address_field].subscribe(((newValue) -> this.trySetCoords(newValue)), this)
+    @kvm[@coords_field].subscribe(((newValue) -> this.askForAddressFromCoords(newValue)), this)
     @mapModule = null # to require/load afterwards.
     port = if @opts.proxy_port? then @opts.proxy_port else "8167"
     @search_url = "https://" + window.location.hostname + "/search"
+    @revsearch_url = "https://" + window.location.hostname + "/revsearch"
 
   trySetCoords: (newValue) ->
     foundExact = (x for x in @suggestions when x.value == newValue)
@@ -42,6 +45,22 @@ class AddressesDict extends m.dict
           city_field: @coords_field
           current_blip_type: "default"
 
+  askForAddressFromCoords: (newValue) ->
+    values = newValue.split ","
+    if values.length != 2
+      return
+    lon = values[0]
+    lat = values[1]
+    objForDD =
+           url: @revsearch_url + "?lat=" + encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon)
+           type: "post"
+           crossDomain: true
+           dataType: "json"
+           success:  (data) => @setupAddress data
+  setupAddress: (data) ->
+    if data.length > 0
+      @kvm[@address_field](data[0].value)
+
   find: debounce 1200, (q, cb, opt) ->
     # too short a query
     return cb({}) if q.length < 4 and not opt?.force
@@ -55,7 +74,6 @@ class AddressesDict extends m.dict
            dataType: "json"
            success:  (data) => # https://coffeescript.org/#fat-arrow as Max suggested.
                                @processAnswer data, cb
-    console.log("obj for DD:"+JSON.stringify(objForDD))
     $.ajax (objForDD)
 
   processAnswer: (data, cb) ->
