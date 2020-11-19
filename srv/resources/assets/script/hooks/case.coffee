@@ -380,7 +380,7 @@ module.exports =
       start: ->
         kvm.car_detailsFromAutoteka({report: null, error: null})
         # search only if plateNum is valid
-        if kvm.car_plateNumRegexp() == false
+        if kvm.car_plateNum() && not kvm.car_plateNumRegexp()
           kvm.searchInAutoteka.inProgress(true)
           fetch("/autoteka/report/#{parseInt kvm.id()}/#{kvm.car_plateNum()}", {
             method: "POST"

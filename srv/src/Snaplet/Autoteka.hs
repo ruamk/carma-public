@@ -94,6 +94,9 @@ getReport :: Handler b (Autoteka b) ()
 getReport = do
   Just caseId <- getIntParam "caseId"
   Just plateNum <- getParamT "plateNum"
+  when (T.length plateNum < 7) $
+    fail "invalid plate number"
+
   Just uid <- currentUserMetaId
   syslogJSON Info "Autoteka"
     [("caseId", toJsonStr caseId)
