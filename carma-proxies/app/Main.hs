@@ -40,7 +40,9 @@ type SearchRoute =
                  :> Post '[JSON] SearchResponse)
        -- Reverse search addresses by coordinates.
        -- Example: POSt /search?lon=65.10&lat=48.20
-       :<|> ("revgeosearch" :> QueryParam' '[Required] "lon" SearchLon :> QueryParam' '[Required] "lat" SearchLat
+       :<|> ("revgeosearch" :> QueryParam' '[Required] "lon" SearchLon
+                            :> QueryParam' '[Required] "lat" SearchLat
+                            :> QueryParam' '[Required] "radius" SearchRadius
                  :> Post '[JSON] SearchResponse)
 
 main :: IO ()
@@ -114,11 +116,11 @@ revSearch
      , MonadCatch m
      , MonadIO m
      )
-  => SearchLon -> SearchLat -> m SearchResponse
-revSearch (SearchLon lon) (SearchLat lat)= do
+  => SearchLon -> SearchLat -> SearchRadius -> m SearchResponse
+revSearch (SearchLon lon) (SearchLat lat) (SearchRadius rText) = do
   token <- ask
   let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
-      params = Text.unpack $ "lon=" <> lon <> "&lat=" <> lat
+      params = Text.unpack $ "lon=" <> lon <> "&lat=" <> lat <> "&radius_meters=" <> rText
  
   --liftIO $ putStrLn $ show params
   r <- liftIO $ WReq.getWith opts
@@ -141,4 +143,10 @@ newtype SearchLat = SearchLat Text
 
 instance FromHttpApiData SearchLat where
   parseQueryParam = Right . SearchLat
+
+newtype SearchRadius = SearchRadius Text
+  deriving (Eq, Ord, Show)
+
+instance FromHttpApiData SearchRadius where
+  parseQueryParam = Right . SearchRadius
 

@@ -10,11 +10,13 @@ class AddressesDict extends m.dict
   # , coords_field: "name of coordinates field in kvm, defaults to caseAddress_coords"
   # , address_field: "name of address field in kvm, defaults to caseAddress_address"
   # , map_name: "name of HTML element, defaults to #case-form-caseAddress_map"
+  # , search_radius_meters = #self-explanatory, by default 100
   # }
   constructor: (@opts)->
     # will not set coords field if it is not specified.
     @coords_field = if @opts.coords_field? then @opts.coords_field else "caseAddress_coords"
     @address_field = if @opts.address_field? then @opts.address_field else "caseAddress_address"
+    @search_radius_meters = if @opts.search_radius_meters? then @opts.search_radius_meters else 100
     @map_name = if @opts.map_name? then @opts.map_name else "#case-form-caseAddress_map"
     @kvm = @opts.kvm
     @Dict = require "carma/dictionaries"
@@ -46,17 +48,22 @@ class AddressesDict extends m.dict
           current_blip_type: "default"
 
   askForAddressFromCoords: (newValue) ->
-    values = newValue.split ","
-    if values.length != 2
+    if !@mapModule
+      @mapModule = require "carma/map"
+    osMap = $(@map_name).data("osmap")
+    lonLat = @mapModule.lonlatFromShortString(newValue)
+    if !lonLat
       return
-    lon = values[0]
-    lat = values[1]
+    asStr = @mapModule.shortStringFromLonlat(lonLat)
+    asStrs = asStr.split(",")
+    lon = asStrs[0]
+    lat = asStrs[1]
     objForDD =
-           url: @revsearch_url + "?lat=" + encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon)
-           type: "post"
-           crossDomain: true
-           dataType: "json"
-           success:  (data) => @setupAddress data
+      url: @revsearch_url + "?lat=" + encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon)+"&radius="+encodeURIComponent(@search_radius_meters)
+      type: "post"
+      crossDomain: true
+      dataType: "json"
+      success:  (data) => @setupAddress data
     $.ajax (objForDD)
   setupAddress: (data) ->
     curr_addr = @kvm[@address_field]
