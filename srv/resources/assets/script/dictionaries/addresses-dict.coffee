@@ -57,9 +57,11 @@ class AddressesDict extends m.dict
            crossDomain: true
            dataType: "json"
            success:  (data) => @setupAddress data
+    $.ajax (objForDD)
   setupAddress: (data) ->
-    if data.length > 0
-      @kvm[@address_field](data[0].value)
+    curr_addr = @kvm[@address_field]
+    if data.length > 0 && curr_addr.length < 1
+      @kvm[@address_field](data[0].value) # we set address from reverse suggestions only when it is empty
 
   find: debounce 1200, (q, cb, opt) ->
     # too short a query

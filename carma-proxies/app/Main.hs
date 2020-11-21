@@ -36,11 +36,11 @@ import qualified Network.Wreq as WReq
 type SearchRoute =
        -- Search coordinates by search query.
        -- Example: POST /search?query=bubuka%20zlobnaya
-            ("search" :> QueryParam' '[Required] "query" SearchQuery
+            ("geosearch" :> QueryParam' '[Required] "query" SearchQuery
                  :> Post '[JSON] SearchResponse)
        -- Reverse search addresses by coordinates.
        -- Example: POSt /search?lon=65.10&lat=48.20
-       :<|> ("revsearch" :> QueryParam' '[Required] "lon" SearchLon :> QueryParam' '[Required] "lat" SearchLat
+       :<|> ("revgeosearch" :> QueryParam' '[Required] "lon" SearchLon :> QueryParam' '[Required] "lat" SearchLat
                  :> Post '[JSON] SearchResponse)
 
 main :: IO ()
