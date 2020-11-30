@@ -39,6 +39,7 @@ import           Snaplet.Messenger
 import           Snaplet.Messenger.Class
 
 
+
 -- | Global application options.
 data AppOptions = AppOptions
     { localName       :: Maybe Text
