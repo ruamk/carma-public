@@ -45,6 +45,7 @@ dependencies:
   - map-syntax
   - monad-control
   - mtl
+  - wreq
   - persistent
   - persistent-postgresql
   - pg-simple-qq-alt
