@@ -28,6 +28,9 @@ import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Data.Text.Encoding (encodeUtf8)
 
+import           System.Environment (getArgs)
+import           System.Exit (exitFailure)
+
 import           Servant
 import qualified Network.Wai.Handler.Warp as Warp
 
@@ -47,7 +50,24 @@ type SearchRoute =
 
 main :: IO ()
 main = do
-  cfg <- Conf.load [Conf.Required "proxies.cfg"]
+  cfgName <- do
+    args <- getArgs
+    case args of
+      ("-h":_) -> do
+        putStrLn $ unlines
+                     [  "usage: carma-proxies [config-file-name|-h]"
+                     , ""
+                     , "If omitted, config-file-name takes value proxies.cfg."
+                     , ""
+                     , "-h will print this usage text"
+                     ]
+        exitFailure
+      [fn] -> return fn
+      [] -> return "proxies.cfg"
+      _ -> do
+        putStrLn $ "invalid usage; use 'carma-proxies -h' for usage"
+        exitFailure
+  cfg <- Conf.load [Conf.Required cfgName]
 
   !(port :: Warp.Port) <- Conf.require cfg "port"
   !(host :: String)    <- Conf.lookupDefault "127.0.0.1" cfg "host"
