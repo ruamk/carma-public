@@ -10,6 +10,7 @@
 
 module Main (main) where
 
+import           Control.Concurrent.MVar
 import           Control.Lens
 import           Control.Monad.Reader (MonadReader, ReaderT, runReaderT, ask)
 import           Control.Monad.Catch (MonadCatch)
@@ -22,6 +23,7 @@ import           Data.Aeson
 import           Data.Aeson.Lens (key)
 import qualified Data.Configurator as Conf
 import           Data.Proxy
+import qualified Data.List as L
 import qualified Data.Map as Map -- to use its JSON encoding.
 import           Data.String (fromString)
 import           Data.Text (Text)
@@ -30,6 +32,8 @@ import           Data.Text.Encoding (encodeUtf8)
 
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure)
+import           System.IO
+import           System.IO.Unsafe
 
 import           Servant
 import qualified Network.Wai.Handler.Warp as Warp
@@ -72,7 +76,15 @@ main = do
   !(port :: Warp.Port) <- Conf.require cfg "port"
   !(host :: String)    <- Conf.lookupDefault "127.0.0.1" cfg "host"
   !(token :: Text)     <- Conf.require cfg "dadata-token"
-  let appCtx = token
+  (logLevel :: String) <- Conf.lookupDefault "start-stop" cfg "log-level"
+  logRequests <- case logLevel of
+    "start-stop" -> return False
+    "debug"      -> return True
+    _            -> do
+                      putStrLn $ "Invalid logging level "++show logLevel++" (field log-level in configuration file)"
+                      putStrLn "Allowed values: start-stop and debug."
+                      exitFailure
+  let appCtx = (token, if logRequests then priorityDebug else priorityInfo)
 
 
       app =     serve (Proxy :: Proxy SearchRoute) (hoistServer (Proxy :: Proxy SearchRoute) withReader searchServer)
@@ -85,7 +97,38 @@ main = do
             & Warp.setPort port
             & Warp.setHost (fromString host)
 
+  logMsg priorityInfo "carma-proxies start"
   Warp.runSettings warpSettings app
+  logMsg priorityInfo "carma-proxies stop"
+
+type Priority = Int
+
+priorityInfo, priorityDebug :: Priority
+priorityInfo  = 5
+priorityDebug = 6
+
+-- | Write a message to stderr.
+-- We use strict text here to force message evaluation in the calling thread.
+logMsg :: MonadIO m => Priority -> String -> m ()
+logMsg p msg = liftIO $ do
+  -- Prepend each line with a numeric representation of the specified priority.
+  -- This will be parsed by systemd (see 'man sd_journal_print' for more info).
+  let prefix = "<" <> show p <> ">"
+  let msg' = L.intercalate "\n"
+        $ map (prefix <>)
+        $ lines $ msg
+  -- Write directly to stderr if log thread has not started.
+  withMVar logLock $ \_ ->
+    hPutStrLn stderr msg'
+
+logDebug :: MonadIO m => Priority -> String -> m ()
+logDebug p msg
+  | p /= priorityDebug = return ()
+  | otherwise = logMsg p msg
+
+logLock :: MVar ()
+logLock = unsafePerformIO $ newMVar ()
+{-# NOINLINE logLock #-}
 
 
 searchServer
@@ -100,7 +143,7 @@ searchServer = search :<|> revSearch
 
 -- Server routes handlers
 
-type AppContext = Text -- will expand on that later.
+type AppContext = (Text, Int) -- will expand on that later.
 
 search
   :: ( MonadReader AppContext m
@@ -109,12 +152,16 @@ search
      )
   => SearchQuery -> m SearchResponse
 search (SearchQuery query) = do
-  token <- ask
+  (token, prio) <- ask
   let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
   r <- liftIO $ WReq.postWith opts
                                    "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
                                    (toJSON $ Map.fromList [("query" :: Text, query)])
   let body = r ^. WReq.responseBody
+  logDebug prio $ unlines
+                    [ "search query "++show query
+                    , "response: "++show r
+                    ]
   case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
     Just (Just (Error err)) -> error $ "invalid json parsing: "++show err
@@ -138,7 +185,7 @@ revSearch
      )
   => SearchLon -> SearchLat -> SearchRadius -> m SearchResponse
 revSearch (SearchLon lon) (SearchLat lat) (SearchRadius rText) = do
-  token <- ask
+  (token, prio) <- ask
   let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
       params = Text.unpack $ "lon=" <> lon <> "&lat=" <> lat <> "&radius_meters=" <> rText
  
@@ -146,6 +193,10 @@ revSearch (SearchLon lon) (SearchLat lat) (SearchRadius rText) = do
   r <- liftIO $ WReq.getWith opts
                                    ("https://suggestions.dadata.ru/suggestions/api/4_1/rs/geolocate/address?" <> params)
   let body = r ^. WReq.responseBody
+  logDebug prio $ unlines
+                    [ "search lon "++show lon++", lat "++show lat++", radius "++show rText
+                    , "response: "++show r
+                    ]
   --liftIO $ putStrLn $ show body
   case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
