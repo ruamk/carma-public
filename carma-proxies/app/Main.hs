@@ -97,7 +97,7 @@ main = do
             & Warp.setPort port
             & Warp.setHost (fromString host)
 
-  logMsg priorityInfo "carma-proxies start"
+  logMsg priorityInfo $ "carma-proxies start: "++show host++", port "++show port
   Warp.runSettings warpSettings app
   logMsg priorityInfo "carma-proxies stop"
 
