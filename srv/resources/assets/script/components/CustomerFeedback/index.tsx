@@ -4,15 +4,19 @@ import moment from "moment"
 
 import {Modal, ModalWrapper} from "./Modal"
 import {Spinner} from "./Spinner"
-import {Selector, Item} from "./Selector"
+
+import "./index.less"
 
 
 interface Feedback {
-  value: number,
-  comment: string,
-  ctime: null | string,
-  realName: null | string,
-  login: null | string,
+  response: {
+    operValue: number | null,
+    techValue: number | null,
+    comment: string | null,
+  },
+  ctime: string | null,
+  realName: string | null,
+  login: string | null,
 }
 
 interface Props {
@@ -22,27 +26,49 @@ interface Props {
 }
 
 
+interface ValueProps {
+  question: string,
+  group: string,
+  value: number,
+  onChange: (val: number) => void,
+}
+
+const Value: FunctionalComponent<ValueProps> = props =>
+  <div>
+    <p>{props.question}</p>
+    <div class="satisfaction-value">
+      {[1, 2, 3, 4, 5].map(val =>
+        <label>
+          <input
+            type="radio"
+            name={props.group}
+            value={val}
+            checked={props.value === val}
+            onChange={_ => props.onChange(val)}
+          />
+          {val}
+        </label>
+      )}
+    </div>
+  </div>
+
+
 const CustomerFeedback: FunctionalComponent<Props> = (props) => {
   const {data} = props;
-  const [value, setValue] = useState(data ? data.value : null);
-  const [comment, setComment] = useState(data ? data.comment : "");
+  const [operValue, setOperValue] = useState(data?.response.operValue);
+  const [techValue, setTechValue] = useState(data?.response.techValue);
+  const [comment, setComment] = useState(data?.response.comment || "");
   const [readonly, setReadonly] = useState(!!data);
 
   const onSave = async () => {
     setReadonly(true);
     try {
-      await props.onSave({value, comment});
+      await props.onSave({operValue, techValue, comment});
       props.onClose();
     } finally {
       setReadonly(false);
     }
   };
-
-  const values = [ // FIXME: get those from dictionary
-    {val: 1, label: "🙂 Клиент доволен"},
-    {val: 2, label: "🙁 Клиент не доволен"},
-    {val: 3, label: "🤐 Клиент не отвечает"}
-  ];
 
   const field = (lbl, val) =>
     <div>
@@ -55,7 +81,7 @@ const CustomerFeedback: FunctionalComponent<Props> = (props) => {
       title="Оценка качества обслуживания"
       onClose={props.onClose}
       onSave={onSave}
-      canSave={value && !readonly}
+      canSave={operValue && techValue && !readonly}
     >
       <form>
         { data && [
@@ -65,16 +91,18 @@ const CustomerFeedback: FunctionalComponent<Props> = (props) => {
             moment(data.ctime).format("YYYY-MM-DD HH:mm"))
         ]}
 
-        <Selector>
-          { values.map(({val, label}) =>
-            <Item
-              active={value == val}
-              disabled={readonly}
-              onClick={() => setValue(val)}>
-              <h3>{label}</h3>
-            </Item>
-          )}
-        </Selector>
+        <Value
+          question="Оцените работу оператора"
+          group="operator"
+          value={operValue}
+          onChange={setOperValue}
+        />
+        <Value
+          question="Оцените работу механика"
+          group="tech"
+          value={techValue}
+          onChange={setTechValue}
+        />
         <div>
           <label>Комментарий</label>
           <textarea
@@ -102,14 +130,14 @@ async function loadFeedback(caseId, serviceId) {
 
 
 function saveFeedback(caseId, serviceId) {
-  return async ({value, comment}) => {
+  return async (response) => {
     const r = await fetch("/customerFeedback", {
       method: "POST",
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({caseId, serviceId, value, comment})
+      body: JSON.stringify({caseId, serviceId, response})
     });
 
     if(!r.ok) throw GENERIC_ERROR;

@@ -6,8 +6,7 @@ create table "CustomerFeedback"
   , caseId int4 not null references casetbl
   , serviceId int4 -- references servicetbl
   -- ^^ foreign keys are not compatible with table inheritance
-  , value int4 not null references "Satisfaction"
-  , "comment" text not null default ''
+  , response json not null
   );
 
 create index on "CustomerFeedback" (caseId);

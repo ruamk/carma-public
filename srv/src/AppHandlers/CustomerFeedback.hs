@@ -41,11 +41,16 @@ getCustomerFeedback = do
   writeJSON (concat res :: [Aeson.Value])
 
 
+data Response  = Response
+  { operValue :: Maybe Int
+  , techValue :: Maybe Int
+  , comment   :: Maybe Text
+  } deriving (Generic, Aeson.FromJSON, Aeson.ToJSON)
+
 data NewFeedback = NewFeedback
   { caseId    :: Int
   , serviceId :: Maybe Int
-  , value     :: Int
-  , comment   :: Text
+  , response  :: Response
   } deriving (Generic, Aeson.FromJSON)
 
 
@@ -56,10 +61,10 @@ newCustomerFeedback = do
   res <- query
     [sql|
       INSERT INTO "CustomerFeedback"
-        (userId, caseId, serviceId, value, comment)
+        (userId, caseId, serviceId, response)
       VALUES
-        (?, ?, ?, ?, ?)
+        (?, ?, ?, ?)
       RETURNING id
     |]
-    (userId, caseId, serviceId, value, comment)
+    (userId, caseId, serviceId, Aeson.toJSON response)
   writeJSON (concat res :: [Int])

@@ -1087,10 +1087,20 @@ mixin caseFilesList
               // ko if: $data.type === 'customerFeedback'
               div
                 i.glyphicon.glyphicon-star
-                | &nbsp;
+              div
                 b
-                  | Отзыв клиента:&nbsp;
-                span(data-bind=`text: label`)
+                  | Оценка работы оператора:&nbsp;
+                span(data-bind=`text: response.operValue`)
+              div
+                b
+                  | Оценка работы механика:&nbsp;
+                span(data-bind=`text: response.techValue`)
+              // ko if: $data.response.comment
+              div
+                b
+                  | Комментарий:&nbsp;
+                span(data-bind=`text: response.comment`)
+              // /ko
               // ko if: $data.comment
               div
                 b

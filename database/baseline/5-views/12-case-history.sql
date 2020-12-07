@@ -326,11 +326,8 @@ CREATE VIEW "CaseHistory" AS
             cf.caseId,
             cf.ctime as datetime,
             cf.userId,
-            cf.value,
-            sf.label,
-            cf."comment"
-        FROM "CustomerFeedback" cf, "Satisfaction" sf
-          WHERE cf.value = sf.id
+            cf.response
+        FROM "CustomerFeedback" cf
         ) row
 
     ) AS united,
