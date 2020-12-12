@@ -4,7 +4,7 @@ license:     BSD3
 author:      Serguey Zefirov
 maintainer:  <sergueyz@gmail.com>
 category:    Web
-synopsis:    Assoerted proxies.
+synopsis:    Assorted proxies.
 
 description:
   Proxies for dadata.ru and, in future, some other services.

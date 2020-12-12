@@ -7,6 +7,7 @@
 -- Copyright (C) ...
 
 {-# LANGUAGE FlexibleContexts, GeneralizedNewtypeDeriving, OverloadedStrings, StandaloneDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Main (main) where
 
@@ -84,7 +85,9 @@ main = do
                       putStrLn $ "Invalid logging level "++show logLevel++" (field log-level in configuration file)"
                       putStrLn "Allowed values: start-stop and debug."
                       exitFailure
-  let appCtx = (token, if logRequests then priorityDebug else priorityInfo)
+  addressSearch <- Conf.require cfg "dadata-suggestions"
+  coordSearch   <- Conf.require cfg "dadata-geosuggestions"
+  let appCtx = AppContext token (if logRequests then priorityDebug else priorityInfo) addressSearch coordSearch
 
 
       app =     serve (Proxy :: Proxy SearchRoute) (hoistServer (Proxy :: Proxy SearchRoute) withReader searchServer)
@@ -143,7 +146,12 @@ searchServer = search :<|> revSearch
 
 -- Server routes handlers
 
-type AppContext = (Text, Int) -- will expand on that later.
+data AppContext = AppContext
+  { appToken               :: Text
+  , appLogLevel            :: Int
+  , appAddressSearchURL    :: String
+  , appCoordinateSearchURL :: String
+  }
 
 search
   :: ( MonadReader AppContext m
@@ -152,16 +160,14 @@ search
      )
   => SearchQuery -> m SearchResponse
 search (SearchQuery query) = do
-  (token, prio) <- ask
-  let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
-  r <- liftIO $ WReq.postWith opts
-                                   "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
-                                   (toJSON $ Map.fromList [("query" :: Text, query)])
+  AppContext {..} <- ask
+  let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> appToken]
+  r <- liftIO $ WReq.postWith opts appAddressSearchURL (toJSON $ Map.fromList [("query" :: Text, query)])
   let body = r ^. WReq.responseBody
-  logDebug prio $ unlines
-                    [ "search query "++show query
-                    , "response: "++show r
-                    ]
+  logDebug appLogLevel $ unlines
+                         [ "search query "++show query
+                         , "response: "++show r
+                         ]
   case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
     Just (Just (Error err)) -> error $ "invalid json parsing: "++show err
@@ -185,18 +191,17 @@ revSearch
      )
   => SearchLon -> SearchLat -> SearchRadius -> m SearchResponse
 revSearch (SearchLon lon) (SearchLat lat) (SearchRadius rText) = do
-  (token, prio) <- ask
-  let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> token]
+  AppContext {..} <- ask
+  let opts = WReq.defaults & WReq.header "Authorization" .~ [encodeUtf8 $ fromString "Token " <> appToken]
       params = Text.unpack $ "lon=" <> lon <> "&lat=" <> lat <> "&radius_meters=" <> rText
  
   --liftIO $ putStrLn $ show params
-  r <- liftIO $ WReq.getWith opts
-                                   ("https://suggestions.dadata.ru/suggestions/api/4_1/rs/geolocate/address?" <> params)
+  r <- liftIO $ WReq.getWith opts (appCoordinateSearchURL <> params)
   let body = r ^. WReq.responseBody
-  logDebug prio $ unlines
-                    [ "search lon "++show lon++", lat "++show lat++", radius "++show rText
-                    , "response: "++show r
-                    ]
+  logDebug appLogLevel $ unlines
+                         [ "search lon "++show lon++", lat "++show lat++", radius "++show rText
+                         , "response: "++show r
+                         ]
   --liftIO $ putStrLn $ show body
   case fmap (\value -> fmap fromJSON $ (value ^? key "suggestions")) $ (decode body :: Maybe Value) of
     Just (Just (Success suggestions)) -> return $ SearchResponse suggestions
