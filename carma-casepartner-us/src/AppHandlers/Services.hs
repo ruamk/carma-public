@@ -306,14 +306,14 @@ getServices uid = do
                    "AND servicetbl.parentid = " ++ show i
 
                (_, Just s, Just e) ->
-                   "AND times_expectedservicestart BETWEEN " ++ ds s ++
+                   "AND servicetbl.times_expectedservicestart BETWEEN " ++ ds s ++
                    " AND " ++ de e
 
                (_, Just s, _)      ->
-                   "AND times_expectedservicestart >= " ++ ds s
+                   "AND servicetbl.times_expectedservicestart >= " ++ ds s
 
                (_, _, Just e)      ->
-                   "AND times_expectedservicestart <= " ++ de e
+                   "AND servicetbl.times_expectedservicestart <= " ++ de e
 
                _                   -> ""
 
