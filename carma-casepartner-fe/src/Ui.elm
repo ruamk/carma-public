@@ -76,6 +76,7 @@ empty =
 page :
     { navbarMsg : Navbar.State -> a
     , logoutMsg : a
+    , settingsMsg : Maybe a
     , usermenuMsg : Dropdown.State -> a
     , navbarState : Navbar.State
     , usermenuState : Dropdown.State
@@ -84,12 +85,13 @@ page :
     }
     -> Html a
     -> Html a
-page { navbarMsg, logoutMsg, usermenuMsg, navbarState, usermenuState, username, buttons } content =
+page { navbarMsg, logoutMsg, settingsMsg, usermenuMsg, navbarState, usermenuState, username, buttons } content =
     Grid.row []
         [ Grid.col [ Col.attrs [ Spacing.p0 ] ]
             [ mainMenu
                 { navbarMsg = navbarMsg
                 , logoutMsg = logoutMsg
+                , settingsMsg = settingsMsg
                 , usermenuMsg = usermenuMsg
                 , navbarState = navbarState
                 , usermenuState = usermenuState
@@ -104,6 +106,7 @@ page { navbarMsg, logoutMsg, usermenuMsg, navbarState, usermenuState, username, 
 mainMenu :
     { navbarMsg : Navbar.State -> a
     , logoutMsg : a
+    , settingsMsg : Maybe a
     , usermenuMsg : Dropdown.State -> a
     , navbarState : Navbar.State
     , usermenuState : Dropdown.State
@@ -111,10 +114,10 @@ mainMenu :
     , buttons : List ( Bool, a, String )
     }
     -> Html a
-mainMenu { navbarMsg, logoutMsg, usermenuMsg, navbarState, usermenuState, username, buttons } =
+mainMenu { navbarMsg, logoutMsg, settingsMsg, usermenuMsg, navbarState, usermenuState, username, buttons } =
     Navbar.config navbarMsg
         |> Navbar.withAnimation
-        |> Navbar.attrs [class "sticky-top"]
+        |> Navbar.attrs [ class "sticky-top" ]
         |> Navbar.primary
         |> Navbar.brand
             [ style "background-color" "yellow"
@@ -197,8 +200,15 @@ mainMenu { navbarMsg, logoutMsg, usermenuMsg, navbarState, usermenuState, userna
                     , toggleButton =
                         Dropdown.toggle [ Button.primary ] [ text username ]
                     , items =
-                        [ Dropdown.buttonItem [ onClick logoutMsg ] [ text "Выход" ]
-                        ]
+                        (case settingsMsg of
+                            Just msg ->
+                                [ Dropdown.buttonItem [ onClick msg ] [ text "Настройки" ] ]
+
+                            Nothing ->
+                                []
+                        )
+                            ++ [ Dropdown.buttonItem [ onClick logoutMsg ] [ text "Выход" ]
+                               ]
                     }
             ]
         |> Navbar.view navbarState

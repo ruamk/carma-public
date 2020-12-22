@@ -1,5 +1,5 @@
 name: carma-casepartner-us
-version: "0.1"
+version: 0.1
 license: BSD3
 author: Alexander Danilov
 maintainer: alexander.a.danilov@gmail.com
@@ -43,6 +43,7 @@ dependencies:
 
 default-extensions:
   - CPP
+  - DeriveAnyClass
   - DeriveDataTypeable
   - DeriveGeneric
   - FlexibleContexts

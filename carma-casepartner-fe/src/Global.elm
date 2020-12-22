@@ -7,6 +7,7 @@ module Global exposing
     , navigate
     , saveUsername
     , serviceId
+    , settings
     , subscriptions
     , update
     , view
@@ -72,6 +73,7 @@ type Msg
     = Navigate Route
     | Username String
     | ServiceId Int
+    | Settings
     | Logout
 
 
@@ -106,6 +108,11 @@ update msg model =
                 , serviceId = id
                 , route = model.route
                 }
+            )
+
+        Settings ->
+            ( model
+            , navigate Route.Settings
             )
 
         Logout ->
@@ -161,6 +168,11 @@ saveUsername username =
 serviceId : Int -> Cmd Msg
 serviceId id =
     send (ServiceId id)
+
+
+settings : Cmd Msg
+settings =
+    send Settings
 
 
 logout : Cmd Msg

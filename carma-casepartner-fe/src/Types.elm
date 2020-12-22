@@ -4,6 +4,7 @@ module Types exposing
     , ClosingCaseInfo
     , CurrentCaseInfo
     , Dictionary
+    , Driver
     , ServiceDescription
     , ServiceInfo
     , emptyServiceDescription
@@ -156,3 +157,15 @@ type alias CaseComment =
 
 type alias Dictionary =
     Dict.Dict String String
+
+
+type alias Driver =
+    { id : Int
+    , partner : Int
+    , phone : String
+    , password : String
+    , name : String
+    , plateNum : Maybe String
+    , isActive : Bool
+    , serviceId : Maybe Int
+    }

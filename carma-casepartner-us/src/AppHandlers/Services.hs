@@ -3,32 +3,33 @@ module AppHandlers.Services
     ) where
 
 
-import           Data.Aeson (ToJSON, toJSON, genericToJSON)
-import           Data.Aeson.Types (defaultOptions, fieldLabelModifier)
-import           Data.String (fromString)
-import qualified Data.Map as Map
-import           Data.Map ((!))
-import           Data.Maybe (fromMaybe)
-import qualified Data.Text as T
-import           Data.Time (Day)
-import           Data.Time.LocalTime (ZonedTime)
-import           Data.Time.Format (defaultTimeLocale, formatTime)
+import           Data.Aeson                         (ToJSON, genericToJSON,
+                                                     toJSON)
+import           Data.Aeson.Types                   (defaultOptions,
+                                                     fieldLabelModifier)
+import           Data.Map                           ((!))
+import qualified Data.Map                           as Map
+import           Data.Maybe                         (fromMaybe)
+import           Data.String                        (fromString)
+import qualified Data.Text                          as T
+import           Data.Time                          (Day)
+import           Data.Time.Format                   (defaultTimeLocale,
+                                                     formatTime)
+import           Data.Time.LocalTime                (ZonedTime)
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.SqlQQ
-import           GHC.Generics (Generic)
+import           GHC.Generics                       (Generic)
 import           Snap.Snaplet
 import           Snap.Snaplet.Auth
-import           Snap.Snaplet.PostgresqlSimple
-                 ( query
-                 , In (..), Only (..), Query
-                 )
+import           Snap.Snaplet.PostgresqlSimple      (In (..), Only (..), Query,
+                                                     query)
 
-import           Data.Model
-import           Application
 import           AppHandlers.Users
 import           AppHandlers.Util
-import qualified Carma.Model.ServiceStatus as SS
-import qualified Carma.Model.ServiceType as ST
+import           Application
+import qualified Carma.Model.ServiceStatus          as SS
+import qualified Carma.Model.ServiceType            as ST
+import           Data.Model
 import           Types
 
 
@@ -42,16 +43,16 @@ defaultLimit :: Int
 defaultLimit = 25
 
 data CurrentServiceInfo = CurrentServiceInfo
-    { cuCaseId :: Int
-    , cuServiceId :: Int -- идентификатор услуги
-    , cuServiceSerial :: Int -- номер услуги в списке услуг для заявки
-    , _cuCallDate :: Maybe ZonedTime
-    , _cuTypeOfService :: Maybe String
-    , _cuStatus :: String
-    , _cuAccordTime :: String
-    , _cuMakeModel :: String
+    { cuCaseId          :: Int
+    , cuServiceId       :: Int -- идентификатор услуги
+    , cuServiceSerial   :: Int -- номер услуги в списке услуг для заявки
+    , _cuCallDate       :: Maybe ZonedTime
+    , _cuTypeOfService  :: Maybe String
+    , _cuStatus         :: String
+    , _cuAccordTime     :: String
+    , _cuMakeModel      :: String
     , _cuBreakdownPlace :: String
-    , _cuPayType :: String
+    , _cuPayType        :: String
     } deriving (Show, Generic)
 
 instance ToJSON CurrentServiceInfo where
@@ -72,16 +73,16 @@ instance FromRow CurrentServiceInfo where
 
 
 data ClosingServiceInfo = ClosingServiceInfo
-    { clCaseId :: Int
-    , clServiceId :: Int -- идентификатор услуги
-    , clServiceSerial :: Int -- номер услиги в списке услуг для заявки
-    , _clCallDate :: Maybe ZonedTime
-    , _clTypeOfService :: Maybe String
-    , _clMakeModel :: String
+    { clCaseId          :: Int
+    , clServiceId       :: Int -- идентификатор услуги
+    , clServiceSerial   :: Int -- номер услиги в списке услуг для заявки
+    , _clCallDate       :: Maybe ZonedTime
+    , _clTypeOfService  :: Maybe String
+    , _clMakeModel      :: String
     , _clBreakdownPlace :: String
-    , _clPayType :: String
+    , _clPayType        :: String
     } deriving (Show, Generic)
-    
+
 instance ToJSON ClosingServiceInfo where
     toJSON = genericToJSON defaultOptions
              { fieldLabelModifier = dropWhile (== '_')}
@@ -97,14 +98,14 @@ instance FromRow ClosingServiceInfo where
                               <*> field
 
 data ServiceInfo = ServiceInfo
-    { caseId :: Int
-    , serviceId :: Int -- идентификатор услуги
-    , serviceSerial :: Int -- номер услиги в списке услуг для заявки
-    , _callDate :: Maybe ZonedTime
-    , _typeOfService :: Maybe String
-    , _makeModel :: String
+    { caseId          :: Int
+    , serviceId       :: Int -- идентификатор услуги
+    , serviceSerial   :: Int -- номер услиги в списке услуг для заявки
+    , _callDate       :: Maybe ZonedTime
+    , _typeOfService  :: Maybe String
+    , _makeModel      :: String
     , _breakdownPlace :: String
-    , _payType :: String
+    , _payType        :: String
     } deriving (Show, Generic)
 
 instance ToJSON ServiceInfo where
@@ -128,6 +129,7 @@ latestServices serviceType = checkAuthCasePartner $ do
   user <- fromMaybe (error "No current user") <$> with auth currentUser
   let UserId i = fromMaybe (error "no uid") $ userId user
       uid = read $ T.unpack i
+
   case serviceType of
     All     -> getServices uid
     Current -> getLatestCurrentServices uid
@@ -147,7 +149,7 @@ getLatestCurrentServices uid = do
       , servicetbl.id
       , 0 as serviceSerial
       , servicetbl.times_expectedservicestart
-      , CASE 
+      , CASE
           WHEN servicetbl.type = ?
                THEN st.label || ' - '::text || tt.label
           WHEN servicetbl.type = ?
@@ -224,7 +226,7 @@ getLatestClosingServices uid = do
       , servicetbl.id
       , 0 as serviceSerial
       , servicetbl.times_expectedservicestart
-      , CASE 
+      , CASE
           WHEN servicetbl.type = ?
                THEN st.label || ' - '::text || tt.label
           WHEN servicetbl.type = ?
@@ -279,12 +281,10 @@ enumerateServices caseIds = fmap Map.fromList <$> query [sql|
 
 
 inside :: Int -> Int -> Int -> Int
-inside low high v =
-    if v > high
-    then high
-    else if v < low
-         then low
-         else v
+inside low high v
+    | v > high  = high
+    | v < low   = low
+    | otherwise = v
 
 
 getServices :: Int -> AppHandler ()
@@ -320,7 +320,7 @@ getServices uid = do
   let [tech, towage, bikeTowage] =
           map (\(Ident i) -> i) [ST.tech, ST.towage, ST.bikeTowage]
 
-      sqlQuery = (fromString $ unwords $
+      sqlQuery = (fromString $ unwords
           [ "SELECT "
           , "  servicetbl.parentid"
           , ", servicetbl.id"

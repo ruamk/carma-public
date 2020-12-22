@@ -1,7 +1,13 @@
 module Api exposing
     ( SearchCondition(..)
     , Session
+    , assignServiceToDriver
+    , cancelServiceToDriver
+    , clientMapURL
+    , createDriver
     , decodeSession
+    , deleteDriver
+    , getDrivers
     , getLatenessReasons
     , getLatestClosingCases
     , getLatestCurrentCases
@@ -9,11 +15,13 @@ module Api exposing
     , getServiceComments
     , getServices
     , getTypeOfServiceSynonym
+    , inviteDriver
     , login
     , postPartnerDelay
     , postServiceComment
     , statusInPlace
     , statusServicePerformed
+    , updateDriver
     )
 
 import Http
@@ -30,6 +38,7 @@ import Json.Decode
         , fail
         , field
         , float
+        , index
         , int
         , list
         , map3
@@ -45,6 +54,7 @@ import Types
         , ClosingCaseInfo
         , CurrentCaseInfo
         , Dictionary
+        , Driver
         , ServiceDescription
         , ServiceInfo
         )
@@ -132,6 +142,44 @@ apiGetLatenessReasons =
 apiGetTypeOfServiceSynonym : String
 apiGetTypeOfServiceSynonym =
     prefix ++ "/api/v1/dict/TypeOfServiceSynonym"
+
+
+apiGetDrivers : String
+apiGetDrivers =
+    prefix ++ "/api/v1/settings/drivers"
+
+
+apiCreateDriver : String
+apiCreateDriver =
+    prefix ++ "/api/v1/settings/driver"
+
+
+apiDriver : Int -> String
+apiDriver driverId =
+    prefix ++ "/api/v1/settings/driver/" ++ String.fromInt driverId
+
+
+apiAssignServiceToDriver : Int -> Int -> String
+apiAssignServiceToDriver serviceId driverId =
+    prefix
+        ++ "/api/v1/assignservice/"
+        ++ String.fromInt serviceId
+        ++ "/"
+        ++ String.fromInt driverId
+
+
+apiCancelServiceToDriver : Int -> Int -> String
+apiCancelServiceToDriver serviceId driverId =
+    prefix
+        ++ "/api/v1/cancelservice/"
+        ++ String.fromInt serviceId
+        ++ "/"
+        ++ String.fromInt driverId
+
+
+clientMapURL : Int -> String
+clientMapURL serviceId =
+    prefix ++ "/map-client.html?serviceId=" ++ String.fromInt serviceId
 
 
 decodeSession : String -> Session
@@ -627,3 +675,208 @@ getLatenessReasons message =
 getTypeOfServiceSynonym : (Result Http.Error Dictionary -> msg) -> Cmd msg
 getTypeOfServiceSynonym message =
     getDictionary apiGetTypeOfServiceSynonym message
+
+
+getDrivers : (Result Http.Error (List Driver) -> msg) -> Cmd msg
+getDrivers message =
+    let
+        driversDecoder =
+            list driverDecoder
+
+        driverDecoder : Decoder Driver
+        driverDecoder =
+            succeed Driver
+                |> required "id" int
+                |> required "partnerId" int
+                |> required "phone" string
+                |> required "password" string
+                |> required "name" string
+                |> required "plateNum" (nullable string)
+                |> required "isActive" bool
+                |> required "serviceId" (nullable int)
+    in
+    HttpBuilder.get apiGetDrivers
+        |> HttpBuilder.withExpect (Http.expectJson message driversDecoder)
+        |> HttpBuilder.request
+
+
+createDriver : Driver -> (Result Http.Error Int -> msg) -> Cmd msg
+createDriver driver message =
+    let
+        postBody : List ( String, String )
+        postBody =
+            [ ( "phone", driver.phone )
+            , ( "password", driver.password )
+            , ( "name", driver.name )
+            , ( "plateNum"
+              , case driver.plateNum of
+                    Just plateNum ->
+                        plateNum
+
+                    Nothing ->
+                        ""
+              )
+            , ( "isActive"
+              , if driver.isActive then
+                    "true"
+
+                else
+                    "false"
+              )
+            ]
+
+        expect : (Result Http.Error Int -> msg) -> Http.Expect msg
+        expect toMsg =
+            Http.expectStringResponse toMsg <|
+                \response ->
+                    case response of
+                        Http.BadUrl_ url ->
+                            Err <| Http.BadUrl url
+
+                        Http.Timeout_ ->
+                            Err Http.Timeout
+
+                        Http.NetworkError_ ->
+                            Err Http.NetworkError
+
+                        Http.BadStatus_ metadata _ ->
+                            Err <| Http.BadStatus metadata.statusCode
+
+                        Http.GoodStatus_ metadata _ ->
+                            Ok metadata.statusCode
+    in
+    HttpBuilder.post apiCreateDriver
+        |> HttpBuilder.withUrlEncodedBody postBody
+        |> HttpBuilder.withExpect (expect message)
+        |> HttpBuilder.request
+
+
+deleteDriver : Int -> (Result Http.Error Int -> msg) -> Cmd msg
+deleteDriver driverId message =
+    let
+        expect : (Result Http.Error Int -> msg) -> Http.Expect msg
+        expect toMsg =
+            Http.expectStringResponse toMsg <|
+                \response ->
+                    case response of
+                        Http.BadUrl_ url ->
+                            Err (Http.BadUrl url)
+
+                        Http.Timeout_ ->
+                            Err Http.Timeout
+
+                        Http.NetworkError_ ->
+                            Err Http.NetworkError
+
+                        Http.BadStatus_ metadata _ ->
+                            Ok metadata.statusCode
+
+                        Http.GoodStatus_ metadata _ ->
+                            Ok metadata.statusCode
+    in
+    HttpBuilder.delete (apiDriver driverId)
+        |> HttpBuilder.withExpect (expect message)
+        |> HttpBuilder.request
+
+
+inviteDriver : Int -> (Result Http.Error Int -> msg) -> Cmd msg
+inviteDriver driverId message =
+    let
+        expect : (Result Http.Error Int -> msg) -> Http.Expect msg
+        expect toMsg =
+            Http.expectStringResponse toMsg <|
+                \response ->
+                    case response of
+                        Http.BadUrl_ url ->
+                            Err (Http.BadUrl url)
+
+                        Http.Timeout_ ->
+                            Err Http.Timeout
+
+                        Http.NetworkError_ ->
+                            Err Http.NetworkError
+
+                        Http.BadStatus_ metadata _ ->
+                            Ok metadata.statusCode
+
+                        Http.GoodStatus_ metadata _ ->
+                            Ok metadata.statusCode
+    in
+    HttpBuilder.post (apiDriver driverId)
+        |> HttpBuilder.withExpect (expect message)
+        |> HttpBuilder.request
+
+
+updateDriver : Driver -> (Result Http.Error Int -> msg) -> Cmd msg
+updateDriver driver message =
+    let
+        putBody : List ( String, String )
+        putBody =
+            [ ( "name", driver.name )
+            , ( "phone", driver.phone )
+            , ( "password", driver.password )
+            , ( "plateNum"
+              , case driver.plateNum of
+                    Just plateNum ->
+                        plateNum
+
+                    Nothing ->
+                        ""
+              )
+            , ( "isActive"
+              , if driver.isActive then
+                    "true"
+
+                else
+                    "false"
+              )
+            ]
+
+        expect : (Result Http.Error Int -> msg) -> Http.Expect msg
+        expect toMsg =
+            Http.expectStringResponse toMsg <|
+                \response ->
+                    case response of
+                        Http.BadUrl_ url ->
+                            Err (Http.BadUrl url)
+
+                        Http.Timeout_ ->
+                            Err Http.Timeout
+
+                        Http.NetworkError_ ->
+                            Err Http.NetworkError
+
+                        Http.BadStatus_ metadata _ ->
+                            Ok metadata.statusCode
+
+                        Http.GoodStatus_ metadata _ ->
+                            Ok metadata.statusCode
+    in
+    HttpBuilder.put (apiDriver driver.id)
+        |> HttpBuilder.withUrlEncodedBody putBody
+        |> HttpBuilder.withExpect (expect message)
+        |> HttpBuilder.request
+
+
+assignServiceToDriver : Int -> Int -> (Result Http.Error Int -> msg) -> Cmd msg
+assignServiceToDriver serviceId driverId message =
+    let
+        queueIdDecoder : Decoder Int
+        queueIdDecoder =
+            int
+    in
+    HttpBuilder.get (apiAssignServiceToDriver serviceId driverId)
+        |> HttpBuilder.withExpect (Http.expectJson message queueIdDecoder)
+        |> HttpBuilder.request
+
+
+cancelServiceToDriver : Int -> Int -> (Result Http.Error Int -> msg) -> Cmd msg
+cancelServiceToDriver serviceId driverId message =
+    let
+        queueIdDecoder : Decoder Int
+        queueIdDecoder =
+            int
+    in
+    HttpBuilder.get (apiCancelServiceToDriver serviceId driverId)
+        |> HttpBuilder.withExpect (Http.expectJson message queueIdDecoder)
+        |> HttpBuilder.request

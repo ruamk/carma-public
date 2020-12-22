@@ -3,26 +3,30 @@
 -- site. The 'app' function is the initializer that combines everything
 -- together and is exported by this module.
 module Site
-  ( app
-  ) where
+    ( app
+    ) where
 
 ------------------------------------------------------------------------------
-import           Data.ByteString (ByteString)
-import           Data.Maybe (fromMaybe, isJust)
-import qualified Data.Text.Encoding as T
+import           Control.Monad.IO.Class                      (liftIO)
+import           Data.ByteString                             (ByteString)
+import           Data.Maybe                                  (fromMaybe, isJust)
+import qualified Data.Text.Encoding                          as T
 import           Snap.Core
 import           Snap.Snaplet
-import           Snap.Snaplet.Auth hiding (session)
+import           Snap.Snaplet.Auth                           hiding (session)
 import           Snap.Snaplet.Auth.Backends.PostgresqlSimple
-import           Snap.Snaplet.PostgresqlSimple (pgsInit)
+import           Snap.Snaplet.PostgresqlSimple               (pgsInit)
 import           Snap.Snaplet.Session.Backends.CookieSession
 import           Snap.Util.FileServe
 ------------------------------------------------------------------------------
-import           Application
+import           AppHandlers.Dicts                           as D
+import           AppHandlers.MobileAPI                       as MobileAPI
+import           AppHandlers.Service                         as S
+import qualified AppHandlers.Services                        as Ss
+import           AppHandlers.Settings.Drivers                as Drivers
 import           AppHandlers.Users
-import qualified AppHandlers.Services as Ss
-import           AppHandlers.Service as S
-import           AppHandlers.Dicts as D
+import           Application
+import qualified PgNotify
 import           Types
 
 
@@ -46,6 +50,9 @@ apiGetService = "/api/v1/service/:serviceId"
 apiGetServiceComments :: ByteString
 apiGetServiceComments = "/api/v1/service/:serviceId/comments"
 
+apiGetServiceLocation :: ByteString
+apiGetServiceLocation = "/api/v1/service/:serviceId/location"
+
 apiPostServiceComment :: ByteString
 apiPostServiceComment = "/api/v1/case/:caseId/comment"
 
@@ -63,6 +70,44 @@ apiDictPartnerDelayReason = "/api/v1/dict/PartnerDelay_Reason"
 
 apiMapTypeOfService :: ByteString
 apiMapTypeOfService = "/api/v1/dict/TypeOfServiceSynonym"
+
+-- API for ANDROID application
+apiDriverLogin :: ByteString
+apiDriverLogin = "/api/v1/driver/login"
+
+apiDriverOrder :: ByteString
+apiDriverOrder = "/api/v1/driver/order"
+
+apiDriverLocation :: ByteString
+apiDriverLocation = "/api/v1/driver/location"
+
+apiDriverDelayReason :: ByteString
+apiDriverDelayReason = "/api/v1/driver/delayreason"
+
+apiDriverStatus :: ByteString
+apiDriverStatus = "/api/v1/driver/status"
+
+apiDriverSettings :: ByteString
+apiDriverSettings = "/api/v1/driver/settings"
+
+apiGetDrivers :: ByteString
+apiGetDrivers = "/api/v1/settings/drivers" -- GET
+
+apiCreateDriver :: ByteString
+apiCreateDriver = "/api/v1/settings/driver" -- POST
+
+apiDriver :: ByteString
+apiDriver = "/api/v1/settings/driver/:driverId" -- GET for location,
+                                                -- PUT for update,
+                                                -- DELETE for delete,
+                                                -- POST for send SMS to driver.
+
+
+apiAssignServiceToDriver :: ByteString
+apiAssignServiceToDriver = "/api/v1/assignservice/:serviceId/:driverId"
+
+apiCancelServiceToDriver :: ByteString
+apiCancelServiceToDriver = "/api/v1/cancelservice/:serviceId/:driverId"
 
 
 -- | Handle login API
@@ -96,6 +141,7 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiGetService, method GET S.handleApiGetService)
          , (apiGetServiceComments, method GET S.serviceComments)
          , (apiPostServiceComment, method POST S.postComment)
+         , (apiGetServiceLocation, method GET S.serviceLocation)
 
          , (apiStatusInPlace, method POST S.statusInPlace)
          , (apiStatusServicePerformed, method POST S.statusServicePerformed)
@@ -104,10 +150,27 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiDictPartnerDelayReason, D.partnerDelayReason)
          , (apiMapTypeOfService,       D.typeOfService)
 
+         , (apiDriverLogin,            method POST MobileAPI.login)
+         , (apiDriverStatus,           method POST MobileAPI.status)
+         , (apiDriverOrder,            method GET  MobileAPI.order)
+         , (apiDriverLocation,         method POST MobileAPI.location)
+         , (apiDriverDelayReason,      method GET  MobileAPI.delayReason)
+         , (apiDriverSettings,         method GET  MobileAPI.settings)
+
+         , (apiGetDrivers,             method GET    Drivers.getDrivers)
+         , (apiCreateDriver,           method POST   Drivers.createDriver)
+         , (apiDriver,                 method GET    Drivers.showDriverLocation)
+         , (apiDriver,                 method PUT    Drivers.updateDriver)
+         , (apiDriver,                 method DELETE Drivers.deleteDriver)
+         , (apiDriver,                 method POST   Drivers.sendSMS)
+         , (apiAssignServiceToDriver,  method GET    Drivers.assignService)
+         , (apiCancelServiceToDriver,  method GET    Drivers.cancelService)
+
          , ("/login",           redirect "/")
          , ("/services",        redirect "/")
          , ("/show-service",    redirect "/")
          , ("/search",          redirect "/")
+         , ("/settings",        redirect "/")
 
          , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
@@ -125,5 +188,8 @@ app = makeSnaplet "app" "Case partner manager application." Nothing $ do
     ad <- nestSnaplet "db" db pgsInit
     a <- nestSnaplet "auth" auth $ initPostgresAuth session ad
     addRoutes routes
-    return $ App s ad a
 
+    config <- getSnapletUserConfig
+    liftIO $ PgNotify.startLoop config
+
+    return $ App s ad a

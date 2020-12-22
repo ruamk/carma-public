@@ -1,21 +1,19 @@
 module AppHandlers.Dicts
-    ( partnerDelayReason
+    ( getDict
+    , partnerDelayReason
     , typeOfService
-    )
-    where
+    ) where
 
 
-import Data.String (fromString)
-import           Data.Text (Text)
-import qualified Data.Map as M
+import qualified Data.Map                      as M
+import           Data.String                   (fromString)
+import           Data.Text                     (Text)
 
-import           Snap.Snaplet.PostgresqlSimple
-                 ( query_
-                 )
+import           Snap.Snaplet.PostgresqlSimple (query_)
 
-import Application
-import AppHandlers.Users
-import AppHandlers.Util
+import           AppHandlers.Users
+import           AppHandlers.Util
+import           Application
 
 
 getDict :: String -> AppHandler (M.Map Int Text)

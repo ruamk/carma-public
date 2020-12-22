@@ -100,6 +100,7 @@ type Msg
     | ServicesFirstPage
     | ServicesPrevPage
     | ServicesNextPage
+    | Settings
     | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
     | UpdateCustomMessageToast (MessageToast Msg)
     | UsermenuMsg Dropdown.State
@@ -296,6 +297,13 @@ update _ msg model =
                     , Cmd.none
                     )
 
+        Settings ->
+            ( model
+            , Cmd.none
+            , Global.settings
+            )
+
+
         TypeOfServiceSynonymDownloaded result ->
             case result of
                 Err _ ->
@@ -386,6 +394,7 @@ view global model =
         [ Ui.page
             { navbarMsg = NavbarMsg
             , logoutMsg = Logout
+            , settingsMsg = Just Settings
             , usermenuMsg = UsermenuMsg
             , navbarState = model.navbarState
             , usermenuState = model.usermenuState

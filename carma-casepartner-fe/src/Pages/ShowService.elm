@@ -36,17 +36,19 @@ import Html
         , text
         , ul
         )
-import Html.Attributes
+import Html.Attributes as A
     exposing
         ( action
         , class
         , placeholder
+        , selected
         , style
         , value
         )
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import ISO8601
+import Maybe exposing (withDefault)
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
 import Time
@@ -56,6 +58,7 @@ import Types
         ( CaseComment
         , CaseCommentDetails(..)
         , Dictionary
+        , Driver
         , ServiceDescription
         , emptyServiceDescription
         )
@@ -91,65 +94,81 @@ type alias StatusButton2 =
 
 
 type alias Model =
-    { service : ServiceDescription
-    , closing1 : String
+    { closing1 : String
     , closing2 : String
     , closing3 : String
     , closing4 : String
-    , inputComment : String
     , commentFileName : String
-    , navbarState : Navbar.State
-    , usermenuState : Dropdown.State
-    , commentsDownloaded : Bool
     , comments : List CaseComment
-    , statusButton1 : StatusButton1
-    , statusButton2 : StatusButton2
-    , modalAlertVisibility : Modal.Visibility
-    , latenessVisibility : Modal.Visibility
-    , latenessHours : String
-    , latenessMinutes : String
-    , latenessReason : String
-    , latenessReasons : Dictionary
+    , commentsDownloaded : Bool
+    , drivers : List Driver
+    , driverSpinnerVisible : Bool
+    , inputComment : String
     , latenessDetails : String
     , latenessDetailsDisabled : Bool
+    , latenessHours : String
+    , latenessMinutes : String
     , latenessOkDisabled : Bool
+    , latenessReason : String
+    , latenessReasons : Dictionary
+    , latenessVisibility : Modal.Visibility
     , messageToast : MessageToast Msg
+    , modalAlertVisibility : Modal.Visibility
+    , navbarState : Navbar.State
+    , selectedDriver : String -- для Select нужен идентификатор в виде строки
+    , assignedDriver : Maybe Driver
+    , service : ServiceDescription
+    , statusButton1 : StatusButton1
+    , statusButton2 : StatusButton2
+    , usermenuState : Dropdown.State
     }
 
 
 type Msg
-    = Cases
-    | SearchCases
+    = AddComment
+    | AddCommentResponse (Result Http.Error Int)
+    | ApplySelectDriver
+    | CancelDriver
+    | Cases
+    | Chat String
     | Closing1 String
     | Closing2 String
     | Closing3 String
     | Closing4 String
-    | InputComment String
     | CommentFileName String
-    | ServiceDownloaded (Result Http.Error ServiceDescription)
     | CommentsDownloaded (Result Http.Error (List CaseComment))
-    | AddComment
-    | AddCommentResponse (Result Http.Error Int)
-    | NavbarMsg Navbar.State
-    | UsermenuMsg Dropdown.State
+    | DriversDownloaded (Result Http.Error (List Driver))
+    | DriverChanged String -- выбор водителя из списка
     | InPlace -- На месте
+    | InputComment String
     | LatenessAsk -- Опоздание - запрос параметров
-    | LatenessShowModal (Result Http.Error Dictionary) -- показ модального окна Опоздание
-    | LatenessCloseOk -- нажата Ok в модельном окне
     | LatenessCloseCancel -- нажата Cancel в модальном окне
+    | LatenessCloseOk -- нажата Ok в модельном окне
+    | LatenessDetailsInput String -- ввод подробностей причины "Другое"
     | LatenessHoursChanged String --
     | LatenessMinutesChanged String --
-    | LatenessReasonChanged String -- выбрана причина опоздания
-    | LatenessDetailsInput String -- ввод подробностей причины "Другое"
     | LatenessPostPartnerDelayResponse (Result Http.Error Int)
-    | ServicePerformed -- Услуга оказана
-    | UpdateStatus (Result Http.Error String) -- Результат изменения статуса
-    | UpdateComments (Result Http.Error Int) -- Услуга оказана (ответ)
+    | LatenessReasonChanged String -- выбрана причина опоздания
+    | LatenessShowModal (Result Http.Error Dictionary) -- показ модального окна Опоздание
     | Logout
     | ModalAlreadyOkClose -- Событие закрытия диалога "Услуга уже оказана"
-    | UpdateCustomMessageToast (MessageToast Msg)
-    | Chat String
+    | NavbarMsg Navbar.State
+    | SearchCases
+    | ServiceDownloaded (Result Http.Error ServiceDescription)
+    | ServicePerformed -- Услуга оказана
+    | ServiceWasAssignedToDriver (Result Http.Error Int)
+    | ServiceWasCancelledToDriver (Result Http.Error Int)
+    | Settings
     | Tick Time.Posix
+    | UpdateComments (Result Http.Error Int) -- Услуга оказана (ответ)
+    | UpdateCustomMessageToast (MessageToast Msg)
+    | UpdateStatus (Result Http.Error String) -- Результат изменения статуса
+    | UsermenuMsg Dropdown.State
+
+
+driverSpinnerSize : String
+driverSpinnerSize =
+    "2rem"
 
 
 
@@ -182,6 +201,8 @@ init _ _ =
       , closing2 = ""
       , closing3 = ""
       , closing4 = ""
+      , drivers = []
+      , driverSpinnerVisible = True
       , inputComment = ""
       , commentFileName = ""
       , navbarState = navbarState
@@ -212,6 +233,8 @@ init _ _ =
                 { delayInMs = 2000
                 , toastsToShow = 10
                 }
+      , selectedDriver = ""
+      , assignedDriver = Nothing
       }
     , navbarCmd
     , Cmd.none
@@ -251,7 +274,10 @@ update global msg model =
         -- Entry point
         NavbarMsg state ->
             ( { model | navbarState = state }
-            , Api.getService global.serviceId ServiceDownloaded
+            , Cmd.batch
+                [ Api.getService global.serviceId ServiceDownloaded
+                , Api.getDrivers DriversDownloaded
+                ]
             , Cmd.none
             )
 
@@ -316,6 +342,119 @@ update global msg model =
                         , statusButton2 = statusButton2
                       }
                     , Api.getServiceComments global.serviceId CommentsDownloaded
+                    , Cmd.none
+                    )
+
+        ApplySelectDriver ->
+            let
+                cmd =
+                    case String.toInt model.selectedDriver of
+                        Nothing ->
+                            Cmd.none
+
+                        Just driverId ->
+                            Api.assignServiceToDriver
+                                global.serviceId
+                                driverId
+                                ServiceWasAssignedToDriver
+            in
+            ( model
+            , cmd
+            , Cmd.none
+            )
+
+        CancelDriver ->
+            let
+                cmd =
+                    case model.assignedDriver of
+                        Nothing ->
+                            Cmd.none
+
+                        Just driver ->
+                            Api.cancelServiceToDriver
+                                global.serviceId
+                                driver.id
+                                ServiceWasCancelledToDriver
+            in
+            ( { model | driverSpinnerVisible = True }
+            , cmd
+            , Cmd.none
+            )
+
+        ServiceWasAssignedToDriver result ->
+            ( case result of
+                Err _ ->
+                    { model
+                        | messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "Не могу назначить услугу на водителя!"
+                    }
+
+                Ok _ ->
+                    model
+            , -- обновление списка водителей для получения новых serviceId
+              Api.getDrivers DriversDownloaded
+            , Cmd.none
+            )
+
+        ServiceWasCancelledToDriver result ->
+            ( case result of
+                Err _ ->
+                    { model
+                        | messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "Не могу отменить услугу для водителя!"
+                    }
+
+                Ok _ ->
+                    model
+            , -- обновление списка водителей для получения новых serviceId
+              Api.getDrivers DriversDownloaded
+            , Cmd.none
+            )
+
+        DriverChanged driverId ->
+            ( { model | selectedDriver = driverId }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        DriversDownloaded result ->
+            case result of
+                Err _ ->
+                    let
+                        messageToast : MessageToast Msg
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "Error get drivers"
+                    in
+                    ( { model | messageToast = messageToast }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok drivers ->
+                    ( { model
+                        | drivers = drivers
+                        , driverSpinnerVisible = False
+                        , assignedDriver =
+                            let
+                                ds =
+                                    List.filter
+                                        (\d -> withDefault -1 d.serviceId == global.serviceId)
+                                        drivers
+                            in
+                            case ds of
+                                d :: _ ->
+                                    Just d
+
+                                _ ->
+                                    Nothing
+                      }
+                    , Cmd.none
                     , Cmd.none
                     )
 
@@ -682,6 +821,12 @@ update global msg model =
             , Global.logout
             )
 
+        Settings ->
+            ( model
+            , Cmd.none
+            , Global.settings
+            )
+
         ModalAlreadyOkClose ->
             ( { model | modalAlertVisibility = Modal.hidden }
             , Cmd.none
@@ -772,6 +917,7 @@ view global model =
         [ Ui.page
             { navbarMsg = NavbarMsg
             , logoutMsg = Logout
+            , settingsMsg = Just Settings
             , usermenuMsg = UsermenuMsg
             , navbarState = model.navbarState
             , usermenuState = model.usermenuState
@@ -783,11 +929,11 @@ view global model =
             }
           <|
             div []
-                [ viewCasePanel model
+                [ viewCasePanel model global.serviceId
                 , div []
                     [ model.messageToast
                         |> MessageToast.overwriteContainerAttributes
-                            [ style "top" "20px"
+                            [ style "top" "60px"
                             , style "bottom" "auto"
                             , style "right" "20px"
                             ]
@@ -935,13 +1081,8 @@ asUl l =
                 |> ul [ style "padding-inline-start" "0px" ]
 
 
-viewCasePanel : Model -> Html Msg
-viewCasePanel model =
-    viewCaseVerbose model
-
-
-viewCaseVerbose : Model -> Html Msg
-viewCaseVerbose model =
+viewCasePanel : Model -> Int -> Html Msg
+viewCasePanel model serviceId =
     let
         c : ServiceDescription
         c =
@@ -997,6 +1138,68 @@ viewCaseVerbose model =
 
                 Nothing ->
                     ""
+
+        driverField : Html Msg
+        driverField =
+            if model.service.status /= Const.serviceStatus.ok then
+                field "Назначить водителя" <|
+                    if model.driverSpinnerVisible then
+                        Ui.viewSpinner driverSpinnerSize
+
+                    else
+                        case model.assignedDriver of
+                            Nothing ->
+                                div []
+                                    [ Select.select
+                                        [ Select.attrs [ Spacing.mb2 ]
+                                        , Select.onChange DriverChanged
+                                        ]
+                                      <|
+                                        Select.item
+                                            [ A.value "" ]
+                                            [ text "Выберите водителя" ]
+                                            :: List.map
+                                                (\d ->
+                                                    Select.item
+                                                        [ A.value <| String.fromInt d.id
+                                                        ]
+                                                        [ text <|
+                                                            d.name
+                                                                ++ " ("
+                                                                ++ d.phone
+                                                                ++ ") "
+                                                                ++ withDefault "" d.plateNum
+                                                        ]
+                                                )
+                                                (List.filter (\d -> d.serviceId == Nothing)
+                                                    model.drivers
+                                                )
+                                    , br [] []
+                                    , Button.button
+                                        [ Button.primary
+                                        , Button.attrs [ onClick ApplySelectDriver ]
+                                        ]
+                                        [ text "Назначить" ]
+                                    ]
+
+                            Just driver ->
+                                div []
+                                    [ text <|
+                                        driver.name
+                                            ++ " ("
+                                            ++ driver.phone
+                                            ++ ") "
+                                            ++ withDefault "" driver.plateNum
+                                    , br [] []
+                                    , Button.button
+                                        [ Button.primary
+                                        , Button.attrs [ Spacing.mt3, onClick CancelDriver ]
+                                        ]
+                                        [ text "Отменить водителя" ]
+                                    ]
+
+            else
+                div [] []
     in
     Grid.row [ Row.attrs [ Spacing.p1 ] ]
         (if model.service.caseId == 0 then
@@ -1050,6 +1253,7 @@ viewCaseVerbose model =
                                     ++ "("
                                     ++ String.fromInt c.status
                                     ++ ")"
+                        , driverField
                         ]
                     , Grid.col [ Col.attrs [ class "text-center" ] ]
                         [ div [] [ text "Изменить статус" ]

@@ -91,6 +91,7 @@ type Msg
     | NavbarMsg Navbar.State
     | NowTime Time.Posix
     | SearchCases
+    | Settings
     | Tick Time.Posix
     | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
     | UpdateCustomMessageToast (MessageToast Msg)
@@ -330,6 +331,12 @@ update _ msg model =
             , Cmd.none
             )
 
+        Settings ->
+            ( model
+            , Cmd.none
+            , Global.settings
+            )
+
         Tick _ ->
             ( { model
                 | currentCases = []
@@ -378,6 +385,7 @@ view global model =
         [ Ui.page
             { navbarMsg = NavbarMsg
             , logoutMsg = Logout
+            , settingsMsg = Just Settings
             , usermenuMsg = UsermenuMsg
             , navbarState = model.navbarState
             , usermenuState = model.usermenuState

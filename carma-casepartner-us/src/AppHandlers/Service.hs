@@ -1,49 +1,43 @@
 module AppHandlers.Service
-    ( statusInPlace
-    , statusServicePerformed
+    ( handleApiGetService
     , postComment
     , postPartnerDelay
     , serviceComments
+    , serviceLocation
     , servicePerformed
-    , handleApiGetService
-    )
-    where
+    , statusInPlace
+    , statusServicePerformed
+    ) where
 
-
-import           Control.Monad (when)
-import           Control.Monad.IO.Class
-import           Data.Aeson (ToJSON, Value, toJSON, genericToJSON)
-import           Data.Aeson.Types (defaultOptions, fieldLabelModifier)
-import qualified Data.ByteString.Char8 as BS
-import           Data.Configurator (lookupDefault)
-import qualified Data.Map as M
-import           Data.Maybe (fromMaybe)
-import           GHC.Generics (Generic)
-import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import           Data.Time.LocalTime (ZonedTime)
-import           Database.PostgreSQL.Simple.FromField
-                 (FromField, fromField, fromJSONField)
+import           Control.Monad                        (when)
+--import           Control.Monad.IO.Class               (liftIO)
+import           Data.Aeson                           (ToJSON, Value (..),
+                                                       genericToJSON, object,
+                                                       toJSON)
+import           Data.Aeson.Types                     (defaultOptions,
+                                                       fieldLabelModifier)
+import qualified Data.Map                             as M
+import           Data.Maybe                           (fromMaybe)
+import           Data.Text                            (Text)
+import qualified Data.Text                            as T
+import qualified Data.Text.Encoding                   as TE
+import qualified Data.Text.Read                       as TR
+import           Data.Time.LocalTime                  (ZonedTime)
+import           Database.PostgreSQL.Simple.FromField (FromField, fromField,
+                                                       fromJSONField)
 import           Database.PostgreSQL.Simple.SqlQQ
+import           GHC.Generics                         (Generic)
 import           Snap
-import           Snap.Snaplet.PostgresqlSimple
-                 ( query
-                 , Only (..)
-                 )
+import           Snap.Snaplet.PostgresqlSimple        (Only (..), query)
 
-import           Application
 import           AppHandlers.Users
 import           AppHandlers.Util
-import qualified CarmaApi
+import           Application
 import           Carma.Model
-import qualified Data.Model.Patch as Patch
-import           Carma.Model.Action as Action
-import qualified Carma.Model.ActionType as ActionType
-import           Carma.Model.Service as Service
-import qualified Carma.Model.ServiceStatus as ServiceStatus
-import qualified Carma.Model.Usermeta as Usermeta
-import           Snaplet.Auth.PGUsers -- (currentUserMetaId)
+import qualified Carma.Model.Usermeta                 as Usermeta
+import qualified Data.Model.Patch                     as Patch
+import           Service.Util
+import           Snaplet.Auth.PGUsers
 
 
 type LoadingDifficulties = M.Map String (Maybe Bool)
@@ -51,24 +45,25 @@ type LoadingDifficulties = M.Map String (Maybe Bool)
 instance FromField LoadingDifficulties where
     fromField = fromJSONField
 
+
 data CaseDescription = CaseDescription
-    { _caseId :: Int
-    , _services :: Int
-    , _serviceType :: String
-    , _status :: Int
-    , _statusLabel :: String
-    , _client :: String
-    , _clientPhone :: String
-    , _firstAddress :: String
-    , _lastAddress :: String
+    { _caseId               :: Int
+    , _services             :: Int
+    , _serviceType          :: String
+    , _status               :: Int
+    , _statusLabel          :: String
+    , _client               :: String
+    , _clientPhone          :: String
+    , _firstAddress         :: String
+    , _lastAddress          :: String
     , _expectedServiceStart :: Maybe ZonedTime
-    , _factServiceStart :: Maybe ZonedTime
-    , _factServiceEnd :: Maybe ZonedTime
-    , _makeModel :: String
-    , _plateNumber :: String
-    , _loadingDifficulties :: Maybe LoadingDifficulties
-    , _suburbanMilage :: String
-    , _vin :: Maybe String
+    , _factServiceStart     :: Maybe ZonedTime
+    , _factServiceEnd       :: Maybe ZonedTime
+    , _makeModel            :: String
+    , _plateNumber          :: String
+    , _loadingDifficulties  :: Maybe LoadingDifficulties
+    , _suburbanMilage       :: String
+    , _vin                  :: Maybe String
     } deriving (Show, Generic)
 
 instance ToJSON CaseDescription where
@@ -78,20 +73,20 @@ instance ToJSON CaseDescription where
 
 data CaseComment = CaseComment
     { _datetime :: Maybe ZonedTime
-    , _who :: Maybe String
-    , _json :: Maybe Value
+    , _who      :: Maybe String
+    , _json     :: Maybe Value
     } deriving (Show, Generic)
 
 instance ToJSON CaseComment where
     toJSON = genericToJSON defaultOptions
              { fieldLabelModifier = dropWhile (== '_')}
 
-    
+
 handleApiGetService :: AppHandler ()
-handleApiGetService = do
-  serviceId <- fromMaybe (error "invalid service id") <$>
-              getIntParam "serviceId"
-  [(caseId, client, clientPhone, firstAddress, makeModel, plateNumber, vin)] <- query [sql|
+handleApiGetService = checkAuthCasePartner $ do
+  serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
+  [( caseId, client, clientPhone, firstAddress, makeModel, plateNumber
+   , vin)] <- query [sql|
     SELECT
         casetbl.id
       , contact_name
@@ -112,7 +107,7 @@ handleApiGetService = do
     FROM (
       SELECT row_number () OVER (PARTITION BY parentid ORDER BY id) AS r, id
       FROM servicetbl
-      WHERE parentid = ? 
+      WHERE parentid = ?
       ) AS a
     WHERE id = ?;
   |] (caseId, serviceId)
@@ -142,9 +137,9 @@ handleApiGetService = do
     WHERE id = ?
     LIMIT 1
   |] $ Only serviceId
-  let (lastAddress, suburbanMilage, loadingDifficulty) = if length r1 == 1
-                                                         then head r1
-                                                         else ("","", Nothing)
+  let (lastAddress, suburbanMilage, loadingDifficulty) = case r1 of
+                                                           (h:_) -> h
+                                                           _ -> ("", "", Nothing)
 
   writeJSON $ CaseDescription
                caseId serviceSerial serviceType
@@ -156,17 +151,6 @@ handleApiGetService = do
                loadingDifficulty
                suburbanMilage
                vin
-
-
--- Returns caseid for specified serviceid
-caseForService :: Int -> AppHandler (Maybe Int)
-caseForService serviceId = do
-  result <- query "SELECT parentid FROM servicetbl where id = ?" $
-                 Only serviceId
-
-  case result of
-    [Only caseId] -> return $ Just caseId
-    _             -> return   Nothing
 
 
 serviceComments :: AppHandler ()
@@ -194,7 +178,6 @@ serviceComments = checkAuthCasePartner $ do
 -- POST ../:service/comment
 postComment :: AppHandler ()
 postComment = checkAuthCasePartner $ do
-  -- user <- fromMaybe (error "No current user") <$> with auth currentUser
   caseId <- fromMaybe (error "invalid case id") <$> getIntParam "caseId"
   comment <- T.strip . TE.decodeUtf8 . fromMaybe "" <$> getParam "comment"
 
@@ -202,6 +185,48 @@ postComment = checkAuthCasePartner $ do
 
   commentId <- carmaPostComment caseId $ T.unpack comment
   writeJSON [commentId]
+
+
+-- | Return driver and client location to show on single map
+-- No need for authorization, because it is for public resource!
+serviceLocation :: AppHandler ()
+serviceLocation = do
+  serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
+
+  [Only (clientCoords :: Maybe Text)] <- query [sql|
+    SELECT caseAddress_coords
+      FROM servicetbl
+         , casetbl
+     WHERE servicetbl.id = ?
+       AND casetbl.id = servicetbl.parentId
+  |] (Only serviceId)
+
+  driverCoords :: [[Maybe Double]] <- query [sql|
+    SELECT ST_X(ST_EndPoint(geometry(locations)))
+         , ST_Y(ST_EndPoint(geometry(locations)))
+      FROM driverServiceQueue
+     WHERE serviceId = ?
+  |] $ Only serviceId
+
+  let coords lat lon = object [ ("latitude", lat)
+                              , ("longitude", lon)
+                              ]
+
+      client = case clientCoords of
+                 Just c  -> case map (TR.double . T.strip) $ T.split (== ',') c of
+                             [Right (lon, ""), Right (lat, "")] ->
+                               coords (toJSON lat) (toJSON lon)
+                             _          -> coords Null Null
+                 Nothing -> coords Null Null
+
+      driver = case driverCoords of
+                 [[Just lat, Just lon]] -> coords (toJSON lat) (toJSON lon)
+                 _                      -> coords Null Null
+
+  writeJSON [ object [ ("client", client)
+                     , ("driver", driver)
+                     ]
+            ]
 
 
 -- POST ../:service/partnerdelay
@@ -213,104 +238,17 @@ postPartnerDelay = checkAuthCasePartner $ do
   Just user <- currentUserMeta
   let Just (Ident uid) = Patch.get user Usermeta.ident
 
-
   serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
-  minutes <- fromMaybe (error "invalid minutes") <$> getIntParam "minutes"
-  reason <- fromMaybe (error "invalid reason") <$> getIntParam "reason"
+  minutes   <- fromMaybe (error "invalid minutes") <$> getIntParam "minutes"
+  reason    <- fromMaybe (error "invalid reason") <$> getIntParam "reason"
   comment <- (\case
               Just s  -> Just $ T.strip $ TE.decodeUtf8 s
               Nothing -> Nothing
             )
             <$> getParam "comment"
 
-  [Only (partnerId :: Int)] <-
-      query "SELECT contractor_partnerid FROM servicetbl where id = ?"
-      $ Only serviceId
-
-  Just caseId <- caseForService serviceId
-  when (minutes < 1) $ error "minutes should be > 0"
-
-  partnerDelayId <- carmaPostPartnerDelay caseId serviceId
-                                         uid partnerId
-                                         minutes reason comment
+  partnerDelayId <- setStatusPartnerDelay serviceId uid minutes reason comment
   writeJSON [partnerDelayId]
-
-
-withCookie
-    :: (MonadSnap (m b v), MonadSnaplet m)
-    => (String -> m b v b1) -> m b v b1
-withCookie f = do
-  cfg <- getSnapletUserConfig
-
-  cookieName :: String <- liftIO $ T.unpack . T.strip
-                               <$> lookupDefault "_session" cfg "carma.cookie"
-
-  c <- getCookie $ BS.pack cookieName
-
-  case c of
-    Nothing -> error $ "no cookie named " ++ cookieName
-    Just c' -> f $ cookieName ++ "=" ++ BS.unpack (cookieValue c')
-
-
-carmaPostComment
-    :: (MonadSnap (m b v), MonadSnaplet m)
-    => Int
-    -> String
-    -> m b v Int
-carmaPostComment caseId comment = withCookie $ \cookie -> do
-  (Ident caseCommentId, _) <- CarmaApi.addComment cookie caseId comment
-  return caseCommentId
-
-
-carmaPostPartnerDelay
-    :: (MonadSnap (m b v), MonadSnaplet m)
-    => Int
-    -> Int
-    -> Int
-    -> Int
-    -> Int
-    -> Int
-    -> Maybe Text
-    -> m b v Int
-carmaPostPartnerDelay caseId serviceId ownerId partnerId minutes reason comment =
-  withCookie $ \cookie -> do
-    (Ident partnerDelayId, _) <- CarmaApi.addPartnerDelay cookie
-                                                         caseId serviceId
-                                                         ownerId partnerId
-                                                         minutes reason comment
-    return partnerDelayId
-
-
-carmaServiceInProgress
-    :: ( MonadSnaplet m
-      , MonadSnap (m b v))
-    => IdentI Action
-    -> m b v (Patch.Patch Action)
-carmaServiceInProgress actionId = withCookie $ \cookie -> do
-  CarmaApi.serviceInProgress cookie actionId
-
-
-carmaUpdateFactServiceStartTime
-    :: ( MonadSnaplet m
-      , MonadSnap (m b v)
-      )
-    => IdentI Service
-    -> m b v (Patch.Patch Service)
-carmaUpdateFactServiceStartTime serviceId = withCookie $ \cookie -> do
-  CarmaApi.updateFactServiceStartTime cookie serviceId
-
-
-isServiceAssignedToOperator :: Int -> AppHandler Bool
-isServiceAssignedToOperator serviceId = do
-  [Only (count :: Int)] <- query [sql|
-    SELECT count(*)
-    FROM actiontbl
-    WHERE serviceid = ?
-      AND result IS NULL
-      AND assignedto IS NOT NULL
-      AND type = ?
-  |] (serviceId, ActionType.checkStatus)
-  return $ count > 0
 
 
 -- | Сменить статус на "На месте"
@@ -319,39 +257,7 @@ isServiceAssignedToOperator serviceId = do
 statusInPlace :: AppHandler ()
 statusInPlace = checkAuthCasePartner $ do
   serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
-  [(caseId, status)] <- query
-                       "SELECT parentid, status FROM servicetbl WHERE id = ?" $
-                       Only serviceId
-  if status == ServiceStatus.ordered
-  then do assigned <- isServiceAssignedToOperator serviceId
-          if assigned -- назначена ли услуга на оператора
-          then do
-            _ <- carmaPostComment caseId "Партнёром произведён доезд до клиента"
-            writeJSON servicePerformed
-          else do
-            -- происходит выполнения действия "Услуга в процессе оказания"
-            v <- query [sql|
-              SELECT id
-              FROM actiontbl
-              WHERE serviceId = ?
-                AND type = ?
-                AND result is null
-            |] (serviceId, ActionType.checkStatus)
-
-            case v of
-              [Only (actionId :: IdentI Action)] -> do
-                     _ <- carmaServiceInProgress actionId
-                     -- update servicetbl.times в значение now
-                     _ <- carmaUpdateFactServiceStartTime $ Ident serviceId
-                     writeJSON servicePerformed
-              _ -> do
-                 writeJSON serviceActionNotfound
-
-  else if status == ServiceStatus.ok
-       then writeJSON serviceAlreadyPerformed
-       else do
-         _ <- carmaPostComment caseId "Партнёр приступил к оказанию услуги"
-         writeJSON servicePerformed
+  setStatusInPlace serviceId >>= writeJSON
 
 
 statusServicePerformed :: AppHandler ()
@@ -361,27 +267,4 @@ statusServicePerformed = checkAuthCasePartner $ do
 
   when (T.null comment) $ error "empty comment"
 
-  [(caseId :: Int, _status :: Int)] <- query
-                       "SELECT parentid, status FROM servicetbl WHERE id = ?" $
-                       Only serviceId
-  _ <- carmaPostComment caseId $ T.unpack comment
-  writeJSON servicePerformed
-
-
-serviceMessage :: Text -> M.Map Text Text
-serviceMessage message = M.fromList [ ( "status" :: Text
-                                      , message
-                                      )
-                                    ]
-
--- Услуга выполнена
-servicePerformed :: M.Map Text Text
-servicePerformed = serviceMessage "service_performed"
-
--- Услуга уже выполнена
-serviceAlreadyPerformed :: M.Map Text Text
-serviceAlreadyPerformed = serviceMessage "service_already_performed"
-
--- Действие не найдено
-serviceActionNotfound :: M.Map Text Text
-serviceActionNotfound = serviceMessage "action_not_found"
+  setStatusPerformed serviceId (T.unpack comment) >>= writeJSON
