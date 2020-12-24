@@ -33,7 +33,6 @@ import           Database.PostgreSQL.Simple.SqlQQ
 import           GHC.Generics
 import           GHC.Word                         (Word64)
 import           Snap
-import           Snap.Core                        (logError)
 import           Snap.Snaplet.PostgresqlSimple    (Only (..), execute, query)
 import           Web.ClientSession
 

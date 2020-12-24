@@ -36,7 +36,6 @@ import           Application
 import           Carma.Model
 import qualified Carma.Model.Usermeta               as Usermeta
 import qualified Data.Model.Patch                   as Patch
-import           Snap.Snaplet                       (getSnapletUserConfig)
 import           Snaplet.Auth.PGUsers
 
 
