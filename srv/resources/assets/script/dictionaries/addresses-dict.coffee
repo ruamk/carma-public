@@ -66,7 +66,9 @@ class AddressesDict extends m.dict
       success:  (data) => @setupAddress data, lonLat.lon, lonLat.lat
     $.ajax (objForDD)
   setupAddress: (data, lon, lat) ->
-    curr_addr = @kvm[@address_field]
+    console.log("address field '"+@address_field+"'")
+    curr_addr = @kvm[@address_field]()
+    console.log("curr addr '"+curr_addr+"'")
     if data.length > 0 && curr_addr.length < 1
       best = data[0]
       bestD = Math.abs(best.geo_lon - lon) + Math.abs(best.geo_lat - lat)
