@@ -41,11 +41,12 @@ class AddressesDict extends m.dict
       osMap = $(@map_name).data("osmap")
       lonLatObj = @mapModule.lonlatFromShortString(coordsString)
       @mapModule.setPlace osMap, {coords: lonLatObj}
-      @mapModule.spliceCoords lonLatObj, @kvm,
-          osmap: osMap
-          addr_field: @address_field
-          city_field: @coords_field
-          current_blip_type: "default"
+      @mapModule.currentBlip osMap, lonLatObj.clone().transform(@mapModule.wsgProj, @mapModule.osmProj), "default"
+#      @mapModule.spliceCoords lonLatObj, @kvm,
+#          osmap: osMap
+#          addr_field: @address_field
+#          city_field: @coords_field
+#          current_blip_type: "default"
 
   askForAddressFromCoords: (newValue) ->
     if !@mapModule
