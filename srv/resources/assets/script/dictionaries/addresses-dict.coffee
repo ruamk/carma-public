@@ -27,8 +27,8 @@ class AddressesDict extends m.dict
     @kvm[@coords_field].subscribe(((newValue) -> this.askForAddressFromCoords(newValue)), this)
     @mapModule = null # to require/load afterwards.
     port = if @opts.proxy_port? then @opts.proxy_port else "8167"
-    @search_url = "https://" + window.location.hostname + "/geosearch"
-    @revsearch_url = "https://" + window.location.hostname + "/revgeosearch"
+    @search_url = window.location.origin + "/geosearch"     
+    @revsearch_url = window.location.origin + "/revgeosearch"
 
   trySetCoords: (newValue) ->
     foundExact = (x for x in @suggestions when x.value == newValue)
@@ -41,11 +41,12 @@ class AddressesDict extends m.dict
       osMap = $(@map_name).data("osmap")
       lonLatObj = @mapModule.lonlatFromShortString(coordsString)
       @mapModule.setPlace osMap, {coords: lonLatObj}
-      @mapModule.spliceCoords lonLatObj, @kvm,
-          osmap: osMap
-          addr_field: @address_field
-          city_field: @coords_field
-          current_blip_type: "default"
+      @mapModule.currentBlip osMap, lonLatObj.clone().transform(@mapModule.wsgProj, @mapModule.osmProj), "default"
+#      @mapModule.spliceCoords lonLatObj, @kvm,
+#          osmap: osMap
+#          addr_field: @address_field
+#          city_field: @coords_field
+#          current_blip_type: "default"
 
   askForAddressFromCoords: (newValue) ->
     if !@mapModule
@@ -66,7 +67,7 @@ class AddressesDict extends m.dict
       success:  (data) => @setupAddress data, lonLat.lon, lonLat.lat
     $.ajax (objForDD)
   setupAddress: (data, lon, lat) ->
-    curr_addr = @kvm[@address_field]
+    curr_addr = @kvm[@address_field]()
     if data.length > 0 && curr_addr.length < 1
       best = data[0]
       bestD = Math.abs(best.geo_lon - lon) + Math.abs(best.geo_lat - lat)
