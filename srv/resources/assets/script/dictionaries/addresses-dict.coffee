@@ -27,8 +27,8 @@ class AddressesDict extends m.dict
     @kvm[@coords_field].subscribe(((newValue) -> this.askForAddressFromCoords(newValue)), this)
     @mapModule = null # to require/load afterwards.
     port = if @opts.proxy_port? then @opts.proxy_port else "8167"
-    @search_url = "https://" + window.location.hostname + "/geosearch"
-    @revsearch_url = "https://" + window.location.hostname + "/revgeosearch"
+    @search_url = window.location.origin + "/geosearch"     
+    @revsearch_url = window.location.origin + "/revgeosearch"
 
   trySetCoords: (newValue) ->
     foundExact = (x for x in @suggestions when x.value == newValue)
