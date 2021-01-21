@@ -61,8 +61,6 @@ data CaseDescription = CaseDescription
     , _factServiceEnd       :: Maybe ZonedTime
     , _makeModel            :: String
     , _plateNumber          :: String
-    , _loadingDifficulties  :: Maybe LoadingDifficulties
-    , _suburbanMilage       :: String
     , _vin                  :: Maybe String
     } deriving (Show, Generic)
 
@@ -129,17 +127,20 @@ handleApiGetService = checkAuthCasePartner $ do
     LIMIT 1
   |] $ Only serviceId
 
-  r1 <- query [sql|
-    SELECT coalesce(towaddress_address, '')
-         , coalesce(suburbanmilage::text, '')
-         , flags
-    FROM allservicesview
-    WHERE id = ?
-    LIMIT 1
-  |] $ Only serviceId
-  let (lastAddress, suburbanMilage, loadingDifficulty) = case r1 of
-                                                           (h:_) -> h
-                                                           _ -> ("", "", Nothing)
+  lastAddress <- query [sql|
+                  WITH service AS (
+                    SELECT id, towaddress_address FROM towagetbl
+                     UNION ALL
+                    SELECT id, towaddress_address FROM "BikeTowage"
+                  )
+                  SELECT coalesce(towaddress_address, '')
+                    FROM service
+                   WHERE id = ?
+                   LIMIT 1
+                |] (Only serviceId)
+                >>= \r -> return $ case r of
+                                    (Only h:_) -> h
+                                    _          -> ""
 
   writeJSON $ CaseDescription
                caseId serviceSerial serviceType
@@ -148,8 +149,6 @@ handleApiGetService = checkAuthCasePartner $ do
                firstAddress lastAddress
                expectedServiceStart factServiceStart factServiceEnd
                makeModel plateNumber
-               loadingDifficulty
-               suburbanMilage
                vin
 
 

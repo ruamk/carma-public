@@ -298,15 +298,21 @@ order = checkDriver $ \driverId -> do
                                                     T.split (==',') firstLonLat
                                    in Just $ Location lat lon
 
-          lastAddress <- (do r <- query [sql|
-                              SELECT coalesce(towaddress_address, '')
-                                FROM allservicesview
-                               WHERE id = ?
-                            |] $ Only serviceId
-                             return $ case r of
-                                       [Only a] -> Just a
-                                       _        -> Nothing
-                        )
+          lastAddress <- query [sql|
+                          WITH service AS (
+                            SELECT id, towaddress_address FROM towagetbl
+                             UNION ALL
+                            SELECT id, towaddress_address FROM "BikeTowage"
+                          )
+                          SELECT coalesce(towaddress_address, '')
+                            FROM service
+                           WHERE id = ?
+                           LIMIT 1
+                        |] (Only serviceId)
+                        >>= \r -> return $ case r of
+                                            [Only a] -> Just a
+                                            _        -> Nothing
+
 
           return $ Just
                  $ emptyService { serviceId = serviceId

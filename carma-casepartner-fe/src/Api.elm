@@ -73,7 +73,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    ""
+    "/elm-live"
 
 
 apiLogin : String
@@ -367,8 +367,6 @@ getService serviceId message =
                 |> required "factServiceEnd" (nullable ISO8601.decode)
                 |> optional "makeModel" string ""
                 |> optional "plateNumber" string ""
-                |> required "loadingDifficulties" (nullable (dict (nullable bool)))
-                |> optional "suburbanMilage" string ""
                 |> required "vin" (nullable string)
     in
     HttpBuilder.get (apiGetService serviceId)

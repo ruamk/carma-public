@@ -1238,9 +1238,6 @@ viewCasePanel model serviceId =
                         [ field "Марка/Модель" <| text c.makeModel
                         , field "Гос. номер" <| text c.plateNumber
                         , field "VIN" <| text <| String.toUpper vin
-
-                        -- , field "Сложность погрузки" <| asUl c.loadingDifficulties
-                        , field "Межгород, км" <| text c.suburbanMilage
                         ]
                     ]
                 , hr [] []

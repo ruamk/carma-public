@@ -75,8 +75,6 @@ type alias ServiceDescription =
     , factServiceEnd : Maybe Time
     , makeModel : String
     , plateNumber : String
-    , loadingDifficulties : Maybe (Dict.Dict String (Maybe Bool))
-    , suburbanMilage : String
     , vin : Maybe String
     }
 
@@ -97,8 +95,6 @@ emptyServiceDescription =
     , factServiceEnd = Nothing
     , makeModel = ""
     , plateNumber = ""
-    , loadingDifficulties = Nothing
-    , suburbanMilage = ""
     , vin = Nothing
     }
 
