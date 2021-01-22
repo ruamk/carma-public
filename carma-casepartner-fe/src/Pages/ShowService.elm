@@ -180,6 +180,11 @@ buttonDisabledTime =
     5
 
 
+commentsUpdateTime : Float
+commentsUpdateTime =
+    10
+
+
 page : Page Flags Model Msg
 page =
     Page.component
@@ -890,7 +895,7 @@ subscriptions _ model =
     Sub.batch
         [ Dropdown.subscriptions model.usermenuState UsermenuMsg
         , Chat.caseReceiver Chat
-        , Time.every 1000 Tick
+        , Time.every (commentsUpdateTime * 1000) Tick
         ]
 
 
