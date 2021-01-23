@@ -19,6 +19,7 @@ dependencies:
   - carma-http
   - carma-model-utils
   - carma-utils
+  - clientsession
   - configurator
   - containers
   - HTTP >= 4000.3.9
