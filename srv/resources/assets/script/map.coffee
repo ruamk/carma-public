@@ -310,7 +310,7 @@ initOSM = (el, parentView) ->
             null
           else
             city_field
-        addr_field: addr_field
+        #addr_field: addr_field
     )
 
   $(el).data("osmap", osmap)
