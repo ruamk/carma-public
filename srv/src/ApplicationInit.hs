@@ -26,16 +26,17 @@ import           Snap.Util.FileServe ( DirectoryConfig (..)
                                      )
 
 import qualified PgNotify
-import           WeatherApi.OpenWeatherMap (initApi)
+import qualified WeatherApi.OpenWeatherMap as Weather
 
 ------------------------------------------------------------------------------
-import           Snaplet.ChatManager
-import qualified Snaplet.FileUpload as FU
-import           Snaplet.Geo
-import           Snaplet.Messenger
-import           Snaplet.Search
-import           Snaplet.SiteConfig
-import           Snaplet.TaskManager
+import           Snaplet.Autoteka    (autotekaInit)
+import           Snaplet.ChatManager (chatInit)
+import           Snaplet.FileUpload  (fileUploadInit)
+import           Snaplet.Geo         (geoInit)
+import           Snaplet.Messenger   (newMessenger, messengerInit)
+import           Snaplet.Search      (searchInit)
+import           Snaplet.SiteConfig  (initSiteConfig)
+import           Snaplet.TaskManager (taskManagerInit)
 ------------------------------------------------------------------------------
 import           AppHandlers.ActionAssignment
 import           AppHandlers.Avaya
@@ -195,40 +196,37 @@ appInit = makeSnaplet "app" "Forms application" Nothing $ do
 
   h <- nestSnaplet "heist" heist $ heistInit ""
   addTemplatesAt h "/" "resources/static/build/backendPages"
-
   addAuthSplices h auth
 
-  sesKey <- liftIO $
-            lookupDefault "resources/private/client_session_key.aes"
-                          cfg "session-key"
+  sesKey <- liftIO
+    $ lookupDefault "resources/private/client_session_key.aes"
+                    cfg "session-key"
 
-  s <- nestSnaplet "session" session $
-       let lifetime = Just $ 365 * 24 * 60 * 60 -- One year in seconds
-        in initCookieSessionManager sesKey "_session" Nothing lifetime
-
-  -- DB
   ad <- nestSnaplet "db" db pgsInit
 
-  ad2 <- nestSnaplet "db2" db2 $ initPersist $ return ()
-
-  authMgr <- nestSnaplet "auth" auth $ initPostgresAuth session ad
-
-  c <- nestSnaplet "cfg" siteConfig $
-       initSiteConfig "resources/site-config" auth db
-
-  fu <- nestSnaplet "upload" fileUpload $ FU.fileUploadInit db
-  ch <- nestSnaplet "chat" chat $ chatInit auth db
-  g <- nestSnaplet "geo" geo $ geoInit db
-  search' <- nestSnaplet "search" search $ searchInit auth db
-  tm <- nestSnaplet "tasks" taskMgr taskManagerInit
-
   msgChan <- liftIO newMessenger
-  msgr <- nestSnaplet "wsmessenger" messenger (messengerInit msgChan)
   pgStr <- liftIO $ Cfg.require cfg "pg-conn-string"
   liftIO $ PgNotify.startLoop msgChan pgStr
 
   addRoutes [(n, timeIt f) | (n, f) <- routes]
 
-  em <- liftIO $ newTVarIO Map.empty
-
-  pure $ App h s authMgr c tm fu ch g ad ad2 search' opts msgr (initApi wkey) em
+  App
+    <$> pure h
+    <*> nestSnaplet "session" session
+       (let lifetime = Just $ 365 * 24 * 60 * 60 -- One year in seconds
+        in initCookieSessionManager sesKey "_session" Nothing lifetime)
+    <*> nestSnaplet "auth" auth (initPostgresAuth session ad)
+    <*> nestSnaplet "autoteka" autoteka (autotekaInit auth db)
+    <*> nestSnaplet "cfg" siteConfig
+       (initSiteConfig "resources/site-config" auth db)
+    <*> nestSnaplet "tasks" taskMgr taskManagerInit
+    <*> nestSnaplet "upload" fileUpload (fileUploadInit db)
+    <*> nestSnaplet "chat" chat (chatInit auth db)
+    <*> nestSnaplet "geo" geo (geoInit db)
+    <*> pure ad
+    <*> nestSnaplet "db2" db2 (initPersist $ pure ())
+    <*> nestSnaplet "search" search (searchInit auth db)
+    <*> pure opts
+    <*> nestSnaplet "wsmessenger" messenger (messengerInit msgChan)
+    <*> pure (Weather.initApi wkey)
+    <*> liftIO (newTVarIO Map.empty)

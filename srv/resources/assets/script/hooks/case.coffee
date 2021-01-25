@@ -356,7 +356,7 @@ module.exports =
           $.getJSON "/_/SubProgram/#{c.subprogram}", (s) ->
             kvm.program(s.parent)
 
-  locationSharingBtn: (model, kvm) ->
+  locationSharing: (model, kvm) ->
     # run this hook on case screen only
     if /^case/.test(Finch.navigate())
       kvm.locationSharingBtn =
@@ -373,3 +373,26 @@ module.exports =
               kvm.locationSharingBtn.disabled(true) &&
                 kvm['refreshHistory']?())
         disabled: ko.observable(false)
+
+  autoteka: (model, kvm) ->
+    kvm.searchInAutoteka =
+      inProgress: ko.observable(false)
+      start: ->
+        kvm.car_detailsFromAutoteka({report: null, error: null})
+        # search only if plateNum is valid
+        if kvm.car_plateNum() && not kvm.car_plateNumRegexp()
+          kvm.searchInAutoteka.inProgress(true)
+          fetch("/autoteka/report/#{parseInt kvm.id()}/#{kvm.car_plateNum()}", {
+            method: "POST"
+            headers:
+              Accept: 'application/json'
+          }).then((r) -> r.json())
+            .then((r) ->
+              kvm.searchInAutoteka.inProgress(false)
+              kvm.car_detailsFromAutoteka(r)
+            )
+            .catch((err) ->
+              kvm.searchInAutoteka.inProgress(false)
+              kvm.car_detailsFromAutoteka({report: null, error: err})
+            )
+    kvm.car_plateNum.subscribe(_.debounce(kvm.searchInAutoteka.start, 1300))

@@ -161,18 +161,6 @@ module.exports =
           finish = (ok) -> if ok then check.dispose() ; reallySave() ; preventDixiFlapping() \
                                  else kvm["dixi"] false
 
-          if (
-            kvm["firstSaleDate"]? \
-            and (
-              moment(kvm["firstSaleDate"](), "DD.MM.YYYY")
-                .add(moment.duration(7, "years"))
-                .isBefore(moment())
-            ) \
-            and not confirm("Автомобиль старше 7 лет, всё равно продолжить?")
-          )
-            finish false
-            return
-
           findSame kvm, (r) ->
             if _.isEmpty(r)
               finish true

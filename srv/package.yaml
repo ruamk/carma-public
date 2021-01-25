@@ -11,6 +11,7 @@ category:    Web
 dependencies:
   - aeson
   - attoparsec
+  - autoteka
   - base
   - basic-prelude
   - blaze-builder
@@ -35,6 +36,8 @@ dependencies:
   - heist
   - hsyslog
   - HTTP
+  - http-client
+  - http-client-tls
   - http-conduit
   - http-types
   - lens
@@ -52,6 +55,7 @@ dependencies:
   - random
   - resource-pool
   - scientific
+  - servant-client
   - SHA
   - singletons
   - snap

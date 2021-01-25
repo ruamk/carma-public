@@ -389,7 +389,7 @@ spliceCoords = (coords, kvm, options) ->
         # recognized
         if city?
           if options.city_field instanceof Array
-            options_city_field.forEach((f) -> kvm[f]?(city))
+            options.city_field.forEach((f) -> kvm[f]?(city))
           else
             kvm[options.city_field]?(city)
     )

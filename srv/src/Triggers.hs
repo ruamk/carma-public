@@ -606,35 +606,34 @@ beforeUpdate = Map.unionsWith (++) $
   , trigOn Case.contract $ \case
       Nothing -> do
         -- Clear all contract-related fields.
-        -- NB. we assume they are all nullable
         modifyPatch $ foldl'
           (\fn (C2C _ _ caseFld) -> case Model.fieldName caseFld of
             nm |  nm == Model.fieldName Case.contact_name
                || nm == Model.fieldName Case.contact_phone1
+               || nm == Model.fieldName Case.car_plateNum
                -> fn
             _ -> Patch.put caseFld Nothing . fn)
           id contractToCase
         modifyPatch $ Patch.put Case.vinChecked Nothing
-      Just cid ->
-        do
-          contract <- dbRead cid
-          n <- getNow
-          let sinceExceeded =
-                case contract `get'` Contract.validSince of
-                  Just s  -> n < UTCTime (Contract.unWDay s) 0
-                  Nothing -> False
-              untilExceeded =
-                case contract `get'` Contract.validUntil of
-                  Just u  -> n > UTCTime (Contract.unWDay u) 0
-                  Nothing -> False
-              checkStatus = if sinceExceeded || untilExceeded
-                            then CCS.vinExpired
-                            else CCS.base
-          let Just subProgId = Patch.get' contract Contract.subprogram
-          -- The line below is just to convert a FullPatch to a Patch
-          let contract' = Patch.delete Contract.ident contract
-          copyContractToCase subProgId contract'
-          modifyPatch (Patch.put Case.vinChecked $ Just checkStatus)
+      Just cid -> do
+        contract <- dbRead cid
+        n <- getNow
+        let sinceExceeded =
+              case contract `get'` Contract.validSince of
+                Just s  -> n < UTCTime (Contract.unWDay s) 0
+                Nothing -> False
+            untilExceeded =
+              case contract `get'` Contract.validUntil of
+                Just u  -> n > UTCTime (Contract.unWDay u) 0
+                Nothing -> False
+            checkStatus = if sinceExceeded || untilExceeded
+                          then CCS.vinExpired
+                          else CCS.base
+        let Just subProgId = Patch.get' contract Contract.subprogram
+        -- The line below is just to convert a FullPatch to a Patch
+        let contract' = Patch.delete Contract.ident contract
+        copyContractToCase subProgId contract'
+        modifyPatch (Patch.put Case.vinChecked $ Just checkStatus)
 
   , trigOn Service.contractor_partnerId $ \(Just newPartnerId) -> do
 
@@ -866,13 +865,16 @@ copyContractToCase subProgId contract = do
 
   modifyPatch $ foldl'
     (\fn (C2C ctrFld f caseFld) ->
-      let new = f
-              $ fromMaybe Nothing -- (join :: Maybe (Maybe a) -> Maybe a)
-              $ Patch.get contract ctrFld
+      let new = f $ join $ Patch.get contract ctrFld
           fld = fieldName ctrFld
-      in if fld `elem` ctrFields || fld == fieldName Contract.subprogram
-          then Patch.put caseFld new . fn
-          else fn)
+      in if (fld == fieldName Contract.subprogram)
+          -- Don't erase the field value
+          -- if the corresponding field in a contract is empty.
+          || (fld `elem` ctrFields && isJust new)
+          -- Extra hack to always copy plate number.
+          || (fld == fieldName Contract.plateNum && isJust new)
+            then Patch.put caseFld new . fn
+            else fn)
     id contractToCase
 
 

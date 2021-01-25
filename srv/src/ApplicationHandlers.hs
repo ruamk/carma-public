@@ -40,7 +40,9 @@ where
 import Data.Functor
 import Control.Error hiding (err)
 import Control.Monad.State.Class
+import Control.Monad.IO.Class (liftIO)
 
+import Data.Configurator as Cfg
 import Data.Text (Text)
 import Data.Map.Syntax ((##))
 import qualified Data.Text as T
@@ -210,12 +212,17 @@ readManyHandler = do
   --            add some pagination,
   --            interactive completion search
   --            (loading huge data structures to user's RAM isn't cool)
-  let defaultLimit =
-          if | model == modelName (modelInfo :: ModelInfo Partner) -> 7000
+  cfg <- getSnapletUserConfig
+
+  defaultLimit <- liftIO $
+          if | model == modelName (modelInfo :: ModelInfo Partner) ->
+                 Cfg.lookupDefault 7000 cfg "limits.partner"
                 -- Now we have more than 4000 partners,
                 -- and some elements not found in dictionary on frontend.
-             | model == modelName (modelInfo :: ModelInfo DiagSlide) -> 5000
-             | otherwise -> 4000
+             | model == modelName (modelInfo :: ModelInfo DiagSlide) ->
+                 Cfg.lookupDefault 10000 cfg "limits.diagslide"
+             | otherwise ->
+                 Cfg.lookupDefault 4000 cfg "limits.default"
 
   limit  <- maybe defaultLimit readInt <$> getParam "limit"
   offset <- maybe            0 readInt <$> getParam "offset"

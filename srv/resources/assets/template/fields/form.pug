@@ -1156,3 +1156,47 @@ mixin caseFilesList
         +dictInputChevron("Local", "glyphicon-chevron-down")
       .help-block(data-bind="visible: {{name}}InRush")
         | В этом городе аврал
+
+mixin infoField(name, value)
+  .form-group.has-feedback
+    label.col-sm-4.control-label
+      span(data-bind=`text: '${name}'`)
+    .col-sm-8
+      .input-group.input-group-sm
+        input.form-control(
+          readonly=true,
+          data-bind=`value: car_detailsFromAutoteka().report.r_data.${value}`)
+
+.field-template#detailsFromAutoteka-field-template
+  // ko if: !car_detailsFromAutoteka().report && car_plateNum()
+  .form-group.has-feedback
+    // ko if: searchInAutoteka.inProgress()
+    label.col-sm-4.control-label
+      span.glyphicon.glyphicon-refresh.glyphicon-refresh-animate
+    .col-sm-8
+      | Поиск в Автотеке по госномеру
+    // /ko
+  // /ko
+
+  // ko if: car_detailsFromAutoteka().error
+  .form-group.has-feedback
+    .col-sm-4
+    .col-sm-8
+      span.label.label-danger Поиск в Автотеке завершился с ошибкой
+  // /ko
+
+  // ko if: car_detailsFromAutoteka().report
+  .form-group.has-feedback
+    .col-sm-4
+    .col-sm-8
+      h4
+        | Результаты поиска в Автотеке
+  +infoField("VIN",                "head.vin")
+  +infoField("Марка",              "equipment.brand.value")
+  +infoField("Модель",             "equipment.model.value")
+  +infoField("Год выпуска",        "equipment.year.value")
+  +infoField("Масса без нагрузки", "equipment.netWeight.description")
+  +infoField("Тип двигателя",      "equipment.engineType.value")
+  +infoField("Коробка передач",    "equipment.transmission.description")
+  +infoField("Цвет",               "equipment.color.description")
+  // /ko
