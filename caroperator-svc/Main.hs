@@ -1,42 +1,39 @@
-{-# LANGUAGE QuasiQuotes, ScopedTypeVariables #-}
+module Main
+    where
 
-module Main where
-
-import           Control.Monad (when, unless, void)
-import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad                        (unless, void, when)
+import           Control.Monad.IO.Class               (MonadIO, liftIO)
+import           Data.Aeson                           ((.=))
+import qualified Data.Aeson                           as Aeson
+import           Data.Char                            (isDigit)
+import qualified Data.Configurator                    as Config
+import           Data.Default.Class                   (Default (def))
+import           Data.Maybe                           (isJust)
+import           Data.Pool                            (Pool, createPool,
+                                                       withResource)
+import           Data.Text                            (Text)
+import qualified Data.Text                            as T
+import qualified Data.Text.Encoding                   as T
+import qualified Data.Text.Lazy                       as L
+import           Data.Time                            (Day, ParseTime,
+                                                       defaultTimeLocale,
+                                                       getCurrentTime,
+                                                       parseTimeM, toGregorian,
+                                                       utctDay)
+import qualified Database.PostgreSQL.Simple           as PG
+import           Database.PostgreSQL.Simple.SqlQQ     (sql)
 import           Text.Regex
 
-import           Data.Char (isDigit)
-import           Data.Default.Class (Default (def))
-import           Data.Maybe (isJust)
-import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Text.Lazy as L
-import           Data.Time ( Day
-                           , ParseTime
-                           , defaultTimeLocale
-                           , getCurrentTime
-                           , parseTimeM
-                           , toGregorian
-                           , utctDay
-                           )
-import qualified Data.Configurator as Config
-import qualified Data.Aeson as Aeson
-import           Data.Aeson ((.=))
-import           Data.Pool (Pool, createPool, withResource)
-import qualified Database.PostgreSQL.Simple as PG
-import           Database.PostgreSQL.Simple.SqlQQ (sql)
-
+import qualified System.Environment                   as Env
 import           System.Posix.Syslog
-import qualified System.Environment as Env
 
-import           Web.Scotty
-import           Network.HTTP.Types.Status (status400)
-import           Network.Wai (Middleware)
-import           Network.Wai.Middleware.RequestLogger
 import           Foreign.C.String
+import           Network.HTTP.Types.Status            (status400)
+import           Network.Wai                          (Middleware)
+import           Network.Wai.Middleware.RequestLogger
 import           System.Log.FastLogger
+import           Web.Scotty
+
 
 f :: LogStr -> String
 f = T.unpack . T.decodeUtf8 . fromLogStr
@@ -57,20 +54,12 @@ main = do
         carmaPrg  <- Config.require conf "carma.subprogram"
         carmaTest <- Config.require conf "carma.test_mode"
         httpPort  <- Config.require conf "http.port"
-        pgHost    <- Config.require conf "pg.host"
-        pgPort    <- Config.require conf "pg.port"
-        pgUser    <- Config.require conf "pg.user"
-        pgPwd     <- Config.require conf "pg.pass"
-        pgDb      <- Config.require conf "pg.db"
-        ltProgram <- Config.require conf "lt.program"
+        pgUri     <- Config.require conf "pg-conn-str"
 
-        withCStringLen ("Connecting to Postgres on " ++ pgHost) $
-          syslog (Just User) Info
-        let cInfo = PG.ConnectInfo
-              pgHost pgPort
-              pgUser pgPwd
-              pgDb
-        pgPool <- createPool (PG.connect cInfo) PG.close
+        eltProgram      <- Config.require conf "program.elt"
+        automamaProgram <- Config.require conf "program.automama"
+
+        pgPool <- createPool (PG.connectPostgreSQL pgUri) PG.close
             1 -- number of distinct sub-pools
               -- time for which an unused resource is kept open
             20 -- seconds
@@ -85,16 +74,17 @@ main = do
         scotty httpPort
           $ httpServer pgPool reqLogger
           $ SrvConfig carmaPrg carmaUsr carmaTest
-                      ltProgram
+                      eltProgram automamaProgram
 
     _ -> error $ "Usage: " ++ prog ++ " <config.conf>"
 
 
 data SrvConfig = SrvConfig
-  { cfgSubProgram :: Int
-  , cfgCommitter  :: Int
-  , cfgTestMode   :: Bool
-  , cfgLTProgram  :: Int
+  { cfgSubProgram      :: Int
+  , cfgCommitter       :: Int
+  , cfgTestMode        :: Bool
+  , cfgELTProgram      :: Int
+  , cfgAutomamaProgram :: Int
   }
 
 
@@ -119,28 +109,47 @@ parseDate date name =
       $ parseTimeM True defaultTimeLocale "%F"
       $ T.unpack date
 
+
+query :: (Control.Monad.IO.Class.MonadIO m, PG.FromRow r) =>
+        Pool PG.Connection -> PG.Query -> m [r]
+query pgPool q = liftIO $ withResource pgPool $ \c -> PG.query_ c q
+
+
+queryParam :: (Control.Monad.IO.Class.MonadIO m, PG.ToRow q, PG.FromRow r) =>
+             Pool PG.Connection -> PG.Query -> q -> m [r]
+queryParam pgPool q p = liftIO $ withResource pgPool $ \c -> PG.query c q p
+
+
+queryJSON :: Pool PG.Connection -> PG.Query -> ActionM ()
+queryJSON pgPool q = do
+  [[res]] <- query pgPool q
+  json (res :: Aeson.Value)
+
+
+queryParamJSON :: PG.ToRow q => Pool PG.Connection -> PG.Query -> q -> ActionM ()
+queryParamJSON pgPool q p = do
+  [[res]] <- queryParam pgPool q p
+  json (res :: Aeson.Value)
+
+
+handleErrors :: ActionM () -> ActionM ()
+handleErrors f' = f' `rescue` \err -> do
+  liftIO $ withCStringLen (L.unpack err) $ syslog (Just User) Error
+  status status400 >> text err
+
+
 httpServer :: Pool PG.Connection -> Middleware -> SrvConfig -> ScottyM ()
 httpServer pgPool reqLogger cfg = do
   middleware reqLogger
 
-  let query q = liftIO $ withResource pgPool $ \c -> PG.query_ c q
-      queryParam q p = liftIO $ withResource pgPool $ \c -> PG.query c q p
-
-      queryJSON q = do
-        [[res]] <- query q
-        json (res :: Aeson.Value)
-
-      queryParamJSON q p = do
-        [[res]] <- queryParam q p
-        json (res :: Aeson.Value)
-
-  get "/CarMake" $ queryJSON
+  get "/CarMake" $ queryJSON pgPool
     [sql| with r as (select id, label from "CarMake")
           select array_to_json(array_agg(row_to_json(r.*)))
             from r
     |]
 
-  get "/CarModel" $ queryJSON
+  -- for Mazda only
+  get "/CarModel" $ queryJSON pgPool
     [sql| with r as (
             select id, label, parent as "carMake"
               from "CarModel"
@@ -150,7 +159,19 @@ httpServer pgPool reqLogger cfg = do
             from r
     |]
 
-  get "/Dealer" $ queryJSON
+  get "/CarModel/:carMake" $ handleErrors $ do
+    carMake <- param "carMake" :: ActionM Int
+    queryParamJSON pgPool [sql| with r as (
+                                  select id, label, parent as "carMake"
+                                    from "CarModel"
+                                   where parent = ?
+                               )
+                               select array_to_json(array_agg(row_to_json(r.*)))
+                                 from r
+                               |] $ PG.Only carMake
+
+  -- for Mazda only
+  get "/Dealer" $ queryJSON pgPool
     [sql| with r as (
             select id, name, addrs, phones
               from partnertbl p
@@ -162,10 +183,6 @@ httpServer pgPool reqLogger cfg = do
             from r
     |]
 
-
-  let handleErrors f' = f' `rescue` \err -> do
-        liftIO $ withCStringLen (L.unpack err) $ syslog (Just User) Error
-        status status400 >> text err
 
   post "/Contract/Mazda" $ handleErrors $ do
     vin      <- param "vin"      :: ActionM Text
@@ -229,7 +246,7 @@ httpServer pgPool reqLogger cfg = do
 
   -- partner LT --
 
-  get "/LT/subProgram" $ queryParamJSON
+  get "/elt/subProgram" $ queryParamJSON pgPool
     [sql| with r as (
             select id, label
               from "SubProgram"
@@ -237,26 +254,9 @@ httpServer pgPool reqLogger cfg = do
           )
           select array_to_json(array_agg(row_to_json(r.*)))
             from r;
-    |] $ PG.Only $ cfgLTProgram cfg
+    |] $ PG.Only $ cfgELTProgram cfg
 
-  get "/LT/carMake" $ queryJSON
-    [sql| with r as (select id, label from "CarMake")
-          select array_to_json(array_agg(row_to_json(r.*)))
-            from r
-    |]
-
-  get "/LT/carModel/:carMake" $ handleErrors $ do
-    carMake <- param "carMake" :: ActionM Int
-    queryParamJSON [sql| with r as (
-                           select id, label, parent as "carMake"
-                             from "CarModel"
-                            where parent = ?
-                         )
-                         select array_to_json(array_agg(row_to_json(r.*)))
-                           from r
-                   |] $ PG.Only carMake
-
-  post "/LT/contract" $ handleErrors $ do
+  post "/elt/contract" $ handleErrors $ do
     let getCurrentYear = liftIO $ ((\(y,_,_) -> (fromInteger y) ::Int) .
                                    toGregorian .
                                    utctDay
@@ -274,11 +274,11 @@ httpServer pgPool reqLogger cfg = do
     buyDate    <- T.strip <$> param "buyDate"    :: ActionM Text
     validUntil <- T.strip <$> param "validUntil" :: ActionM Text
 
-    [[subProgramOk]] <- queryParam
+    [[subProgramOk]] <- queryParam pgPool
       [sql| select exists (
               select id from "SubProgram" where parent = ? and id = ?
             )
-      |] (cfgLTProgram cfg, subProgram)
+      |] (cfgELTProgram cfg, subProgram)
 
     unless subProgramOk $ raise "Invalid subProgram"
     when (T.null $ T.strip name) $ raise "Invalid name"
@@ -293,7 +293,7 @@ httpServer pgPool reqLogger cfg = do
                           else raise "Invalid cardNumber"
              _ -> raise "Invalid cardNumber"
 
-    [[makeOk]] <- queryParam
+    [[makeOk]] <- queryParam pgPool
       [sql| select exists (
               select id from "CarMake" where id = ?
             )
@@ -306,7 +306,7 @@ httpServer pgPool reqLogger cfg = do
     (parsedBuyDate :: Day) <- parseDate buyDate "buyDate"
     (parsedValidUntil :: Day) <- parseDate validUntil "validUntil"
 
-    r <- queryParam
+    r <- queryParam pgPool
       [sql| insert into "Contract"
               ( subprogram, name, phone, vin
               , cardNumber, make, extra
@@ -354,4 +354,118 @@ httpServer pgPool reqLogger cfg = do
 
     case r of
       [[contractId :: Int]] -> json contractId
-      _ -> raise "Duplicate"
+      _                     -> raise "Duplicate"
+
+
+  -- automama
+  get "/automama/subProgram" $ queryParamJSON pgPool
+    [sql| with r as (
+            select id, label
+              from "SubProgram"
+             where parent=?
+          )
+          select array_to_json(array_agg(row_to_json(r.*)))
+            from r;
+    |] $ PG.Only $ cfgAutomamaProgram cfg
+
+  post "/automama/contract" $ handleErrors $ do
+    let getCurrentYear = liftIO $ ((\(y,_,_) -> (fromInteger y) ::Int) .
+                                   toGregorian .
+                                   utctDay
+                                  ) <$> getCurrentTime
+        yearOk year thisYear = year >= thisYear - 100 && year <= thisYear
+
+    subProgram <-             param "subProgram" :: ActionM Int
+    name       <- T.strip <$> param "name"       :: ActionM Text
+    phone      <- T.strip <$> param "phone"      :: ActionM Text
+    vin        <- T.strip <$> param "vin"        :: ActionM Text
+    cardNumber <- T.strip <$> param "cardNumber" :: ActionM Text
+    carMake    <-             param "carMake"    :: ActionM Int
+    carModel   <- T.strip <$> param "carModel"   :: ActionM Text
+    makeYear   <-             param "makeYear"   :: ActionM Int
+    buyDate    <- T.strip <$> param "buyDate"    :: ActionM Text
+    validUntil <- T.strip <$> param "validUntil" :: ActionM Text
+    comment    <- T.strip <$> param "comment"    :: ActionM Text
+
+    [[subProgramOk]] <- queryParam pgPool
+      [sql| select exists (
+              select id from "SubProgram" where parent = ? and id = ?
+            )
+      |] (cfgAutomamaProgram cfg, subProgram)
+
+    unless subProgramOk $ raise "Invalid subProgram"
+    when (T.null $ T.strip name) $ raise "Invalid name"
+    unless (phoneOk phone) $ raise "Invalid phone"
+    unless (vinOk vin) $ raise "Invalid vin format"
+    realCardNumber <- do
+      if T.null cardNumber
+      then return Nothing
+      else case reads (T.unpack cardNumber) :: [(Int, String)] of
+             [(cn, "")] -> if cn > 0
+                          then return $ Just cn
+                          else raise "Invalid cardNumber"
+             _ -> raise "Invalid cardNumber"
+
+    [[makeOk]] <- queryParam pgPool
+      [sql| select exists (
+              select id from "CarMake" where id = ?
+            )
+      |] $ PG.Only carMake
+    unless makeOk $ raise "Invalid carMake"
+
+    thisYear <- getCurrentYear
+    unless (yearOk makeYear thisYear) $ raise "Invalid makeYear"
+
+    (parsedBuyDate :: Day) <- parseDate buyDate "buyDate"
+    (parsedValidUntil :: Day) <- parseDate validUntil "validUntil"
+
+    r <- queryParam pgPool
+      [sql| insert into "Contract"
+              ( subprogram, name, phone, vin
+              , cardNumber, make, extra
+              , makeYear, validSince, validUntil
+              , dixi, committer, comment
+              )
+              with p as
+                (select ? :: int     as subprogram
+                      , ? :: text    as name
+                      , ? :: text    as phone
+                      , ? :: text    as vin
+                      , ? :: text    as cardnumber
+                      , ? :: int     as make
+                      , ? :: json    as extra
+                      , ? :: int     as makeyear
+                      , ? :: date    as validsince
+                      , ? :: date    as validuntil
+                      , ? :: boolean as testmode
+                      , ? :: int     as committer
+                      , ? :: text    as comment
+                )
+              select p.subprogram, p.name, p.phone
+                   , p.vin, p.cardnumber, p.make, p.extra
+                   , p.makeyear, p.validsince, p.validuntil
+                   , p.testmode, p.committer, p.comment
+                from p
+               where not exists (
+                 select id from "Contract"
+                  where subprogram = p.subprogram
+                    and name       = p.name
+                    and phone      = p.phone
+                    and vin        = p.vin
+                    and cardnumber = p.cardnumber
+                    and make       = p.make
+                    and extra::json::text = p.extra::json::text
+                    and makeyear   = p.makeyear
+                    and validsince = p.validsince
+                    and validuntil = p.validuntil
+                 )
+              returning id
+      |] ( subProgram, name, phone, vin
+         , realCardNumber, carMake, Aeson.object ["carModel" .= carModel]
+         , makeYear, parsedBuyDate, parsedValidUntil
+         , not $ cfgTestMode cfg, cfgCommitter cfg, comment
+         )
+
+    case r of
+      [[contractId :: Int]] -> json contractId
+      _                     -> raise "Duplicate"

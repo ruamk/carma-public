@@ -1,0 +1,13 @@
+[Unit]
+Description=CaRMa service for integration between CaRMa and caroperator.ru
+After=postgresql.target
+
+[Service]
+ExecStart=/home/carma/.local/bin/caroperator-svc caroperator-svc.conf
+User=carma
+Group=carma
+WorkingDirectory=/home/carma/carma/caroperator-svc
+PIDFile=/run/carma/caroperator-svc.pid
+
+[Install]
+WantedBy=multi-user.target
