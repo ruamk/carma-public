@@ -17,7 +17,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION send_sms_invite_driver(integer, text) IS
-  'Inserts SMS into "Sms" table with for driver invitation,'
+  'Inserts SMS into "Sms" table with invitation for driver,'
   ' containing url to mobile application';
 
 COMMIT;
