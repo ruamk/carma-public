@@ -1,0 +1,34 @@
+.stars {
+  white-space: nowrap;
+  .star {
+    display: inline-block;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 45px;
+    line-height: 45px;
+    color: #d7d7d7;
+    text-shadow: 1px 1px #bbb;
+
+    &:before {
+      content: '\2605';
+    }
+
+    &.golden {
+      color: gold;
+    }
+
+    &:focus {
+      outline: none;
+      text-shadow: 3px 3px gold;
+    }
+  }
+
+  &:hover > .star:before {
+    text-shadow: 3px 3px gold;
+  }
+
+  & > .star:hover ~ .star:before {
+    text-shadow: 1px 1px #bbb;
+  }
+}
