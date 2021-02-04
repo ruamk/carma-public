@@ -14,6 +14,7 @@ packages:
 - carma-mobile-server
 - carma-nominatim-mediator
 - carma-era-glonass-integration
+- carma-casepartner-us
 - location-sharing-svc
 - carma-proxies
 

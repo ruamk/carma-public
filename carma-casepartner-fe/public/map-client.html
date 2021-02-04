@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang=ru">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/css/ol.css" type="text/css">
+    <style>
+     body {
+       display: flex;
+       flex-direction: column;
+       height: 100vh;
+       max-width: 100%;
+       width: 100%;
+       margin: auto;
+     }
+     .error {
+       
+     }
+     .map {
+       display: flex;
+       flex: 1;
+     }
+
+     .map:-webkit-full-screen {
+       height: 100%;
+       margin: 0;
+     }
+     .map:-ms-fullscreen {
+       height: 100%;
+     }
+     .map:fullscreen {
+       height: 100%;
+     }
+     .map .ol-rotate {
+       top: 3em;
+     }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/build/ol.js"></script>
+    <title>Driver</title>
+  </head>
+  <body>
+    <div id="error" class="error" style="display: none;">
+      <p>Координаты пользователя <span id="driver"></span> не определены.</p>
+    </div>
+    <div id="map" class="map"></div>
+    <script type="text/javascript">
+     const query = location.search
+                           .substring(1)
+                           .split("&")
+                           .reduce(function(res, item){
+                             const [k, v] = item.split("=");
+                             res[k] = v;
+                             return res;
+                           }, {});
+     const serviceId = query.serviceId;
+     const prefix = location.pathname.startsWith("/elm-live") ? "/elm-live" : "";
+     const locationUri = location.origin + prefix + "/api/v1/service/"
+                       + serviceId + "/location";
+     var map = null;
+     var tileLayer = null;
+
+     window.getCoords = function (uri) {
+
+       const xhr = new XMLHttpRequest();
+       xhr.open("GET", uri);
+       xhr.setRequestHeader("Content-Type", "application/json");
+       xhr.onreadystatechange = function () {
+         if (xhr.readyState === 4 && xhr.status === 200) {
+           const res = JSON.parse(xhr.responseText);
+           const driver = res[0].driver;
+           const client = res[0].client;
+           if (map === null && driver.latitude !== null && driver.longitude !== null
+               && client.latitude !== null && client.longitude !== null) {
+             
+             tileLayer = new ol.layer.Tile({
+               source: new ol.source.OSM()
+             });
+
+             const driverLayer = new ol.layer.Vector({
+               source: new ol.source.Vector({
+                 features: [
+                   new ol.Feature({
+                     geometry: new ol.geom.Point(
+                       ol.proj.transform([driver.longitude, driver.latitude],
+                                         'EPSG:4326', 'EPSG:3857')
+                     )
+                   })
+                 ]
+               }),
+               style: new ol.style.Style({
+                 image: new ol.style.Icon({
+                   anchor: [0.5, 1.0],
+                   anchorXUnits: "fraction",
+                   anchorYUnits: "fraction",
+                   src: "driver.svg"
+                 })
+               })
+             });
+
+             const clientLayer = new ol.layer.Vector({
+               source: new ol.source.Vector({
+                 features: [
+                   new ol.Feature({
+                     geometry: new ol.geom.Point(
+                       ol.proj.transform([client.longitude, client.latitude],
+                                         'EPSG:4326', 'EPSG:3857')
+                     )
+                   })
+                 ]
+               }),
+               style: new ol.style.Style({
+                 image: new ol.style.Icon({
+                   anchor: [0.5, 1.0],
+                   anchorXUnits: "fraction",
+                   anchorYUnits: "fraction",
+                   src: "client.svg"
+                 })
+               })
+             });
+
+             var dr = ol.proj.transform([driver.longitude, driver.latitude],
+                                        'EPSG:4326', 'EPSG:3857');
+             var cl = ol.proj.transform([client.longitude, client.latitude],
+                                        'EPSG:4326', 'EPSG:3857');
+             var minx = Math.min(dr[0], cl[0]);
+             var maxx = Math.max(dr[0], cl[0]);
+             var miny = Math.min(dr[1], cl[1]);
+             var maxy = Math.max(dr[1], cl[1]);
+             var ext = ol.extent.boundingExtent([[minx,miny], [maxx,maxy]]);
+
+             map = new ol.Map({
+               controls: ol.control.defaults().extend([
+                 new ol.control.FullScreen({ source: 'fullscreen'}),
+               ]),
+               target: 'map',
+               layers: [
+                 tileLayer,
+                 driverLayer,
+                 clientLayer
+               ],
+               view: new ol.View({
+                 center: ol.proj.fromLonLat([driver.longitude, driver.latitude]),
+                 zoom: 12
+               })
+             });
+             map.getView().fit(ext, {size: map.getSize(), padding: [100,100,100,100]});
+           } else {
+             const driverLabel = document.getElementById("driver");
+             const error = document.getElementById("error");
+             error.style.display = "flex";
+             driverLabel.innerText = driver.name + " (" + driver.phone + ")" +
+                                                     ( driver.plateNum !== null && driver.plateNum !== ""
+                                                     ? '"' + driver.plateNum + '"' : ""
+                                                     );
+           }
+         }
+       }
+       xhr.send();
+     }
+
+     window.getCoords(locationUri);
+    </script>
+
+  </body>
+</html>

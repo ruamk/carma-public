@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/styles.css" />
+    <title>elm-spa</title>
+    <script src="/dist/elm.js"></script>
+  </head>
+  <body>
+    <div id="myapp"></div>
+  </body>
+  <script>
+   var storedSession = localStorage.getItem('case-partner-session');
+   var startingState = storedSession ? storedSession : null;
+
+   var socket;
+
+   var app = Elm.Main.init({
+     node: document.getElementById('myapp'),
+     flags: startingState
+   });
+
+   app.ports.storeSession.subscribe(function(session) {
+     localStorage.setItem('case-partner-session', session);
+   });
+
+   app.ports.caseChatConnect.subscribe(function(url) {
+     socket = new WebSocket(url);
+
+     socket.addEventListener("message", function(event) {
+       app.ports.caseChatMessageReceiver.send(event.data);
+     });
+
+     //app.ports.caseChatSendMessage.subscribe(function(message) {
+     //  socket.send(message);
+     //});
+
+   });
+
+  </script>
+</html>

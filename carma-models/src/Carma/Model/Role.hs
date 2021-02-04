@@ -68,6 +68,7 @@ mkIdents [t|Role|]
   , ("bo_orderAvarcom",65) -- БО: Заказ услуги (Аварком)
   , ("bo_controlRefs", 66) -- БО: Контроль услуги (Сбор справок)
   , ("bo_controlAvarcom",67) -- БО: Контроль услуги (Аварком)
+  , ("casePartner",    68) -- Партнёр по заявкам
   ]
 
 instance Model Role where

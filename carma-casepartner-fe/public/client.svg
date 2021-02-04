@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1" width="24" height="36">
+  <g id="tiles"></g>
+  <g id="pin">
+    <g transform="translate(0 0) scale(0.5)" fill="#880000" id="g5">
+      <path style="fill:#ff0000"
+         d="M 24,0 C 11,0 0,10 0,22 0,35 10,50 24,72 37,50 48,35 48,22 48,10 36,0 24,0 Z m 0,33 c -5,0 -9,-5 -9,-9 0,-5 4,-9 9,-9 4,0 9,4 9,9 0,4 -5,9 -9,9 z"
+         id="path3" />
+    </g>
+  </g>
+</svg>
+
