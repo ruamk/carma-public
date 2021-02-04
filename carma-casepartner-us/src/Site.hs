@@ -9,6 +9,7 @@ module Site
 ------------------------------------------------------------------------------
 import           Control.Monad.IO.Class                      (liftIO)
 import           Data.ByteString                             (ByteString)
+import           Data.Configurator                           as Config
 import           Data.Maybe                                  (fromMaybe, isJust)
 import qualified Data.Text.Encoding                          as T
 import           Snap.Core
@@ -171,8 +172,6 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , ("/show-service",    redirect "/")
          , ("/search",          redirect "/")
          , ("/settings",        redirect "/")
-
-         , ("",        serveDirectoryWith fancyDirectoryConfig "static")
          ]
 
 
@@ -187,9 +186,13 @@ app = makeSnaplet "app" "Case partner manager application." Nothing $ do
 
     ad <- nestSnaplet "db" db pgsInit
     a <- nestSnaplet "auth" auth $ initPostgresAuth session ad
-    addRoutes routes
 
     config <- getSnapletUserConfig
+
+    wwwDir <- liftIO $ Config.require config "www-dir"
+    addRoutes routes
+    addRoutes [("",        serveDirectoryWith fancyDirectoryConfig wwwDir)]
+
     liftIO $ PgNotify.startLoop config
 
     return $ App s ad a
