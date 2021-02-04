@@ -1,0 +1,23 @@
+
+carma {
+  user = 1388
+  subprogram = 408
+  test_mode = false
+}
+
+http {
+  port = 6543
+}
+
+log {
+  level = "Debug"
+}
+
+pg-conn-str= "postgresql://carma_db_sync:pass@localhost:5432/carma"
+
+
+program {
+  # идентификатор программы для клиента ELT, по нему вычисляются подпрограммы
+  elt = 294
+  automama = 236
+}

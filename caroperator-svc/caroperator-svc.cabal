@@ -1,5 +1,5 @@
 name:                caroperator-svc
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Add new contracts via HTTP
 
 license:             MIT
@@ -16,7 +16,10 @@ executable caroperator-svc
   ghc-options:         -O2 -Wall -Werror
   default-language:    Haskell2010
   default-extensions:
-    OverloadedStrings, LambdaCase
+    OverloadedStrings,
+    LambdaCase,
+    QuasiQuotes,
+    ScopedTypeVariables
 
   build-depends:
     base,
