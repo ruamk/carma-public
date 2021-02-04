@@ -59,3 +59,8 @@ srv/resources/static/tpl/
 srv/resources/static/3p/
 # Generated from coffee
 srv/resources/static/js/
+
+
+carma-casepartner-fe/node_modules
+carma-casepartner-fe/elm-stuff
+carma-casepartner-us/site_key.txt

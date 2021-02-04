@@ -1,0 +1,13 @@
+[Unit]
+Description=CaRMa case partner microservice
+After=postgresql.target
+
+[Service]
+ExecStart=/home/carma/.local/bin/carma-casepartner-us -p 9000 --access-log=/var/log/carma/carma-casepartner-us.access.log --error-log=/var/log/carma/carma-casepartner-us.error.log
+User=carma
+Group=carma
+WorkingDirectory=/home/carma/carma/carma-casepartner-us/
+PIDFile=/run/carma/carma.pid
+
+[Install]
+WantedBy=multi-user.target

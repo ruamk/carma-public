@@ -40,6 +40,7 @@ Singular tasks:
     $s                             Build haddock documentation for Era Glonass
     $s                             integration microservice
 
+    $0 frontend-elm                Build "elm" frontend
     $0 frontend-pure               Build "pure" frontend
     $0 frontend-legacy             Build "legacy" frontend
     $0 frontend-backend-templates  Build templates which used by backend
@@ -109,7 +110,7 @@ available_tasks=(
     backend backend-configs backend-carma backend-test backend-docs
     backend-test-configurator backend-test-era-glonass-integration
     backend-docs-era-glonass-integration
-    frontend frontend-pure frontend-legacy frontend-backend-templates
+    frontend frontend-elm frontend-pure frontend-legacy frontend-backend-templates
 )
 
 for arg in "$@"; do
@@ -403,6 +404,51 @@ fail_trap() {
 
 # *** START OF TASKS SECTION ***
 
+# $1 - task name
+# $2 - description
+# $3 - task directory
+# $4 - task command
+utask() {
+    local name=$1 desc=$2 dir=$3 cmd=$4
+    task_log "$name" step "$desc"
+    local lout=$(mk_tmp_fifo) lerr=$(mk_tmp_fifo) pids=()
+    app_logger 1 "$lout" "$name" "$cmd" & pids+=($!)
+    app_logger 2 "$lerr" "$name" "$cmd" & pids+=($!)
+    (cd -- "$dir" && eval "$cmd") \
+        1>"$lout" 2>"$lerr" \
+        || fail_trap "$name" "${pids[*]}" "$lout" "$lerr" \
+        || return -- "$?"
+    for pid in "${pids[@]}"; do wait -- "$pid"; done && pids=()
+    rm -- "$lout" "$lerr"
+}
+
+# "frontend-elm" task
+frontend_elm_task__covered_by=(frontend all)
+frontend_elm_task() {
+    local task_name='frontend-elm' dir='carma-casepartner-fe'
+    task_log "$task_name" run
+
+    # Full clean
+    if [[ $is_fully_clean_build == true ]]; then
+        utask "$task_name" \
+              "Removing \"$dir\"/{node_modules,elm-stuff} directories…" \
+              "$dir" \
+              "rm -rf node_modules elm-stuff"
+    fi
+
+    # Installing Elm dependencies
+    utask "$task_name" \
+          'Installing Elm dependencies…' \
+          "$dir" \
+          "npm i"
+
+    utask "$task_name" \
+          'Running "npm run build" script…' \
+          "$dir" \
+          "npm run build"
+
+    task_log "$task_name" done
+}
 
 # "frontend-pure" task
 frontend_pure_task__covered_by=(frontend all)
@@ -506,7 +552,7 @@ frontend_pure_task() {
     local clean_infix=`[[ $is_clean_build == true ]] && echo clean-`
     local prod_prefix=`[[ $is_production_build == true ]] && echo prod-`
     local npm_task=${prod_prefix}${clean_infix}build
-    task_log "$task_name" step $"Running npm \"$npm_task\" script…"
+    task_log "$task_name" step "Running npm \"$npm_task\" script…"
     local app_name="npm run $npm_task"
     local lout=$(mk_tmp_fifo) lerr=$(mk_tmp_fifo) pids=()
     app_logger 1 "$lout" "$task_name" "$app_name" & pids+=($!)
@@ -645,6 +691,7 @@ frontend_task() {
         frontend_task_parallel_legacy & pids+=($!)
         for pid in "${pids[@]}"; do wait -- "$pid" || rv=$?; done
     else
+        frontend_elm_task
         frontend_pure_task
         frontend_legacy_pre
         frontend_legacy_task true
@@ -1093,6 +1140,9 @@ for task in "${positional[@]}"; do
         frontend)
             solo "$task" "${frontend_task__covered_by[@]}"
             ;;
+        frontend-elm)
+            solo "$task" "${frontend_elm_task__covered_by[@]}"
+            ;;
         frontend-pure)
             solo "$task" "${frontend_pure_task__covered_by[@]}"
             ;;
@@ -1175,6 +1225,11 @@ for task in "${positional[@]}"; do
             if [[ $run_in_parallel == true ]]
                 then frontend_task & task_pids+=($!)
                 else frontend_task; fi
+            ;;
+        frontend-elm)
+            if [[ $run_in_parallel == true ]]
+                then frontend_elm_task & task_pids+=($!)
+                else frontend_elm_task; fi
             ;;
         frontend-pure)
             if [[ $run_in_parallel == true ]]
