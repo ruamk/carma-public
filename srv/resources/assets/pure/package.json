@@ -46,7 +46,7 @@
     "create-react-class": "^15.6.3",
     "mdn-polyfills": "^5.8.0",
     "react": "^16.4.0",
-    "react-dom": "^16.4.0",
+    "react-dom": "^16.4.2",
     "react-dropzone": "^4.2.10",
     "react-rte": "^0.16.1",
     "xhr2": "^0.1.4"
