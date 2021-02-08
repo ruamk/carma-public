@@ -1589,8 +1589,17 @@ viewServicesList : Model -> List CurrentCaseInfo -> Html Msg
 viewServicesList model ccs =
     let
         cases =
-            List.map f ccs
+            List.map (viewCard model) ccs
+            
+    in
+    Card.deck
+        [ Card.customListGroup cases (Card.config [])
+        ]
 
+
+viewCard : Model -> CurrentCaseInfo -> ListGroup.CustomItem Msg
+viewCard model cci = 
+    let
         serviceType c =
             case c.cuTypeOfService of
                 Just tos ->
@@ -1603,28 +1612,67 @@ viewServicesList model ccs =
 
                 Nothing ->
                     ""
-
+        
         address c =
             Ui.addressCell c.cuBreakdownPlace
+        
+        accordTime = 
+            formatAccordTime cci.cuAccordTime
 
-        f : CurrentCaseInfo -> ListGroup.CustomItem Msg
-        f x =
-            ListGroup.button
-                [ ListGroup.attrs
-                    [ onClick (ServicesMsg <| Services.CurrentCase x.cuServiceId)
-                    , if x.cuCaseId == model.service.caseId then
-                        class "active"
+        formatAccordTime : String -> String
+        formatAccordTime t =
+            case parseTime t of
+                Just ( 0, hours, minutes ) ->
+                    String.fromInt hours ++ ":" ++ String.fromInt minutes
 
-                      else
-                        class ""
-                    ]
+                Just ( days, hours, minutes ) ->
+                    String.fromInt days
+                        ++ " дн. "
+                        ++ String.fromInt hours
+                        ++ ":"
+                        ++ String.fromInt minutes
+
+                Nothing ->
+                    t
+        {- Returns: (Days, Hours, Minutes) -}
+        parseTime : String -> Maybe ( Int, Int, Int )
+        parseTime t =
+            case String.split " " t of
+                [ d, h, m ] ->
+                    case List.map String.toInt [ d, h, m ] of
+                        [ Just days, Just hours, Just minutes ] ->
+                            if days >= 0 && hours >= 0 && (minutes >= 0 && minutes < 60) then
+                                Just ( days, hours, minutes )
+
+                            else
+                                Nothing
+
+                        _ ->
+                            Nothing
+
+                _ ->
+                    Nothing
+    in 
+        ListGroup.button
+            [ ListGroup.attrs
+                [ onClick (ServicesMsg <| Services.CurrentCase cci.cuServiceId)
+                , if cci.cuCaseId == model.service.caseId then
+                    class "active"
+                  else
+                    class ""
                 ]
-                [ div [ style "display" "block" ]
-                    [ text <| serviceType x
-                    , address x
+            ]
+            [ div [ style "display" "block" ]
+                [ div [] 
+                    [ text <|
+                        String.fromInt cci.cuCaseId
+                            ++ (if cci.cuServiceSerial > 1 
+                                then "/" ++ String.fromInt cci.cuServiceSerial
+                                else "")
+                    , text " "
+                    , b [] [ text <| serviceType cci ]
+                    , div [style "float" "right"] [text <| accordTime]
                     ]
+                , address cci
                 ]
-    in
-    Card.deck
-        [ Card.customListGroup cases (Card.config [])
-        ]
+            ]
