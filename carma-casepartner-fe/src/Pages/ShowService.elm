@@ -1669,6 +1669,7 @@ viewCard model cci =
 
               else
                 class ""
+            , style "border-top" "1px solid #f0f0f0"
             ]
         ]
         [ div [ style "display" "block" ]
