@@ -1616,7 +1616,9 @@ viewCard model cci =
             Ui.addressCell c.cuBreakdownPlace
 
         accordTime =
-            formatAccordTime cci.cuAccordTime
+            cci.cuAccordTime
+                |> formatAccordTime
+                |> highlightAccordTime
 
         formatAccordTime : String -> String
         formatAccordTime t =
@@ -1633,6 +1635,12 @@ viewCard model cci =
 
                 Nothing ->
                     t
+        
+        highlightAccordTime : String -> Html msg
+        highlightAccordTime s = 
+            case s of
+                "Опоздание" -> div [ style "color" "red" ] [ text s ]
+                _ -> div [] [text s]
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )
@@ -1676,7 +1684,7 @@ viewCard model cci =
                 , text " "
                 , b [] [ text <| serviceType cci ]
                 ]
-            , div [ style "text-align" "right" ] [ text <| accordTime ]
+            , div [ style "text-align" "right" ] [ accordTime ]
             , address cci
             ]
         ]
