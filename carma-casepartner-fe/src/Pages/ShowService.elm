@@ -1,8 +1,9 @@
 module Pages.ShowService exposing (Flags, Model, Msg, page)
--- lalala
+
 import Api
 import Bootstrap.Alert as Alert
 import Bootstrap.Button as Button
+import Bootstrap.Card as Card
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
@@ -11,6 +12,7 @@ import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
+import Bootstrap.ListGroup as ListGroup
 import Bootstrap.Modal as Modal
 import Bootstrap.Navbar as Navbar
 import Bootstrap.Text as Text
@@ -33,6 +35,7 @@ import Html
         , hr
         , li
         , p
+        , s
         , text
         , ul
         )
@@ -51,12 +54,14 @@ import ISO8601
 import Maybe exposing (withDefault)
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
+import Pages.Services as Services
 import Time
 import Tuple
 import Types
     exposing
         ( CaseComment
         , CaseCommentDetails(..)
+        , CurrentCaseInfo
         , Dictionary
         , Driver
         , ServiceDescription
@@ -121,6 +126,7 @@ type alias Model =
     , statusButton1 : StatusButton1
     , statusButton2 : StatusButton2
     , usermenuState : Dropdown.State
+    , servicesModel : Services.Model
     }
 
 
@@ -164,6 +170,7 @@ type Msg
     | UpdateCustomMessageToast (MessageToast Msg)
     | UpdateStatus (Result Http.Error String) -- Результат изменения статуса
     | UsermenuMsg Dropdown.State
+    | ServicesMsg Services.Msg
 
 
 driverSpinnerSize : String
@@ -196,10 +203,13 @@ page =
 
 
 init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
-init _ _ =
+init global flags =
     let
         ( navbarState, navbarCmd ) =
             Navbar.initialState NavbarMsg
+
+        ( servicesModel, servicesCmd, servicesGlobalCmd ) =
+            Services.init global flags
     in
     ( { service = emptyServiceDescription
       , closing1 = ""
@@ -240,9 +250,16 @@ init _ _ =
                 }
       , selectedDriver = ""
       , assignedDriver = Nothing
+      , servicesModel = servicesModel
       }
-    , navbarCmd
-    , Cmd.none
+    , Cmd.batch
+        [ navbarCmd
+        , Cmd.map ServicesMsg servicesCmd
+        ]
+    , Cmd.batch
+        [ Cmd.none
+        , servicesGlobalCmd
+        ]
     )
 
 
@@ -889,14 +906,32 @@ update global msg model =
             , Cmd.none
             )
 
+        ServicesMsg smsg ->
+            let
+                ( servicesModel_, servicesCmds, servicesGlobalCmds ) =
+                    Services.update global smsg model.servicesModel
+            in
+            ( { model | servicesModel = servicesModel_ }
+            , Cmd.map ServicesMsg servicesCmds
+            , servicesGlobalCmds
+            )
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
-subscriptions _ model =
-    Sub.batch
-        [ Dropdown.subscriptions model.usermenuState UsermenuMsg
-        , Chat.caseReceiver Chat
-        , Time.every (commentsUpdateTime * 1000) Tick
-        ]
+subscriptions global model =
+    let
+        showServiceSubs =
+            Sub.batch
+                [ Dropdown.subscriptions model.usermenuState UsermenuMsg
+                , Chat.caseReceiver Chat
+                , Time.every (commentsUpdateTime * 1000) Tick
+                ]
+
+        servicesListSubs =
+            Services.subscriptions global model.servicesModel
+                |> Sub.map ServicesMsg
+    in
+    Sub.batch [ servicesListSubs, showServiceSubs ]
 
 
 formatServiceSerial : Model -> String
@@ -1214,7 +1249,11 @@ viewCasePanel model serviceId =
             ]
 
          else
-            [ Grid.col [ Col.sm2 ] []
+            [ Grid.col [ Col.sm2 ]
+                [ viewServicesList
+                    model
+                    model.servicesModel.currentCases
+                ]
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
                 [ h2 [ class "text-center" ] [ text <| "Номер заявки: " ++ caseId ]
                 , Grid.row []
@@ -1544,3 +1583,48 @@ viewLog model =
             [ Grid.col [ Col.textAlign Text.alignXsCenter ] <|
                 [ Ui.viewSpinner "10rem" ]
             ]
+
+
+viewServicesList : Model -> List CurrentCaseInfo -> Html Msg
+viewServicesList model ccs =
+    let
+        cases =
+            List.map f ccs
+
+        serviceType c =
+            case c.cuTypeOfService of
+                Just tos ->
+                    case Dict.get tos model.servicesModel.typeOfServiceSynonym of
+                        Just v ->
+                            v
+
+                        Nothing ->
+                            tos
+
+                Nothing ->
+                    ""
+
+        address c =
+            Ui.addressCell c.cuBreakdownPlace
+
+        f : CurrentCaseInfo -> ListGroup.CustomItem Msg
+        f x =
+            ListGroup.button
+                [ ListGroup.attrs
+                    [ onClick (ServicesMsg <| Services.CurrentCase x.cuServiceId)
+                    , if x.cuCaseId == model.service.caseId then
+                        class "active"
+
+                      else
+                        class ""
+                    ]
+                ]
+                [ div [ style "display" "block" ]
+                    [ text <| serviceType x
+                    , address x
+                    ]
+                ]
+    in
+    Card.deck
+        [ Card.customListGroup cases (Card.config [])
+        ]
