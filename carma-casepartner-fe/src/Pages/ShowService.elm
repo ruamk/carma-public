@@ -1592,7 +1592,7 @@ viewServicesList model ccs =
             List.map (viewCard model) ccs
     in
     Card.deck
-        [ Card.customListGroup cases (Card.config [])
+        [ Card.customListGroup cases (Card.config [ Card.attrs [ class "d-none d-lg-block" ] ])
         ]
 
 
