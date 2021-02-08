@@ -1,23 +1,24 @@
-module Carma.Model.Service where
+module Carma.Model.Service
+    where
 
-import Data.Aeson as Aeson
-import Data.Text
-import Data.Time
-import Data.Typeable
+import           Data.Aeson                      as Aeson
+import           Data.Text
+import           Data.Time
+import           Data.Typeable
 
-import Data.Model
-import Data.Model.Types ((:@))
-import Data.Model.View
+import           Data.Model
+import           Data.Model.Types                ((:@))
+import           Data.Model.View
 
-import qualified Carma.Model.ClientRefusalReason as CRR
 import           Carma.Model.Case                (Case)
+import qualified Carma.Model.ClientRefusalReason as CRR
 import           Carma.Model.Complication        (Complication)
 import           Carma.Model.FalseCall           (FalseCall)
 import           Carma.Model.LegacyTypes
 import           Carma.Model.Partner             (Partner)
 import           Carma.Model.PaymentType         (PaymentType)
 import           Carma.Model.Satisfaction        (Satisfaction)
-import           Carma.Model.Search as S
+import           Carma.Model.Search              as S
 import           Carma.Model.ServiceStatus       (ServiceStatus)
 import           Carma.Model.ServiceType         (ServiceType)
 import           Carma.Model.UrgentServiceReason (UrgentServiceReason)
@@ -41,6 +42,8 @@ data Service = Service
                                  "Расшифровка стоимости"
   , payment_partnerCost          :: F (Maybe Double) "payment_partnerCost"
                                  "Стоимость со слов партнёра (число)"
+  , payment_partnerCostTranscript:: F (Maybe Text) "payment_partnerCostTranscript"
+                                 "Расшифровка стоимости со слов партнёра"
   , payment_calculatedCost       :: F (Maybe Int) "payment_calculatedCost"
                                  "Расчётная стоимость"
   , payment_limitedCost          :: F (Maybe Int) "payment_limitedCost"
@@ -51,6 +54,14 @@ data Service = Service
                                  "Оплата РАМК"
   , payment_paidByClient         :: F (Maybe Text) "payment_paidByClient"
                                  "Оплата Клиент"
+  , payment_checkCost            :: F (Maybe Double) "payment_checkCost"
+                                 "Стоимость при закрытии (число)"
+  , payment_checkCostTranscript  :: F (Maybe Text) "payment_checkCostTranscript"
+                                 "Расшифровка стоимости при закрытии"
+  , payment_claimsCost           :: F (Maybe Double) "payment_claimsCost"
+                                 "Обработка счёта (число)"
+  , payment_claimsCostTranscript :: F (Maybe Text) "payment_claimsCostTranscript"
+                                 "Расшифровка обработки счёта"
   , times_expectedServiceStart   :: F (Maybe UTCTime) "times_expectedServiceStart"
                                  "Ожидаемое время начала оказания услуги"
   , times_expectedServiceStartHistory
