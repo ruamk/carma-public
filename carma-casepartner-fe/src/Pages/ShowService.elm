@@ -1590,7 +1590,6 @@ viewServicesList model ccs =
     let
         cases =
             List.map (viewCard model) ccs
-            
     in
     Card.deck
         [ Card.customListGroup cases (Card.config [])
@@ -1598,7 +1597,7 @@ viewServicesList model ccs =
 
 
 viewCard : Model -> CurrentCaseInfo -> ListGroup.CustomItem Msg
-viewCard model cci = 
+viewCard model cci =
     let
         serviceType c =
             case c.cuTypeOfService of
@@ -1612,11 +1611,11 @@ viewCard model cci =
 
                 Nothing ->
                     ""
-        
+
         address c =
             Ui.addressCell c.cuBreakdownPlace
-        
-        accordTime = 
+
+        accordTime =
             formatAccordTime cci.cuAccordTime
 
         formatAccordTime : String -> String
@@ -1634,6 +1633,7 @@ viewCard model cci =
 
                 Nothing ->
                     t
+
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )
         parseTime t =
@@ -1652,27 +1652,31 @@ viewCard model cci =
 
                 _ ->
                     Nothing
-    in 
-        ListGroup.button
-            [ ListGroup.attrs
-                [ onClick (ServicesMsg <| Services.CurrentCase cci.cuServiceId)
-                , if cci.cuCaseId == model.service.caseId then
-                    class "active"
-                  else
-                    class ""
-                ]
+    in
+    ListGroup.button
+        [ ListGroup.attrs
+            [ onClick (ServicesMsg <| Services.CurrentCase cci.cuServiceId)
+            , if (cci.cuCaseId == model.service.caseId) && (cci.cuServiceSerial == model.service.services) then
+                class "active"
+
+              else
+                class ""
             ]
-            [ div [ style "display" "block" ]
-                [ div [] 
-                    [ text <|
-                        String.fromInt cci.cuCaseId
-                            ++ (if cci.cuServiceSerial > 1 
-                                then "/" ++ String.fromInt cci.cuServiceSerial
-                                else "")
-                    , text " "
-                    , b [] [ text <| serviceType cci ]
-                    , div [style "float" "right"] [text <| accordTime]
-                    ]
-                , address cci
+        ]
+        [ div [ style "display" "block" ]
+            [ div []
+                [ text <|
+                    String.fromInt cci.cuCaseId
+                        ++ (if cci.cuServiceSerial > 1 then
+                                "/" ++ String.fromInt cci.cuServiceSerial
+
+                            else
+                                ""
+                           )
+                , text " "
+                , b [] [ text <| serviceType cci ]
                 ]
+            , div [ style "text-align" "right" ] [ text <| accordTime ]
+            , address cci
             ]
+        ]
