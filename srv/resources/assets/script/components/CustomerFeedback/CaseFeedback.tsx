@@ -25,7 +25,7 @@ interface Props {
 export const CaseFeedback: FunctionalComponent<Props> = (props) => {
   const {data} = props;
   const [comment, setComment] = useState(data?.response.comment || "");
-  const [readonly, setReadonly] = useState(!!data);
+  const [readonly, setReadonly] = useState(false);
 
   const onSave = async () => {
     setReadonly(true);
@@ -51,13 +51,6 @@ export const CaseFeedback: FunctionalComponent<Props> = (props) => {
       canSave={comment && !readonly}
     >
       <form>
-        { data && [
-          field("Оператор", `${data.realName} (${data.login})`),
-          field(
-            "Отзыв оставлен",
-            moment(data.ctime).format("YYYY-MM-DD HH:mm"))
-        ]}
-
         <div>
           <label>Комментарий</label>
           <textarea
