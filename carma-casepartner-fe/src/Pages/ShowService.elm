@@ -54,7 +54,6 @@ import ISO8601
 import Maybe exposing (withDefault)
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
-import Pages.Services as Services
 import Time
 import Tuple
 import Types
@@ -126,7 +125,8 @@ type alias Model =
     , statusButton1 : StatusButton1
     , statusButton2 : StatusButton2
     , usermenuState : Dropdown.State
-    , servicesModel : Services.Model
+    , currentCases : List CurrentCaseInfo
+    , typeOfServiceSynonym : Dictionary
     }
 
 
@@ -170,7 +170,10 @@ type Msg
     | UpdateCustomMessageToast (MessageToast Msg)
     | UpdateStatus (Result Http.Error String) -- Результат изменения статуса
     | UsermenuMsg Dropdown.State
-    | ServicesMsg Services.Msg
+    | CurrentCase Int
+    | UpdateServicesListTick Time.Posix
+    | GetCurrentCases (Result Http.Error (List CurrentCaseInfo))
+    | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
 
 
 driverSpinnerSize : String
@@ -191,6 +194,10 @@ commentsUpdateTime : Float
 commentsUpdateTime =
     10
 
+servicesListUpdateSeconds : Float
+servicesListUpdateSeconds = 
+    60
+
 
 page : Page Flags Model Msg
 page =
@@ -207,9 +214,6 @@ init global flags =
     let
         ( navbarState, navbarCmd ) =
             Navbar.initialState NavbarMsg
-
-        ( servicesModel, servicesCmd, servicesGlobalCmd ) =
-            Services.init global flags
     in
     ( { service = emptyServiceDescription
       , closing1 = ""
@@ -250,16 +254,11 @@ init global flags =
                 }
       , selectedDriver = ""
       , assignedDriver = Nothing
-      , servicesModel = servicesModel
+      , currentCases = []
+      , typeOfServiceSynonym = Dict.empty
       }
-    , Cmd.batch
-        [ navbarCmd
-        , Cmd.map ServicesMsg servicesCmd
-        ]
-    , Cmd.batch
-        [ Cmd.none
-        , servicesGlobalCmd
-        ]
+    , navbarCmd
+    , Cmd.none
     )
 
 
@@ -299,6 +298,8 @@ update global msg model =
             , Cmd.batch
                 [ Api.getService global.serviceId ServiceDownloaded
                 , Api.getDrivers DriversDownloaded
+                , Api.getTypeOfServiceSynonym TypeOfServiceSynonymDownloaded
+                , Api.getLatestCurrentCases GetCurrentCases
                 ]
             , Cmd.none
             )
@@ -906,32 +907,74 @@ update global msg model =
             , Cmd.none
             )
 
-        ServicesMsg smsg ->
-            let
-                ( servicesModel_, servicesCmds, servicesGlobalCmds ) =
-                    Services.update global smsg model.servicesModel
-            in
-            ( { model | servicesModel = servicesModel_ }
-            , Cmd.map ServicesMsg servicesCmds
-            , servicesGlobalCmds
+        UpdateServicesListTick _ ->
+            ( { model
+                | currentCases = []
+              }
+            , Api.getLatestCurrentCases GetCurrentCases
+            , Cmd.none
             )
+
+        GetCurrentCases result ->
+            case result of
+                    Err _ ->
+                        let
+                            messageToast : MessageToast Msg
+                            messageToast =
+                                model.messageToast
+                                    |> MessageToast.danger
+                                    |> MessageToast.withMessage "Error get current latest cases "
+                        in
+                        ( { model
+                            | messageToast = messageToast
+                        }
+                        , Cmd.none
+                        , Cmd.none
+                        )
+
+                    Ok currentCases ->
+                        ( { model
+                            | currentCases = currentCases
+                        }
+                        , Cmd.none
+                        , Cmd.none
+                        )
+
+        CurrentCase serviceId ->
+            ( model
+            , Cmd.none
+            , Cmd.batch
+                [ Global.serviceId serviceId
+                , Global.navigate Route.ShowService
+                ]
+            )
+        
+        TypeOfServiceSynonymDownloaded result ->
+            case result of
+                Err _ ->
+                    ( model
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok typeOfServiceSynonym ->
+                    ( { model
+                        | typeOfServiceSynonym = typeOfServiceSynonym
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
-    let
-        showServiceSubs =
-            Sub.batch
-                [ Dropdown.subscriptions model.usermenuState UsermenuMsg
-                , Chat.caseReceiver Chat
-                , Time.every (commentsUpdateTime * 1000) Tick
-                ]
-
-        servicesListSubs =
-            Services.subscriptions global model.servicesModel
-                |> Sub.map ServicesMsg
-    in
-    Sub.batch [ servicesListSubs, showServiceSubs ]
+    Sub.batch
+        [ Dropdown.subscriptions model.usermenuState UsermenuMsg
+        , Chat.caseReceiver Chat
+        , Time.every (commentsUpdateTime * 1000) Tick
+        , Time.every (servicesListUpdateSeconds * 1000) UpdateServicesListTick
+        ]
 
 
 formatServiceSerial : Model -> String
@@ -1252,7 +1295,7 @@ viewCasePanel model serviceId =
             [ Grid.col [ Col.sm2 ]
                 [ viewServicesList
                     model
-                    model.servicesModel.currentCases
+                    model.currentCases
                 ]
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
                 [ h2 [ class "text-center" ] [ text <| "Номер заявки: " ++ caseId ]
@@ -1602,7 +1645,7 @@ viewCard model cci =
         serviceType c =
             case c.cuTypeOfService of
                 Just tos ->
-                    case Dict.get tos model.servicesModel.typeOfServiceSynonym of
+                    case Dict.get tos model.typeOfServiceSynonym of
                         Just v ->
                             v
 
@@ -1663,7 +1706,7 @@ viewCard model cci =
     in
     ListGroup.button
         [ ListGroup.attrs
-            [ onClick (ServicesMsg <| Services.CurrentCase cci.cuServiceId)
+            [ onClick (CurrentCase cci.cuServiceId)
             , if (cci.cuCaseId == model.service.caseId) && (cci.cuServiceSerial == model.service.services) then
                 class "active"
 
