@@ -62,6 +62,10 @@ data Service = Service
                                  "Обработка счёта (число)"
   , payment_claimsCostTranscript :: F (Maybe Text) "payment_claimsCostTranscript"
                                  "Расшифровка обработки счёта"
+  , payment_billNumber           :: F (Maybe Int) "payment_billNumber"
+                                 "Номер счёта"
+  , payment_billingDate          :: F (Maybe Day) "payment_billingDate"
+                                 "Дата выставления счёта"
   , times_expectedServiceStart   :: F (Maybe UTCTime) "times_expectedServiceStart"
                                  "Ожидаемое время начала оказания услуги"
   , times_expectedServiceStartHistory

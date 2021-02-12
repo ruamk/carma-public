@@ -46,7 +46,7 @@ instance FromField LoadingDifficulties where
     fromField = fromJSONField
 
 
-data CaseDescription = CaseDescription
+data ServiceDescription = ServiceDescription
     { _caseId               :: Int
     , _services             :: Int
     , _serviceType          :: String
@@ -62,9 +62,10 @@ data CaseDescription = CaseDescription
     , _makeModel            :: String
     , _plateNumber          :: String
     , _vin                  :: Maybe String
+    , _payType              :: Maybe Int
     } deriving (Show, Generic)
 
-instance ToJSON CaseDescription where
+instance ToJSON ServiceDescription where
     toJSON = genericToJSON defaultOptions
              { fieldLabelModifier = dropWhile (== '_')}
 
@@ -111,7 +112,7 @@ handleApiGetService = checkAuthCasePartner $ do
   |] (caseId, serviceId)
 
   [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType
-   , status, statusLabel)] <- query [sql|
+   , status, statusLabel, payType)] <- query [sql|
     SELECT
         times_expectedservicestart
       , times_factservicestart
@@ -119,6 +120,7 @@ handleApiGetService = checkAuthCasePartner $ do
       , "ServiceType".label
       , status
       , "ServiceStatus".label
+      , payType
     FROM servicetbl
     LEFT OUTER JOIN "ServiceType" ON servicetbl.type = "ServiceType".id
     LEFT OUTER JOIN "ServiceStatus" ON servicetbl.status = "ServiceStatus".id
@@ -142,14 +144,14 @@ handleApiGetService = checkAuthCasePartner $ do
                                     (Only h:_) -> h
                                     _          -> ""
 
-  writeJSON $ CaseDescription
+  writeJSON $ ServiceDescription
                caseId serviceSerial serviceType
                status statusLabel
                client clientPhone
                firstAddress lastAddress
                expectedServiceStart factServiceStart factServiceEnd
                makeModel plateNumber
-               vin
+               vin payType
 
 
 serviceComments :: AppHandler ()
