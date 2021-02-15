@@ -1480,30 +1480,7 @@ viewCasePanel model serviceId =
                     , text "проверяются ООС на соответствие условий в договоре и правил "
                     , text "бухгалтерского учета"
                     ]
-                , div [ Spacing.ml0 ]
-                    [ Input.text
-                        [ Input.attrs [ placeholder "Стоимость заявки (одной суммой)" ]
-                        , Input.attrs [ Spacing.ml0, Spacing.mr0, Spacing.mt3, Spacing.mb3 ]
-                        ]
-                    , Textarea.textarea
-                        [ Textarea.id "priceDescription"
-                        , Textarea.rows 4
-                        , Textarea.attrs
-                            [ placeholder "Расшифровка стоимости"
-                            , Spacing.ml0
-                            , Spacing.mr0
-                            , Spacing.mt3
-                            , Spacing.mb3
-                            ]
-                        ]
-                    , Button.button
-                        [ Button.primary
-                        , Button.attrs [ class "float-right", Spacing.mt3 ]
-                        ]
-                        [ text "Функционал в разработке" ]
-
-                    {- [ text "Закрыть заявку" ] -}
-                    ]
+                , div [ Spacing.ml0 ] [ viewClosingCaseField model ]
                 ]
             ]
         )
@@ -1757,3 +1734,83 @@ viewCard model cci =
             , address cci
             ]
         ]
+
+
+viewClosingCaseField : Model -> Html Msg
+viewClosingCaseField model = 
+    let
+        priceInputStyles =
+                [ Input.attrs [ placeholder "Стоимость заявки (одной суммой)" ]
+                , Input.attrs 
+                    [ Spacing.ml0
+                    , Spacing.mr0
+                    , Spacing.mt3
+                    , Spacing.mb3
+                    ]
+                ]
+        
+        descriptionInputStyles =
+            [ Textarea.id "priceDescription"
+            , Textarea.rows 4
+            , Textarea.attrs
+                [ placeholder "Расшифровка стоимости"
+                , Spacing.ml0
+                , Spacing.mr0
+                , Spacing.mt3
+                , Spacing.mb3
+                ]
+            ]
+        
+        
+        button = 
+            Button.button 
+                [ Button.primary
+                , Button.attrs [ Spacing.mt3, class "float-right" ]
+                , 
+                    if model.service.status == Const.serviceStatus.ok
+                        then 
+                            Button.disabled False
+                        
+                        else 
+                            Button.disabled True
+                ] 
+                [ text "Закрыть заявку" ]
+
+
+
+    in       
+        case model.service.payType of
+            Just 1 -> 
+                div [] 
+                    [ h2 [] [ text "Оплата РАМК" ]
+                    , Input.text priceInputStyles
+                    , Textarea.textarea descriptionInputStyles
+                    , button
+                    ]
+            Just 2 -> 
+                div []
+                    [ h2 [] [ text "Оплата клиент" ]
+                    , Input.text priceInputStyles
+                    , button
+                    ]
+
+            Just 3 ->
+                div []
+                    [ h2 [] [ text "Оплата РАМК" ]
+                    , Input.text priceInputStyles
+                    , Textarea.textarea descriptionInputStyles
+                    , h2 [] [ text "Оплата клиент" ]
+                    , Input.text priceInputStyles
+                    , button
+                    ]
+                
+            Just 4 -> 
+                div []
+                    [ h2 [] [ text "Оплата клиент" ]
+                    , Input.text priceInputStyles
+                    , button
+                    ]
+            _ ->
+                div [] 
+                    [ text "неизвестный тип оплаты"
+                    ]
