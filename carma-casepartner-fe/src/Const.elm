@@ -17,3 +17,11 @@ serviceStatus =
 latenessReasons =
     { other = 1
     }
+
+
+paymentType = 
+    { ruamc = 1
+    , client = 2
+    , mixed = 3
+    , refund = 4
+    }

@@ -368,6 +368,7 @@ getService serviceId message =
                 |> optional "makeModel" string ""
                 |> optional "plateNumber" string ""
                 |> required "vin" (nullable string)
+                |> required "payType" (nullable int)
     in
     HttpBuilder.get (apiGetService serviceId)
         |> HttpBuilder.withExpect (Http.expectJson message getCaseDecoder)

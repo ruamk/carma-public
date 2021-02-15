@@ -76,6 +76,7 @@ type alias ServiceDescription =
     , makeModel : String
     , plateNumber : String
     , vin : Maybe String
+    , payType : Maybe Int
     }
 
 
@@ -96,6 +97,7 @@ emptyServiceDescription =
     , makeModel = ""
     , plateNumber = ""
     , vin = Nothing
+    , payType = Nothing
     }
 
 
