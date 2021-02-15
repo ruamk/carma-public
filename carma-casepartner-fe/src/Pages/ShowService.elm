@@ -194,6 +194,7 @@ type Msg
     | GetCurrentCases (Result Http.Error (List CurrentCaseInfo))
     | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
     | UpdateClosingServiceForm ClosingServiceForm
+    | CloseService
 
 
 driverSpinnerSize : String
@@ -1022,6 +1023,12 @@ update global msg model =
             , Cmd.none 
             )
 
+        CloseService -> 
+            ( model
+            , Cmd.none 
+            , Cmd.none 
+            )
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -1821,7 +1828,7 @@ viewClosingCaseField model =
         button enable = 
             Button.button 
                 [ Button.primary
-                , Button.attrs [ Spacing.mt3, class "float-right" ]
+                , Button.attrs [ Spacing.mt3, class "float-right", onClick CloseService ]
                 , 
                     if (model.service.status == Const.serviceStatus.ok) && enable
                         then 
@@ -1848,7 +1855,10 @@ viewClosingCaseField model =
                         in    
                             div [] 
                                 [ h2 [] [ text "Оплата РАМК" ]
-                                , Input.text (Input.attrs [ onInput updatePriceRUAMK ] :: priceInputStyles)
+                                , Input.text <| Input.attrs 
+                                    [ onInput updatePriceRUAMK
+                                    , if (isJust <| String.toFloat f.price) then class "" else class "border-danger" 
+                                    ] :: priceInputStyles
                                 , Textarea.textarea (Textarea.attrs [ onInput updateDescriptionRUAMK ] :: descriptionInputStyles)
                                 , button (isJust <| String.toFloat f.price)
                                 ]
@@ -1861,7 +1871,12 @@ viewClosingCaseField model =
                         in    
                             div []
                                 [ h2 [] [ text "Оплата клиент" ]
-                                , Input.text (Input.attrs [ onInput updatePriceClient ] :: priceInputStyles)
+                                , Input.text 
+                                    (Input.attrs 
+                                        [ onInput updatePriceClient
+                                        , if (isJust <| String.toFloat f.price) then class "" else class "border-danger" 
+                                        ] :: priceInputStyles 
+                                    )
                                 , button (isJust <| String.toFloat f.price)
                                 ]
 
@@ -1880,10 +1895,18 @@ viewClosingCaseField model =
                         in
                             div []
                                 [ h2 [] [ text "Оплата РАМК" ]
-                                , Input.text (Input.attrs [ onInput updateRUAMKPrice ] :: priceInputStyles)
+                                , Input.text <| Input.attrs 
+                                    [ onInput updateRUAMKPrice
+                                    , if (isJust <| String.toFloat f.priceRUAMK) then class "" else class "border-danger"  
+                                    ] :: priceInputStyles
+
                                 , Textarea.textarea descriptionInputStyles
                                 , h2 [] [ text "Оплата клиент" ]
-                                , Input.text (Input.attrs [ onInput updateClientPrice ] :: priceInputStyles)
+                                , Input.text <| Input.attrs 
+                                    [ onInput updateClientPrice
+                                    , if (isJust <| String.toFloat f.priceClient) then class "" else class "border-danger" 
+                                    ] :: priceInputStyles
+
                                 , button <| List.foldr (&&) True 
                                     [ isJust <| String.toFloat f.priceRUAMK 
                                     , isJust <| String.toFloat f.priceClient
@@ -1898,7 +1921,10 @@ viewClosingCaseField model =
                         in   
                             div []
                                 [ h2 [] [ text "Оплата клиент" ]
-                                , Input.text (Input.attrs [ onInput updatePriceRefund ] :: priceInputStyles)
+                                , Input.text <| Input.attrs 
+                                    [ onInput updatePriceRefund
+                                    ,  if (isJust <| String.toFloat f.price) then class "" else class "border-danger" 
+                                    ] :: priceInputStyles
                                 , button (isJust <| String.toFloat f.price)
                                 ]
 
