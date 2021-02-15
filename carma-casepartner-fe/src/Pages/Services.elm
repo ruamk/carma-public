@@ -1,4 +1,4 @@
-module Pages.Services exposing (Flags, Model, Msg, page)
+module Pages.Services exposing (Flags, Model, Msg(..), init, page, subscriptions, update)
 
 import Api
 import Bootstrap.Button as Button

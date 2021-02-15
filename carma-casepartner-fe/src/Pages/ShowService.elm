@@ -3,6 +3,7 @@ module Pages.ShowService exposing (Flags, Model, Msg, page)
 import Api
 import Bootstrap.Alert as Alert
 import Bootstrap.Button as Button
+import Bootstrap.Card as Card
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
@@ -11,6 +12,7 @@ import Bootstrap.Form.Textarea as Textarea
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
+import Bootstrap.ListGroup as ListGroup
 import Bootstrap.Modal as Modal
 import Bootstrap.Navbar as Navbar
 import Bootstrap.Text as Text
@@ -33,6 +35,7 @@ import Html
         , hr
         , li
         , p
+        , s
         , text
         , ul
         )
@@ -57,6 +60,7 @@ import Types
     exposing
         ( CaseComment
         , CaseCommentDetails(..)
+        , CurrentCaseInfo
         , Dictionary
         , Driver
         , ServiceDescription
@@ -121,6 +125,8 @@ type alias Model =
     , statusButton1 : StatusButton1
     , statusButton2 : StatusButton2
     , usermenuState : Dropdown.State
+    , currentCases : List CurrentCaseInfo
+    , typeOfServiceSynonym : Dictionary
     }
 
 
@@ -164,6 +170,10 @@ type Msg
     | UpdateCustomMessageToast (MessageToast Msg)
     | UpdateStatus (Result Http.Error String) -- Результат изменения статуса
     | UsermenuMsg Dropdown.State
+    | CurrentCase Int
+    | UpdateServicesListTick Time.Posix
+    | GetCurrentCases (Result Http.Error (List CurrentCaseInfo))
+    | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
 
 
 driverSpinnerSize : String
@@ -184,6 +194,10 @@ commentsUpdateTime : Float
 commentsUpdateTime =
     10
 
+servicesListUpdateSeconds : Float
+servicesListUpdateSeconds = 
+    60
+
 
 page : Page Flags Model Msg
 page =
@@ -196,7 +210,7 @@ page =
 
 
 init : Global.Model -> Flags -> ( Model, Cmd Msg, Cmd Global.Msg )
-init _ _ =
+init global flags =
     let
         ( navbarState, navbarCmd ) =
             Navbar.initialState NavbarMsg
@@ -240,6 +254,8 @@ init _ _ =
                 }
       , selectedDriver = ""
       , assignedDriver = Nothing
+      , currentCases = []
+      , typeOfServiceSynonym = Dict.empty
       }
     , navbarCmd
     , Cmd.none
@@ -282,6 +298,8 @@ update global msg model =
             , Cmd.batch
                 [ Api.getService global.serviceId ServiceDownloaded
                 , Api.getDrivers DriversDownloaded
+                , Api.getTypeOfServiceSynonym TypeOfServiceSynonymDownloaded
+                , Api.getLatestCurrentCases GetCurrentCases
                 ]
             , Cmd.none
             )
@@ -889,13 +907,73 @@ update global msg model =
             , Cmd.none
             )
 
+        UpdateServicesListTick _ ->
+            ( { model
+                | currentCases = []
+              }
+            , Api.getLatestCurrentCases GetCurrentCases
+            , Cmd.none
+            )
+
+        GetCurrentCases result ->
+            case result of
+                    Err _ ->
+                        let
+                            messageToast : MessageToast Msg
+                            messageToast =
+                                model.messageToast
+                                    |> MessageToast.danger
+                                    |> MessageToast.withMessage "Error get current latest cases "
+                        in
+                        ( { model
+                            | messageToast = messageToast
+                        }
+                        , Cmd.none
+                        , Cmd.none
+                        )
+
+                    Ok currentCases ->
+                        ( { model
+                            | currentCases = currentCases
+                        }
+                        , Cmd.none
+                        , Cmd.none
+                        )
+
+        CurrentCase serviceId ->
+            ( model
+            , Cmd.none
+            , Cmd.batch
+                [ Global.serviceId serviceId
+                , Global.navigate Route.ShowService
+                ]
+            )
+        
+        TypeOfServiceSynonymDownloaded result ->
+            case result of
+                Err _ ->
+                    ( model
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok typeOfServiceSynonym ->
+                    ( { model
+                        | typeOfServiceSynonym = typeOfServiceSynonym
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
-subscriptions _ model =
+subscriptions global model =
     Sub.batch
         [ Dropdown.subscriptions model.usermenuState UsermenuMsg
         , Chat.caseReceiver Chat
         , Time.every (commentsUpdateTime * 1000) Tick
+        , Time.every (servicesListUpdateSeconds * 1000) UpdateServicesListTick
         ]
 
 
@@ -1214,7 +1292,11 @@ viewCasePanel model serviceId =
             ]
 
          else
-            [ Grid.col [ Col.sm2 ] []
+            [ Grid.col [ Col.sm2 ]
+                [ viewServicesList
+                    model
+                    model.currentCases
+                ]
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
                 [ h2 [ class "text-center" ] [ text <| "Номер заявки: " ++ caseId ]
                 , Grid.row []
@@ -1544,3 +1626,109 @@ viewLog model =
             [ Grid.col [ Col.textAlign Text.alignXsCenter ] <|
                 [ Ui.viewSpinner "10rem" ]
             ]
+
+
+viewServicesList : Model -> List CurrentCaseInfo -> Html Msg
+viewServicesList model ccs =
+    let
+        cases =
+            List.map (viewCard model) ccs
+    in
+    Card.deck
+        [ Card.customListGroup cases (Card.config [ Card.attrs [ class "d-none d-lg-block" ] ])
+        ]
+
+
+viewCard : Model -> CurrentCaseInfo -> ListGroup.CustomItem Msg
+viewCard model cci =
+    let
+        serviceType c =
+            case c.cuTypeOfService of
+                Just tos ->
+                    case Dict.get tos model.typeOfServiceSynonym of
+                        Just v ->
+                            v
+
+                        Nothing ->
+                            tos
+
+                Nothing ->
+                    ""
+
+        address c =
+            Ui.addressCell c.cuBreakdownPlace
+
+        accordTime =
+            cci.cuAccordTime
+                |> formatAccordTime
+                |> highlightAccordTime
+
+        formatAccordTime : String -> String
+        formatAccordTime t =
+            case parseTime t of
+                Just ( 0, hours, minutes ) ->
+                    String.fromInt hours ++ ":" ++ String.fromInt minutes
+
+                Just ( days, hours, minutes ) ->
+                    String.fromInt days
+                        ++ " дн. "
+                        ++ String.fromInt hours
+                        ++ ":"
+                        ++ String.fromInt minutes
+
+                Nothing ->
+                    t
+        
+        highlightAccordTime : String -> Html msg
+        highlightAccordTime s = 
+            case s of
+                "Опоздание" -> div [ style "color" "red" ] [ text s ]
+                _ -> div [] [text s]
+
+        {- Returns: (Days, Hours, Minutes) -}
+        parseTime : String -> Maybe ( Int, Int, Int )
+        parseTime t =
+            case String.split " " t of
+                [ d, h, m ] ->
+                    case List.map String.toInt [ d, h, m ] of
+                        [ Just days, Just hours, Just minutes ] ->
+                            if days >= 0 && hours >= 0 && (minutes >= 0 && minutes < 60) then
+                                Just ( days, hours, minutes )
+
+                            else
+                                Nothing
+
+                        _ ->
+                            Nothing
+
+                _ ->
+                    Nothing
+    in
+    ListGroup.button
+        [ ListGroup.attrs
+            [ onClick (CurrentCase cci.cuServiceId)
+            , if (cci.cuCaseId == model.service.caseId) && (cci.cuServiceSerial == model.service.services) then
+                class "active"
+
+              else
+                class ""
+            , style "border-top" "1px solid #f0f0f0"
+            ]
+        ]
+        [ div [ style "display" "block" ]
+            [ div []
+                [ text <|
+                    String.fromInt cci.cuCaseId
+                        ++ (if cci.cuServiceSerial > 1 then
+                                "/" ++ String.fromInt cci.cuServiceSerial
+
+                            else
+                                ""
+                           )
+                , text " "
+                , b [] [ text <| serviceType cci ]
+                ]
+            , div [ style "text-align" "right" ] [ accordTime ]
+            , address cci
+            ]
+        ]
