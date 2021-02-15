@@ -83,6 +83,24 @@ type alias Comment =
     }
 
 
+type ClosingServiceForm 
+    = RUAMK 
+        { price : String -- Float
+        , description : String
+        }
+    | Client
+        { price : String -- Float
+        }
+    | Mixed 
+        { priceRUAMK : String -- Float
+        , priceClient : String -- Float
+        }
+    | Refund
+        { price : String -- Float
+        }
+    
+
+
 type alias StatusButton1 =
     { disabled : Bool
     , message : Maybe Msg
@@ -127,6 +145,7 @@ type alias Model =
     , usermenuState : Dropdown.State
     , currentCases : List CurrentCaseInfo
     , typeOfServiceSynonym : Dictionary
+    , closingServiceForm : Maybe ClosingServiceForm
     }
 
 
@@ -174,6 +193,7 @@ type Msg
     | UpdateServicesListTick Time.Posix
     | GetCurrentCases (Result Http.Error (List CurrentCaseInfo))
     | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
+    | UpdateClosingServiceForm ClosingServiceForm
 
 
 driverSpinnerSize : String
@@ -256,6 +276,7 @@ init global flags =
       , assignedDriver = Nothing
       , currentCases = []
       , typeOfServiceSynonym = Dict.empty
+      , closingServiceForm = Nothing
       }
     , navbarCmd
     , Cmd.none
@@ -361,6 +382,36 @@ update global msg model =
                     in
                     ( { model
                         | service = service
+                        , closingServiceForm =
+                            let 
+                                makeEmpty form = 
+                                    case form of 
+                                        RUAMK f -> RUAMK { f | price = "", description = "" }
+                                        Client f -> Client { price = "" }
+                                        Mixed f -> Mixed { priceRUAMK = "", priceClient = "" }
+                                        Refund f -> Refund { price = "" }
+                                
+                                emptyForm n = 
+                                    case service.payType of
+                                            Just 1 -> Just <| RUAMK { price = "", description = "" }
+                                            Just 2 -> Just <| Client { price = "" }
+                                            Just 3 -> Just <| Mixed { priceRUAMK = "", priceClient = "" }
+                                            Just 4 -> Just <| Refund { price = "" }
+                                            _ -> Nothing
+                                        
+                            in   
+                                case model.closingServiceForm of
+                                    Just f -> 
+                                        case Maybe.map2 (==) (Just <| makeEmpty f) (emptyForm (Maybe.withDefault 0 service.payType)) of
+                                            Just True -> Just f
+                                            Just False -> emptyForm (Maybe.withDefault 0 service.payType)
+                                            Nothing -> Nothing
+
+                                    Nothing -> emptyForm (Maybe.withDefault 0 service.payType)
+                                        
+                                
+                                
+                                        
                         , statusButton1 = statusButton1
                         , statusButton2 = statusButton2
                       }
@@ -965,6 +1016,11 @@ update global msg model =
                     , Cmd.none
                     )
 
+        UpdateClosingServiceForm new -> 
+            ( { model | closingServiceForm = Just new }
+            , Cmd.none 
+            , Cmd.none 
+            )
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
@@ -1762,12 +1818,12 @@ viewClosingCaseField model =
             ]
         
         
-        button = 
+        button enable = 
             Button.button 
                 [ Button.primary
                 , Button.attrs [ Spacing.mt3, class "float-right" ]
                 , 
-                    if model.service.status == Const.serviceStatus.ok
+                    if (model.service.status == Const.serviceStatus.ok) && enable
                         then 
                             Button.disabled False
                         
@@ -1776,41 +1832,137 @@ viewClosingCaseField model =
                 ] 
                 [ text "Закрыть заявку" ]
 
+    in      
+        case model.closingServiceForm of
+            Just form -> 
+                case form of
+                    RUAMK f -> 
+                        let
+                            updatePriceRUAMK s =
+                                setPriceRUAMK s (RUAMK f)
+                                    |> UpdateClosingServiceForm
+
+                            updateDescriptionRUAMK s =
+                                setDescriptionRUAMK s (RUAMK f)
+                                    |> UpdateClosingServiceForm
+                        in    
+                            div [] 
+                                [ h2 [] [ text "Оплата РАМК" ]
+                                , Input.text (Input.attrs [ onInput updatePriceRUAMK ] :: priceInputStyles)
+                                , Textarea.textarea (Textarea.attrs [ onInput updateDescriptionRUAMK ] :: descriptionInputStyles)
+                                , button (isJust <| String.toFloat f.price)
+                                ]
+
+                    Client f -> 
+                        let
+                            updatePriceClient s =
+                                setPriceClient s (Client f)
+                                    |> UpdateClosingServiceForm 
+                        in    
+                            div []
+                                [ h2 [] [ text "Оплата клиент" ]
+                                , Input.text (Input.attrs [ onInput updatePriceClient ] :: priceInputStyles)
+                                , button (isJust <| String.toFloat f.price)
+                                ]
+
+                    Mixed f ->
+                        let
+                            updateRUAMKPrice s = 
+                                setRUAMKPriceMixed s (Mixed f)
+                                    |> UpdateClosingServiceForm 
+                            
+                            updateClientPrice s = 
+                                setClientPriceMixed s (Mixed f)
+                                    |> UpdateClosingServiceForm
+
+                            
+
+                        in
+                            div []
+                                [ h2 [] [ text "Оплата РАМК" ]
+                                , Input.text (Input.attrs [ onInput updateRUAMKPrice ] :: priceInputStyles)
+                                , Textarea.textarea descriptionInputStyles
+                                , h2 [] [ text "Оплата клиент" ]
+                                , Input.text (Input.attrs [ onInput updateClientPrice ] :: priceInputStyles)
+                                , button <| List.foldr (&&) True 
+                                    [ isJust <| String.toFloat f.priceRUAMK 
+                                    , isJust <| String.toFloat f.priceClient
+                                    ]
+                                ]
+                        
+                    Refund f ->
+                        let 
+                            updatePriceRefund s = 
+                                setClientPriceMixed s (Refund f)
+                                    |> UpdateClosingServiceForm
+                        in   
+                            div []
+                                [ h2 [] [ text "Оплата клиент" ]
+                                , Input.text (Input.attrs [ onInput updatePriceRefund ] :: priceInputStyles)
+                                , button (isJust <| String.toFloat f.price)
+                                ]
+
+            Nothing -> 
+                Ui.viewSpinner "10rem"
 
 
-    in       
-        case model.service.payType of
-            Just 1 -> 
-                div [] 
-                    [ h2 [] [ text "Оплата РАМК" ]
-                    , Input.text priceInputStyles
-                    , Textarea.textarea descriptionInputStyles
-                    , button
-                    ]
-            Just 2 -> 
-                div []
-                    [ h2 [] [ text "Оплата клиент" ]
-                    , Input.text priceInputStyles
-                    , button
-                    ]
+isJust : Maybe a -> Bool
+isJust x =
+    case x of
+        Just _ -> True
+        Nothing -> False
 
-            Just 3 ->
-                div []
-                    [ h2 [] [ text "Оплата РАМК" ]
-                    , Input.text priceInputStyles
-                    , Textarea.textarea descriptionInputStyles
-                    , h2 [] [ text "Оплата клиент" ]
-                    , Input.text priceInputStyles
-                    , button
-                    ]
-                
-            Just 4 -> 
-                div []
-                    [ h2 [] [ text "Оплата клиент" ]
-                    , Input.text priceInputStyles
-                    , button
-                    ]
-            _ ->
-                div [] 
-                    [ text "неизвестный тип оплаты"
-                    ]
+
+{- 
+
+type ClosingCaseForm 
+    = RUAMK 
+        { price : Float
+        , description : String
+        }
+    | Client
+        { price : Float
+        }
+    | Mixed 
+        { priceRUAMK : Float
+        , priceClient : Float
+        }
+    | Refund
+        { price : Float
+        }
+
+-}
+
+setPriceRUAMK : String -> ClosingServiceForm -> ClosingServiceForm
+setPriceRUAMK n form = 
+    case form of 
+        RUAMK f -> RUAMK { f | price = n }
+        _ -> form 
+
+setDescriptionRUAMK : String -> ClosingServiceForm -> ClosingServiceForm
+setDescriptionRUAMK desc form = 
+    case form of 
+        RUAMK f -> RUAMK { f | description = desc }
+        _ -> form 
+
+setPriceClient : String -> ClosingServiceForm -> ClosingServiceForm
+setPriceClient n form = 
+    case form of 
+        Client f -> Client { f | price = n }
+        _ -> form 
+
+setRUAMKPriceMixed : String -> ClosingServiceForm -> ClosingServiceForm
+setRUAMKPriceMixed n form = case form of 
+        Mixed f -> Mixed { f | priceRUAMK = n }
+        _ -> form 
+
+setClientPriceMixed : String -> ClosingServiceForm -> ClosingServiceForm
+setClientPriceMixed n form = case form of 
+        Mixed f -> Mixed { f | priceClient = n }
+        _ -> form 
+
+setPriceRefund : String -> ClosingServiceForm -> ClosingServiceForm
+setPriceRefund n form = case form of 
+        Refund f -> Refund { f | price = n }
+        _ -> form 
+
