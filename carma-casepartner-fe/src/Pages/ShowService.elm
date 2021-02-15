@@ -1325,12 +1325,31 @@ viewCasePanel model serviceId =
                         [ field "Марка/Модель" <| text c.makeModel
                         , field "Гос. номер" <| text c.plateNumber
                         , field "VIN" <| text <| String.toUpper vin
-                        , case c.payType of
-                            Just p -> 
-                                field "Тип оплаты" <| text <| String.fromInt p
+                        , 
+                            let 
+                                formatPaymentType n =
+                                    case n of
+                                        1 -> 
+                                            "РАМК"
 
-                            Nothing -> 
-                                field "Тип оплаты" <| text "неизвестен"
+                                        2 -> 
+                                            "Клиент"
+
+                                        3 -> 
+                                            "Смешанный"
+
+                                        4 -> 
+                                            "Клиент с возмещением"
+
+                                        _ -> 
+                                            "неизвестен"
+                            in 
+                                case c.payType of
+                                    Just p -> 
+                                        field "Тип оплаты" <| text <| formatPaymentType p
+
+                                    Nothing -> 
+                                        field "Тип оплаты" <| text "неизвестен"
                         ]
                     ]
                 , hr [] []
