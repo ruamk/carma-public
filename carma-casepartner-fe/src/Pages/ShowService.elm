@@ -68,6 +68,7 @@ import Types
         )
 import Ui
 import Utils exposing (formatTime)
+import Maybe
 
 
 type alias Flags =
@@ -98,7 +99,7 @@ type ClosingServiceForm
     | Refund
         { price : String -- Float
         }
-    
+
 
 
 type alias StatusButton1 =
@@ -195,6 +196,7 @@ type Msg
     | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
     | UpdateClosingServiceForm ClosingServiceForm
     | CloseService
+    | ServiceClosed (Result Http.Error Int)
 
 
 driverSpinnerSize : String
@@ -1024,10 +1026,69 @@ update global msg model =
             )
 
         CloseService -> 
-            ( model
-            , Cmd.none 
-            , Cmd.none 
-            )
+            let 
+                extractForm : ClosingServiceForm -> Maybe (Float, String, Float)
+                extractForm csf =
+                    let 
+                        extract = 
+                            Maybe.map3 (\partner transcript client -> (partner, transcript, client))
+                    in 
+                        case csf of 
+                            RUAMK p ->
+                                extract (String.toFloat p.price) (Just p.description) (Just 0)
+                            
+                            Client p ->
+                                extract (Just 0) (Just "") (String.toFloat p.price)
+
+                            Mixed p ->
+                                extract (String.toFloat p.priceRUAMK) (Just "") (String.toFloat p.priceClient)
+                            
+                            Refund p ->
+                                extract (String.toFloat p.price) (Just "") (Just 0)
+
+            in
+                case model.closingServiceForm |> Maybe.andThen extractForm of
+                    Just (partner, partnerTranscript, client) ->
+                        ( model
+                        , Api.closeService global.serviceId partner partnerTranscript client ServiceClosed
+                        , Cmd.none 
+                        )
+
+                    Nothing ->
+                        ( { model 
+                            | messageToast =
+                                model.messageToast
+                                    |> MessageToast.danger
+                                    |> MessageToast.withMessage "You cant send an undefined form"
+                          }
+                        , Cmd.none
+                        , Cmd.none
+                        )
+
+        ServiceClosed response ->
+            case response of
+                Err e ->
+                    ( { model 
+                        | messageToast = 
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "Ошибка при закрытии услуги."
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok _ ->
+                    ( { model 
+                        | messageToast = 
+                            model.messageToast
+                                |> MessageToast.success
+                                |> MessageToast.withMessage "Услуга отправлена на закрытие."
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
@@ -1044,7 +1105,7 @@ formatServiceSerial : Model -> String
 formatServiceSerial model =
     let
         s : ServiceDescription
-        s =
+        s = 
             model.service
     in
     String.fromInt s.caseId

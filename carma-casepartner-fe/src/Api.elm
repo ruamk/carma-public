@@ -22,6 +22,7 @@ module Api exposing
     , statusInPlace
     , statusServicePerformed
     , updateDriver
+    , closeService
     )
 
 import Http
@@ -58,6 +59,8 @@ import Types
         , ServiceDescription
         , ServiceInfo
         )
+import HttpBuilder
+import HttpBuilder
 
 
 type alias Session =
@@ -73,7 +76,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    ""
+    "/elm-live"
 
 
 apiLogin : String
@@ -177,6 +180,15 @@ apiCancelServiceToDriver serviceId driverId =
         ++ String.fromInt driverId
 
 
+apiCloseService : Int -> String
+apiCloseService serviceId = 
+    prefix 
+        ++ "/api/v1/service/"
+        ++ String.fromInt serviceId
+        ++ "/closed"
+
+
+
 clientMapURL : Int -> String
 clientMapURL serviceId =
     prefix ++ "/map-client.html?serviceId=" ++ String.fromInt serviceId
@@ -198,6 +210,40 @@ sessionDecoder =
         (at [ "username" ] string)
         (at [ "serviceId" ] int)
         (at [ "route" ] string)
+
+
+closeService : Int -> Float -> String -> Float -> (Result Http.Error Int -> msg) -> Cmd msg
+closeService serviceId partner partnerTranscript client message = 
+    let
+        body = 
+            [ ("partner", String.fromFloat partner)
+            , ("partnerTranscript", partnerTranscript)
+            , ("client", String.fromFloat client)
+            ]
+        
+        expect = 
+            Http.expectStringResponse message <|
+                \response ->
+                    case response of
+                        Http.BadUrl_ url ->
+                            Err (Http.BadUrl url)
+
+                        Http.Timeout_ ->
+                            Err Http.Timeout
+
+                        Http.NetworkError_ ->
+                            Err Http.NetworkError
+
+                        Http.BadStatus_ metadata _ ->
+                            Ok metadata.statusCode
+
+                        Http.GoodStatus_ metadata _ ->
+                            Ok metadata.statusCode
+    in 
+        HttpBuilder.post (apiCloseService serviceId)
+            |> HttpBuilder.withUrlEncodedBody body
+            |> HttpBuilder.withExpect expect
+            |> HttpBuilder.request
 
 
 login : String -> String -> (Result Http.Error Int -> msg) -> Cmd msg
