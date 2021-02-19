@@ -185,9 +185,6 @@ update _ msg model =
                         | currentCases = currentCases
                         , currentCasesPage = 1
                         , showCurrentSpinner = False
-                        , closingCases = []
-                        , closingCasesPage = 1
-                        , showClosingSpinner = True
                       }
                     , Api.getLatestClosingCases GetClosingCases
                     , Cmd.none
@@ -338,11 +335,7 @@ update _ msg model =
             )
 
         Tick _ ->
-            ( { model
-                | currentCases = []
-                , currentCasesPage = 1
-                , showCurrentSpinner = True
-              }
+            ( model 
             , Api.getLatestCurrentCases GetCurrentCases
             , Cmd.none
             )
