@@ -1475,7 +1475,8 @@ viewCasePanel model serviceId =
 
          else
             [ Grid.col [ Col.sm2 ]
-                [ viewServicesList
+                [ h2 [style "text-align" "center"] [ text "Текущие заявки" ]
+                , viewServicesList
                     model
                     model.currentCases
                 ]
@@ -1866,7 +1867,17 @@ viewCard model cci =
         highlightAccordTime : String -> Html msg
         highlightAccordTime s = 
             case s of
-                "Опоздание" -> div [ style "color" "red" ] [ text s ]
+                "Опоздание" -> 
+                    div 
+                        [ style "color" "red" 
+                        , style "border" "1px solid red" 
+                        , style "padding" "3px" 
+                        , style "border-radius" "3px"
+                        , style "background-color" "white"
+                        , style "float" "right"
+                        , style "font-weight" "bold"
+                        ] 
+                        [ text s ]
                 _ -> div [] [text s]
 
         {- Returns: (Days, Hours, Minutes) -}
