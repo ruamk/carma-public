@@ -28,7 +28,7 @@ module Api exposing
 import Http
 import HttpBuilder
 import ISO8601
-import Json.Decode
+import Json.Decode as D
     exposing
         ( Decoder
         , andThen
@@ -212,7 +212,7 @@ sessionDecoder =
         (at [ "route" ] string)
 
 
-closeService : Int -> Float -> String -> Float -> (Result Http.Error Int -> msg) -> Cmd msg
+closeService : Int -> Float -> String -> Float -> (Result Http.Error Bool -> msg) -> Cmd msg
 closeService serviceId partner partnerTranscript client message = 
     let
         body = 
@@ -221,28 +221,12 @@ closeService serviceId partner partnerTranscript client message =
             , ("client", String.fromFloat client)
             ]
         
-        expect = 
-            Http.expectStringResponse message <|
-                \response ->
-                    case response of
-                        Http.BadUrl_ url ->
-                            Err (Http.BadUrl url)
-
-                        Http.Timeout_ ->
-                            Err Http.Timeout
-
-                        Http.NetworkError_ ->
-                            Err Http.NetworkError
-
-                        Http.BadStatus_ metadata _ ->
-                            Ok metadata.statusCode
-
-                        Http.GoodStatus_ metadata _ ->
-                            Ok metadata.statusCode
+        decoder = 
+            D.map (\s -> s == "service_closed") (field "status" string)
     in 
         HttpBuilder.post (apiCloseService serviceId)
             |> HttpBuilder.withUrlEncodedBody body
-            |> HttpBuilder.withExpect expect
+            |> HttpBuilder.withExpect (Http.expectJson message decoder)
             |> HttpBuilder.request
 
 
