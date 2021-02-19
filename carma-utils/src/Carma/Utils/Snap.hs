@@ -1,23 +1,25 @@
-module Carma.Utils.Snap where
+module Carma.Utils.Snap
+    where
 
+import qualified Control.Exception                as Ex
 import           Control.Monad.State.Class
-import qualified Control.Exception as Ex
-import           Data.Aeson as Aeson
-import           Data.Attoparsec.ByteString.Lazy (Result(..))
-import qualified Data.Attoparsec.ByteString.Lazy as Atto
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as B
-import qualified Data.ByteString.Lazy  as L
-import           Data.Map (Map)
-import qualified Data.Map as Map
-import           Data.Maybe (fromMaybe)
-import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Text.Read as T
+import           Data.Aeson                       as Aeson
+import qualified Data.Attoparsec.ByteString.Char8 as Atto8
+import           Data.Attoparsec.ByteString.Lazy  (Result (..))
+import qualified Data.Attoparsec.ByteString.Lazy  as Atto
+import           Data.ByteString                  (ByteString)
+import qualified Data.ByteString.Char8            as B
+import qualified Data.ByteString.Lazy             as L
+import           Data.Map                         (Map)
+import qualified Data.Map                         as Map
+import           Data.Maybe                       (fromMaybe)
+import           Data.Text                        (Text)
+import qualified Data.Text                        as T
+import qualified Data.Text.Encoding               as T
+import qualified Data.Text.Read                   as T
 import           Data.Typeable
 
-import Snap
+import           Snap
 
 -- | Use the supplied parser to read a parameter from request. Fail
 -- when the parameter is not present or can't be parsed.
@@ -30,7 +32,7 @@ parseMayParam parser k = do
   input <- fmap (Atto.parseOnly parser) <$> getParam k
   return $ case input of
              Just (Right p) -> Just p
-             _ -> Nothing
+             _              -> Nothing
 
 getJSONBody :: Aeson.FromJSON v => Handler a b v
 getJSONBody = readJSONfromLBS <$> readRequestBody (4 * 1024 * 1024)
@@ -100,6 +102,10 @@ getIntParam :: ByteString -> Handler a b (Maybe Int)
 getIntParam name = do
   val <- getParam name
   return $ fst <$> (B.readInt =<< val)
+
+
+getDoubleParam :: ByteString -> Handler a b (Maybe Double)
+getDoubleParam name = parseMayParam Atto8.double name
 
 
 withLens :: MonadState s (Handler b v')
