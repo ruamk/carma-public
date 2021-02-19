@@ -66,6 +66,9 @@ apiStatusServicePerformed = "/api/v1/service/:serviceId/performed"
 apiPostPartnerDelay :: ByteString
 apiPostPartnerDelay = "/api/v1/service/:serviceId/partnerdelay"
 
+apiPostServiceClosed :: ByteString
+apiPostServiceClosed = "/api/v1/service/:serviceId/closed"
+
 apiDictPartnerDelayReason :: ByteString
 apiDictPartnerDelayReason = "/api/v1/dict/PartnerDelay_Reason"
 
@@ -146,7 +149,7 @@ routes = [ (apiLogin,  method POST handleApiLogin)
 
          , (apiStatusInPlace, method POST S.statusInPlace)
          , (apiStatusServicePerformed, method POST S.statusServicePerformed)
-
+         , (apiPostServiceClosed,      method POST S.statusServiceClosed)
          , (apiPostPartnerDelay,       method POST S.postPartnerDelay)
          , (apiDictPartnerDelayReason, D.partnerDelayReason)
          , (apiMapTypeOfService,       D.typeOfService)
