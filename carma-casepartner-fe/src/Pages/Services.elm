@@ -386,6 +386,7 @@ view global model =
             , buttons =
                 [ ( True, NavbarMsg model.navbarState, "Текущие заявки" )
                 , ( False, SearchCases, "Поиск заявок" )
+                , ( False, Settings, "Настройки" )
                 ]
             }
           <|

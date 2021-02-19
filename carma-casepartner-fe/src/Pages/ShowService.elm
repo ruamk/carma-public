@@ -1190,6 +1190,7 @@ view global model =
             , buttons =
                 [ ( False, Cases, "Текущие заявки" )
                 , ( False, SearchCases, "Поиск заявок" )
+                , ( False, Settings, "Настройки" )
                 ]
             }
           <|
