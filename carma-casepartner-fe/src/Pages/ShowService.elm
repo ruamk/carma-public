@@ -56,7 +56,7 @@ import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
 import Time
 import Tuple
-import Types
+import Types as Types
     exposing
         ( CaseComment
         , CaseCommentDetails(..)
@@ -64,6 +64,7 @@ import Types
         , Dictionary
         , Driver
         , ServiceDescription
+        , Payment
         , emptyServiceDescription
         )
 import Ui
@@ -106,6 +107,18 @@ type ClosingServiceForm
         , red : Bool
         }
 
+
+type ClosedBy 
+    = Operator 
+        { checkPrice : Float
+        , checkTranscipt : String
+        , clientPrice : Maybe String 
+        }
+    | Partner 
+        { partnerPrice : Float
+        , partnerTranscipt : String
+        , clientPrice : Maybe String 
+        }
 
 
 type alias StatusButton1 =
@@ -1664,7 +1677,36 @@ viewCasePanel model serviceId =
                     , text "проверяются ООС на соответствие условий в договоре и правил "
                     , text "бухгалтерского учета"
                     ]
-                , div [ Spacing.ml0 ] [ viewClosingCaseField model ]
+                , div [ Spacing.ml0 ] 
+                    [ if model.service.status == Const.serviceStatus.closed
+                        then 
+                            let 
+                                convertPayType n =
+                                    case n of 
+                                        1 -> Just Types.RUAMK
+                                        2 -> Just Types.Client
+                                        3 -> Just Types.Mixed
+                                        4 -> Just Types.Refund
+                                        _ -> Nothing
+                                
+                                needed =
+                                    Maybe.map2 
+                                        (\a b -> (a, b)) 
+                                        model.service.payment 
+                                        (model.service.payType |> Maybe.andThen convertPayType)
+                                        
+
+                            in 
+                                case needed of 
+                                    Just (payment_, paytype) ->  
+                                        viewClosingCaseForClosed payment_ paytype
+                                        
+                                    Nothing -> 
+                                        div [] [ text "couldnt fetch payment" ]
+                        
+                        else 
+                            viewClosingCaseField model 
+                    ]
                 ]
             ]
         )
@@ -1928,8 +1970,145 @@ viewCard model cci =
             , address cci
             ]
         ]
-        
 
+
+
+
+
+viewClosingCaseForClosed : Payment -> Types.PaymentType -> Html Msg
+viewClosingCaseForClosed payment paytype = 
+    let
+        priceInputStyles =
+                [ Input.attrs 
+                    [ Spacing.ml0
+                    , Spacing.mr0
+                    , Spacing.mt3
+                    , Spacing.mb3
+                    ]
+                , Input.disabled True
+                ]
+        
+        descriptionInputStyles =
+            [ Textarea.id "priceDescription"
+            , Textarea.rows 4
+            , Textarea.attrs
+                [ Spacing.ml0
+                , Spacing.mr0
+                , Spacing.mt3
+                , Spacing.mb3
+                ]
+            , Textarea.disabled
+            ]
+        
+        detect : Payment -> Maybe ClosedBy
+        detect p = 
+            let
+                closedByOperator : Payment -> Maybe ClosedBy
+                closedByOperator p_ = 
+                    Maybe.map3 
+                        (\a b c -> Operator { checkPrice = a, checkTranscipt = b, clientPrice = c }) 
+                        p_.checkCost 
+                        p_.checkCostTranscript 
+                        (Just p.paidByClient)
+
+                closedByPartner : Payment -> Maybe ClosedBy
+                closedByPartner p_ =
+                    Maybe.map3
+                        (\a b c -> Partner { partnerPrice = a, partnerTranscipt = b, clientPrice = c })
+                        p_.partnerCost
+                        p_.partnerCostTranscript
+                        (Just p.paidByClient)   
+            in 
+                case closedByOperator payment of
+                    Just x -> Just x
+                    Nothing ->
+                        case closedByPartner payment of
+                            Just x -> Just x
+                            Nothing -> Nothing
+        
+        viewRuamk : Float -> String -> Html msg
+        viewRuamk price description = 
+            div [] 
+                [ h2 [] [ text "Заявка закрыта: Оплата РАМК" ]
+                , Input.text <| (Input.attrs [placeholder <| String.fromFloat price]) :: priceInputStyles
+                , Textarea.textarea (Textarea.attrs [ placeholder description ] :: descriptionInputStyles)
+                ]
+        
+        viewClient : String -> Html msg
+        viewClient price =  
+            div []
+                [ h2 [] [ text "Заявка закрыта: Оплата клиент" ]
+                , Input.text <| (Input.attrs [placeholder price]) :: priceInputStyles
+                ]
+        
+        viewMixed : Float -> String -> String -> Html msg
+        viewMixed price description priceClient =  
+            div []
+                [ h2 [] [ text "Заявка закрыта: Оплата РАМК" ]
+                , Input.text <| (Input.attrs [placeholder <| String.fromFloat price]) :: priceInputStyles     
+                , Textarea.textarea (Textarea.attrs [ placeholder description ] :: descriptionInputStyles)
+                , h2 [] [ text "Заявка закрыта: Оплата клиент" ]
+                , Input.text <| (Input.attrs [placeholder <| priceClient]) :: priceInputStyles
+                ]
+
+        viewRefund : String -> Html msg
+        viewRefund price =  
+            div []
+                [ h2 [] [ text "Заявка закрыта: Оплата клиент" ]
+                , Input.text <| (Input.attrs [placeholder price]) :: priceInputStyles
+                ]
+
+        viewWithClientPrice : Maybe String -> (String -> Html a) -> Html a
+        viewWithClientPrice mbPrice f =
+            case mbPrice of 
+                Just price ->
+                    f price
+                
+                Nothing ->
+                    div [] [ text "ОШИБКА. Тип оплаты в заявке не вяжется со структурой Payment" ]
+
+    
+    in 
+        case detect payment of
+            Just closedBy -> 
+                case closedBy of
+                    Operator a -> 
+                        case paytype of
+                            Types.RUAMK ->
+                                viewRuamk a.checkPrice a.checkTranscipt
+                            
+                            Types.Client ->
+                                viewWithClientPrice a.clientPrice viewClient 
+                                    
+                            Types.Mixed ->
+                                viewWithClientPrice a.clientPrice <| viewMixed a.checkPrice a.checkTranscipt
+                                    
+                            Types.Refund ->
+                                viewWithClientPrice a.clientPrice viewRefund
+
+                    Partner a ->
+                        case paytype of
+                            Types.RUAMK ->
+                                viewRuamk a.partnerPrice a.partnerTranscipt
+                            
+                            Types.Client ->
+                                viewWithClientPrice a.clientPrice viewClient 
+                                    
+                            Types.Mixed ->
+                                viewWithClientPrice a.clientPrice <| viewMixed a.partnerPrice a.partnerTranscipt
+                                    
+                            Types.Refund ->
+                                viewWithClientPrice a.clientPrice viewRefund
+
+
+                            
+            Nothing -> 
+                Ui.viewSpinner "10rem"
+
+
+
+
+-- TODO: Refactor it in the same way as viewClosingCaseForClosed
 viewClosingCaseField : Model -> Html Msg
 viewClosingCaseField model = 
     let
@@ -1967,8 +2146,17 @@ viewClosingCaseField model =
                         
                         else 
                             Button.disabled True
+                            
+                
                 ] 
-                [ text "Закрыть заявку" ]
+                [  if (model.service.status == Const.serviceStatus.inProgress || model.service.status == Const.serviceStatus.ordered)
+                        then 
+                            text "Заявка выполняется"
+                        
+                        else
+                            text "Закрыть заявку"
+
+                ]
 
     in      
         case model.closingServiceForm of

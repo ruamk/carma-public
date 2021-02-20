@@ -502,19 +502,32 @@ viewCurrentCases model =
     let
         formatAccordTime : String -> String
         formatAccordTime t =
-            case parseTime t of
-                Just ( 0, hours, minutes ) ->
-                    String.fromInt hours ++ ":" ++ String.fromInt minutes
+            let
+                formatHM hours minutes = 
+                    let 
+                        f : Int -> String
+                        f x = 
+                            if x > 9 
+                                then String.fromInt x 
+                                else String.cons '0' (String.fromInt x)      
+                    in 
+                        String.concat 
+                            [ f hours
+                            , ":"
+                            , f minutes
+                            ]
+            in 
+                case parseTime t of
+                    Just ( 0, hours, minutes ) ->
+                        formatHM hours minutes
 
-                Just ( days, hours, minutes ) ->
-                    String.fromInt days
-                        ++ " дн. "
-                        ++ String.fromInt hours
-                        ++ ":"
-                        ++ String.fromInt minutes
+                    Just ( days, hours, minutes ) ->
+                        String.fromInt days
+                            ++ " дн. "
+                            ++ formatHM hours minutes
 
-                Nothing ->
-                    t
+                    Nothing ->
+                        t
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )

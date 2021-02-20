@@ -58,6 +58,7 @@ import Types
         , Driver
         , ServiceDescription
         , ServiceInfo
+        , Payment
         )
 import HttpBuilder
 import HttpBuilder
@@ -399,6 +400,16 @@ getService serviceId message =
                 |> optional "plateNumber" string ""
                 |> required "vin" (nullable string)
                 |> required "payType" (nullable int)
+                |> required "payment" (nullable payment)
+        
+        payment : Decoder Payment
+        payment = 
+            succeed Payment
+                |> required "partnerCost" (nullable float)
+                |> required "checkCost" (nullable float)
+                |> required "partnerCostTranscript" (nullable string)
+                |> required "checkCostTranscript" (nullable string)
+                |> required "paidByClient" (nullable string)
     in
     HttpBuilder.get (apiGetService serviceId)
         |> HttpBuilder.withExpect (Http.expectJson message getCaseDecoder)
