@@ -32,6 +32,7 @@ import Html
         , br
         , div
         , h2
+        , h3
         , hr
         , li
         , p
@@ -70,6 +71,7 @@ import Types as Types
 import Ui
 import Utils exposing (formatTime)
 import Maybe
+import Bootstrap.Card.Block exposing (titleH3)
 
 
 type alias Flags =
@@ -2029,7 +2031,7 @@ viewClosingCaseForClosed payment paytype =
         viewRuamk : Float -> String -> Html msg
         viewRuamk price description = 
             div [] 
-                [ h2 [] [ text "Заявка закрыта: Оплата РАМК" ]
+                [ h3 [] [ text "Заявка закрыта: Оплата РАМК" ]
                 , Input.text <| (Input.attrs [placeholder <| String.fromFloat price]) :: priceInputStyles
                 , Textarea.textarea (Textarea.attrs [ placeholder description ] :: descriptionInputStyles)
                 ]
@@ -2037,24 +2039,24 @@ viewClosingCaseForClosed payment paytype =
         viewClient : String -> Html msg
         viewClient price =  
             div []
-                [ h2 [] [ text "Заявка закрыта: Оплата клиент" ]
+                [ h3 [] [ text "Заявка закрыта: Оплата клиент" ]
                 , Input.text <| (Input.attrs [placeholder price]) :: priceInputStyles
                 ]
         
         viewMixed : Float -> String -> String -> Html msg
         viewMixed price description priceClient =  
             div []
-                [ h2 [] [ text "Заявка закрыта: Оплата РАМК" ]
+                [ h3 [] [ text "Заявка закрыта: Оплата РАМК" ]
                 , Input.text <| (Input.attrs [placeholder <| String.fromFloat price]) :: priceInputStyles     
                 , Textarea.textarea (Textarea.attrs [ placeholder description ] :: descriptionInputStyles)
-                , h2 [] [ text "Заявка закрыта: Оплата клиент" ]
+                , h3 [] [ text "Заявка закрыта: Оплата клиент" ]
                 , Input.text <| (Input.attrs [placeholder <| priceClient]) :: priceInputStyles
                 ]
 
         viewRefund : String -> Html msg
         viewRefund price =  
             div []
-                [ h2 [] [ text "Заявка закрыта: Оплата клиент" ]
+                [ h3 [] [ text "Заявка закрыта: Оплата клиент" ]
                 , Input.text <| (Input.attrs [placeholder price]) :: priceInputStyles
                 ]
 
@@ -2173,7 +2175,7 @@ viewClosingCaseField model =
                                     |> UpdateClosingServiceForm
                         in    
                             div [] 
-                                [ h2 [] [ text "Оплата РАМК" ]
+                                [ h3 [] [ text "Оплата РАМК" ]
                                 , Input.text <| Input.attrs 
                                     [ onInput updatePriceRUAMK
                                     , if f.red then class "border-danger" else class ""
@@ -2189,7 +2191,7 @@ viewClosingCaseField model =
                                     |> UpdateClosingServiceForm 
                         in    
                             div []
-                                [ h2 [] [ text "Оплата клиент" ]
+                                [ h3 [] [ text "Оплата клиент" ]
                                 , Input.text 
                                     (Input.attrs 
                                         [ onInput updatePriceClient
@@ -2216,14 +2218,14 @@ viewClosingCaseField model =
 
                         in
                             div []
-                                [ h2 [] [ text "Оплата РАМК" ]
+                                [ h3 [] [ text "Оплата РАМК" ]
                                 , Input.text <| Input.attrs 
                                     [ onInput updateRUAMKPrice
                                     , if f.ruamkRed && f.clientRed then class "border-danger" else class "" 
                                     ] :: priceInputStyles
 
                                 , Textarea.textarea (Textarea.attrs [ onInput updateRUAMKDescription ] :: descriptionInputStyles)
-                                , h2 [] [ text "Оплата клиент" ]
+                                , h3 [] [ text "Оплата клиент" ]
                                 , Input.text <| Input.attrs 
                                     [ onInput updateClientPrice
                                     , if f.clientRed then class "border-danger" else class ""
@@ -2242,7 +2244,7 @@ viewClosingCaseField model =
                                     |> UpdateClosingServiceForm
                         in   
                             div []
-                                [ h2 [] [ text "Оплата клиент" ]
+                                [ h3 [] [ text "Оплата клиент" ]
                                 , Input.text <| Input.attrs 
                                     [ onInput updatePriceRefund
                                     ,  if f.red then class "border-danger" else class "" 
