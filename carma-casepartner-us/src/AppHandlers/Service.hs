@@ -38,6 +38,7 @@ import           Carma.Model                          (Ident (..), IdentI)
 import           Carma.Model.Action                   (Action)
 import qualified Carma.Model.ActionType               as ActionType
 import qualified Carma.Model.PaymentType              as PaymentType
+import qualified Carma.Model.ServiceStatus            as ServiceStatus
 import qualified Carma.Model.Usermeta                 as Usermeta
 import           Carma.Utils.Snap                     (getDoubleParam)
 import qualified Data.Model.Patch                     as Patch
@@ -51,11 +52,24 @@ instance FromField LoadingDifficulties where
     fromField = fromJSONField
 
 
+data Payment = Payment
+    { _partnerCost           :: Maybe Double
+    , _partnerCostTranscript :: Maybe String
+    , _checkCost             :: Maybe Double
+    , _checkCostTranscript   :: Maybe String
+    , _paidByClient          :: Maybe String
+    } deriving (Show, Generic)
+
+instance ToJSON Payment where
+    toJSON = genericToJSON defaultOptions
+             { fieldLabelModifier = dropWhile (== '_')}
+
+
 data ServiceDescription = ServiceDescription
     { _caseId               :: Int
     , _services             :: Int
     , _serviceType          :: String
-    , _status               :: Int
+    , _status               :: IdentI ServiceStatus.ServiceStatus
     , _statusLabel          :: String
     , _client               :: String
     , _clientPhone          :: String
@@ -68,6 +82,7 @@ data ServiceDescription = ServiceDescription
     , _plateNumber          :: String
     , _vin                  :: Maybe String
     , _payType              :: Maybe Int
+    , _payment              :: Maybe Payment
     } deriving (Show, Generic)
 
 instance ToJSON ServiceDescription where
@@ -117,7 +132,8 @@ handleApiGetService = checkAuthCasePartner $ do
   |] (caseId, serviceId)
 
   [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType
-   , status, statusLabel, payType)] <- query [sql|
+   , status, statusLabel, payType, partnerCost, partnerCostTranscript
+   , checkCost, checkCostTranscript, paidByClient)] <- query [sql|
     SELECT
         times_expectedservicestart
       , times_factservicestart
@@ -126,6 +142,11 @@ handleApiGetService = checkAuthCasePartner $ do
       , status
       , "ServiceStatus".label
       , payType
+      , payment_partnerCost
+      , payment_partnerCostTranscript
+      , payment_checkCost
+      , payment_checkCostTranscript
+      , payment_paidByClient
     FROM servicetbl
     LEFT OUTER JOIN "ServiceType" ON servicetbl.type = "ServiceType".id
     LEFT OUTER JOIN "ServiceStatus" ON servicetbl.status = "ServiceStatus".id
@@ -149,6 +170,12 @@ handleApiGetService = checkAuthCasePartner $ do
                                     (Only h:_) -> h
                                     _          -> ""
 
+  let payment = if status `elem` [ServiceStatus.ok, ServiceStatus.closed]
+                then Just $  Payment partnerCost partnerCostTranscript
+                                     checkCost checkCostTranscript
+                                     paidByClient
+                else Nothing
+
   writeJSON $ ServiceDescription
                caseId serviceSerial serviceType
                status statusLabel
@@ -156,7 +183,7 @@ handleApiGetService = checkAuthCasePartner $ do
                firstAddress lastAddress
                expectedServiceStart factServiceStart factServiceEnd
                makeModel plateNumber
-               vin payType
+               vin payType payment
 
 
 serviceComments :: AppHandler ()
