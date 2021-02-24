@@ -200,15 +200,8 @@ mainMenu { navbarMsg, logoutMsg, settingsMsg, usermenuMsg, navbarState, usermenu
                     , toggleButton =
                         Dropdown.toggle [ Button.primary ] [ text username ]
                     , items =
-                        (case settingsMsg of
-                            Just msg ->
-                                [ Dropdown.buttonItem [ onClick msg ] [ text "Настройки" ] ]
-
-                            Nothing ->
-                                []
-                        )
-                            ++ [ Dropdown.buttonItem [ onClick logoutMsg ] [ text "Выход" ]
-                               ]
+                        [ Dropdown.buttonItem [ onClick logoutMsg ] [ text "Выход" ]
+                        ]
                     }
             ]
         |> Navbar.view navbarState

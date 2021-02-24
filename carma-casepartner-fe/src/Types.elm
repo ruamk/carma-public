@@ -7,6 +7,8 @@ module Types exposing
     , Driver
     , ServiceDescription
     , ServiceInfo
+    , Payment
+    , PaymentType(..)
     , emptyServiceDescription
     )
 
@@ -76,7 +78,23 @@ type alias ServiceDescription =
     , makeModel : String
     , plateNumber : String
     , vin : Maybe String
+    , payType : Maybe Int
+    , payment : Maybe Payment
     }
+
+type alias Payment = 
+    { partnerCost : Maybe Float
+    , checkCost : Maybe Float
+    , partnerCostTranscript : Maybe String
+    , checkCostTranscript : Maybe String
+    , paidByClient : Maybe String
+    }
+
+type PaymentType 
+    = RUAMK
+    | Client
+    | Mixed
+    | Refund
 
 
 emptyServiceDescription : ServiceDescription
@@ -96,7 +114,10 @@ emptyServiceDescription =
     , makeModel = ""
     , plateNumber = ""
     , vin = Nothing
+    , payType = Nothing
+    , payment = Nothing
     }
+
 
 
 type CaseCommentDetails

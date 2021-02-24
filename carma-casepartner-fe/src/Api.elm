@@ -22,12 +22,13 @@ module Api exposing
     , statusInPlace
     , statusServicePerformed
     , updateDriver
+    , closeService
     )
 
 import Http
 import HttpBuilder
 import ISO8601
-import Json.Decode
+import Json.Decode as D
     exposing
         ( Decoder
         , andThen
@@ -57,7 +58,10 @@ import Types
         , Driver
         , ServiceDescription
         , ServiceInfo
+        , Payment
         )
+import HttpBuilder
+import HttpBuilder
 
 
 type alias Session =
@@ -73,7 +77,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    ""
+    "/elm-live"
 
 
 apiLogin : String
@@ -177,6 +181,15 @@ apiCancelServiceToDriver serviceId driverId =
         ++ String.fromInt driverId
 
 
+apiCloseService : Int -> String
+apiCloseService serviceId = 
+    prefix 
+        ++ "/api/v1/service/"
+        ++ String.fromInt serviceId
+        ++ "/closed"
+
+
+
 clientMapURL : Int -> String
 clientMapURL serviceId =
     prefix ++ "/map-client.html?serviceId=" ++ String.fromInt serviceId
@@ -198,6 +211,24 @@ sessionDecoder =
         (at [ "username" ] string)
         (at [ "serviceId" ] int)
         (at [ "route" ] string)
+
+
+closeService : Int -> Float -> String -> Float -> (Result Http.Error Bool -> msg) -> Cmd msg
+closeService serviceId partner partnerTranscript client message = 
+    let
+        body = 
+            [ ("partner", String.fromFloat partner)
+            , ("partnerTranscript", partnerTranscript)
+            , ("client", String.fromFloat client)
+            ]
+        
+        decoder = 
+            D.map (\s -> s == "service_closed") (field "status" string)
+    in 
+        HttpBuilder.post (apiCloseService serviceId)
+            |> HttpBuilder.withUrlEncodedBody body
+            |> HttpBuilder.withExpect (Http.expectJson message decoder)
+            |> HttpBuilder.request
 
 
 login : String -> String -> (Result Http.Error Int -> msg) -> Cmd msg
@@ -368,6 +399,17 @@ getService serviceId message =
                 |> optional "makeModel" string ""
                 |> optional "plateNumber" string ""
                 |> required "vin" (nullable string)
+                |> required "payType" (nullable int)
+                |> required "payment" (nullable payment)
+        
+        payment : Decoder Payment
+        payment = 
+            succeed Payment
+                |> required "partnerCost" (nullable float)
+                |> required "checkCost" (nullable float)
+                |> required "partnerCostTranscript" (nullable string)
+                |> required "checkCostTranscript" (nullable string)
+                |> required "paidByClient" (nullable string)
     in
     HttpBuilder.get (apiGetService serviceId)
         |> HttpBuilder.withExpect (Http.expectJson message getCaseDecoder)
