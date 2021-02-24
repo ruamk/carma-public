@@ -4,6 +4,7 @@ module Api exposing
     , assignServiceToDriver
     , cancelServiceToDriver
     , clientMapURL
+    , closeService
     , createDriver
     , decodeSession
     , deleteDriver
@@ -22,7 +23,6 @@ module Api exposing
     , statusInPlace
     , statusServicePerformed
     , updateDriver
-    , closeService
     )
 
 import Http
@@ -56,12 +56,10 @@ import Types
         , CurrentCaseInfo
         , Dictionary
         , Driver
+        , Payment
         , ServiceDescription
         , ServiceInfo
-        , Payment
         )
-import HttpBuilder
-import HttpBuilder
 
 
 type alias Session =
@@ -182,12 +180,11 @@ apiCancelServiceToDriver serviceId driverId =
 
 
 apiCloseService : Int -> String
-apiCloseService serviceId = 
-    prefix 
+apiCloseService serviceId =
+    prefix
         ++ "/api/v1/service/"
         ++ String.fromInt serviceId
         ++ "/closed"
-
 
 
 clientMapURL : Int -> String
@@ -214,21 +211,21 @@ sessionDecoder =
 
 
 closeService : Int -> Float -> String -> Float -> (Result Http.Error Bool -> msg) -> Cmd msg
-closeService serviceId partner partnerTranscript client message = 
+closeService serviceId partner partnerTranscript client message =
     let
-        body = 
-            [ ("partner", String.fromFloat partner)
-            , ("partnerTranscript", partnerTranscript)
-            , ("client", String.fromFloat client)
+        body =
+            [ ( "partner", String.fromFloat partner )
+            , ( "partnerTranscript", partnerTranscript )
+            , ( "client", String.fromFloat client )
             ]
-        
-        decoder = 
+
+        decoder =
             D.map (\s -> s == "service_closed") (field "status" string)
-    in 
-        HttpBuilder.post (apiCloseService serviceId)
-            |> HttpBuilder.withUrlEncodedBody body
-            |> HttpBuilder.withExpect (Http.expectJson message decoder)
-            |> HttpBuilder.request
+    in
+    HttpBuilder.post (apiCloseService serviceId)
+        |> HttpBuilder.withUrlEncodedBody body
+        |> HttpBuilder.withExpect (Http.expectJson message decoder)
+        |> HttpBuilder.request
 
 
 login : String -> String -> (Result Http.Error Int -> msg) -> Cmd msg
@@ -401,9 +398,9 @@ getService serviceId message =
                 |> required "vin" (nullable string)
                 |> required "payType" (nullable int)
                 |> required "payment" (nullable payment)
-        
+
         payment : Decoder Payment
-        payment = 
+        payment =
             succeed Payment
                 |> required "partnerCost" (nullable float)
                 |> required "checkCost" (nullable float)

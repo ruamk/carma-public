@@ -532,7 +532,7 @@ update global msg model =
             , Cmd.none
             , Cmd.none
             )
-        
+
         Settings ->
             ( model
             , Cmd.none

@@ -335,7 +335,7 @@ update _ msg model =
             )
 
         Tick _ ->
-            ( model 
+            ( model
             , Api.getLatestCurrentCases GetCurrentCases
             , Cmd.none
             )
@@ -503,31 +503,33 @@ viewCurrentCases model =
         formatAccordTime : String -> String
         formatAccordTime t =
             let
-                formatHM hours minutes = 
-                    let 
+                formatHM hours minutes =
+                    let
                         f : Int -> String
-                        f x = 
-                            if x > 9 
-                                then String.fromInt x 
-                                else String.cons '0' (String.fromInt x)      
-                    in 
-                        String.concat 
-                            [ f hours
-                            , ":"
-                            , f minutes
-                            ]
-            in 
-                case parseTime t of
-                    Just ( 0, hours, minutes ) ->
-                        formatHM hours minutes
+                        f x =
+                            if x > 9 then
+                                String.fromInt x
 
-                    Just ( days, hours, minutes ) ->
-                        String.fromInt days
-                            ++ " дн. "
-                            ++ formatHM hours minutes
+                            else
+                                String.cons '0' (String.fromInt x)
+                    in
+                    String.concat
+                        [ f hours
+                        , ":"
+                        , f minutes
+                        ]
+            in
+            case parseTime t of
+                Just ( 0, hours, minutes ) ->
+                    formatHM hours minutes
 
-                    Nothing ->
-                        t
+                Just ( days, hours, minutes ) ->
+                    String.fromInt days
+                        ++ " дн. "
+                        ++ formatHM hours minutes
+
+                Nothing ->
+                    t
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )
