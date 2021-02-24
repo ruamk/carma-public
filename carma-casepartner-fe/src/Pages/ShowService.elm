@@ -1914,16 +1914,26 @@ viewCard model cci =
             case s of
                 "Опоздание" -> 
                     div 
-                        [ style "color" "red" 
-                        , style "border" "1px solid red" 
-                        , style "padding" "3px" 
-                        , style "border-radius" "3px"
-                        , style "background-color" "white"
+                        [ style "color" "white" 
+                        , style "border" "1px solid red"
+                        , style "padding" "3px"
+                        , style "border-radius" "3px" 
+                        , style "background-color" "tomato"
                         , style "float" "right"
                         , style "font-weight" "bold"
                         ] 
                         [ text s ]
-                _ -> div [] [text s]
+                _ -> 
+                    div 
+                        [ style "color" "white" 
+                        , style "border" "1px solid #28a745" 
+                        , style "padding" "3px" 
+                        , style "border-radius" "3px"
+                        , style "background-color" "#28a745"
+                        , style "float" "right"
+                        , style "font-weight" "bold"
+                        ]
+                        [text s]
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )
