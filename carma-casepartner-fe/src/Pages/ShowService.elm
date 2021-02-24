@@ -1777,7 +1777,7 @@ viewDetails { details } =
                             params
 
                         time : Maybe String
-                        time =
+                        time = 
                             case delayMinutes of
                                 Just mm ->
                                     let
@@ -2002,32 +2002,6 @@ viewClosingCaseForClosed payment paytype =
             , Textarea.disabled
             ]
         
-        detect : Payment -> Maybe ClosedBy
-        detect p = 
-            let
-                closedByOperator : Payment -> Maybe ClosedBy
-                closedByOperator p_ = 
-                    Maybe.map3 
-                        (\a b c -> Operator { checkPrice = a, checkTranscipt = b, clientPrice = c }) 
-                        p_.checkCost 
-                        p_.checkCostTranscript 
-                        (Just p.paidByClient)
-
-                closedByPartner : Payment -> Maybe ClosedBy
-                closedByPartner p_ =
-                    Maybe.map3
-                        (\a b c -> Partner { partnerPrice = a, partnerTranscipt = b, clientPrice = c })
-                        p_.partnerCost
-                        p_.partnerCostTranscript
-                        (Just p.paidByClient)   
-            in 
-                case closedByOperator payment of
-                    Just x -> Just x
-                    Nothing ->
-                        case closedByPartner payment of
-                            Just x -> Just x
-                            Nothing -> Nothing
-        
         viewRuamk : Float -> String -> Html msg
         viewRuamk price description = 
             div [] 
@@ -2056,56 +2030,84 @@ viewClosingCaseForClosed payment paytype =
         viewRefund : String -> Html msg
         viewRefund price =  
             div []
-                [ h3 [] [ text "Заявка закрыта: Оплата клиент" ]
+                [ h3 [] [ text "Заявка закрыта: Оплата клиент с возмещением" ]
                 , Input.text <| (Input.attrs [placeholder price]) :: priceInputStyles
                 ]
 
-        viewWithClientPrice : Maybe String -> (String -> Html a) -> Html a
-        viewWithClientPrice mbPrice f =
-            case mbPrice of 
-                Just price ->
-                    f price
-                
-                Nothing ->
-                    div [] [ text "ОШИБКА. Тип оплаты в заявке не вяжется со структурой Payment" ]
 
-    
+        -- this is becasue we have to find out who closed the service
+        unpackRUAMK : Payment -> Maybe { ruamkPrice : Float, ruamkDescription : String }
+        unpackRUAMK p = 
+            let
+                byPartner = 
+                    Maybe.map2 
+                        (\a b -> { ruamkPrice = a, ruamkDescription = b }) 
+                        p.partnerCost 
+                        p.partnerCostTranscript
+
+                byOperator = 
+                    Maybe.map2 
+                        (\a b -> { ruamkPrice = a, ruamkDescription = b }) 
+                        p.checkCost 
+                        p.checkCostTranscript
+            in 
+                case byPartner of
+                    Just x -> Just x
+                    Nothing -> byOperator
+        
+        viewNotEnoughParams = 
+            div [] [ text "Информация о закрытии не вяжется с указанным типом услуги" ]
     in 
-        case detect payment of
-            Just closedBy -> 
-                case closedBy of
-                    Operator a -> 
-                        case paytype of
-                            Types.RUAMK ->
-                                viewRuamk a.checkPrice a.checkTranscipt
-                            
-                            Types.Client ->
-                                viewWithClientPrice a.clientPrice viewClient 
-                                    
-                            Types.Mixed ->
-                                viewWithClientPrice a.clientPrice <| viewMixed a.checkPrice a.checkTranscipt
-                                    
-                            Types.Refund ->
-                                viewWithClientPrice a.clientPrice viewRefund
+        case paytype of
+            Types.RUAMK ->
+                let
+                    needed = unpackRUAMK payment
+                in
+                    case needed of 
+                        Just {ruamkPrice, ruamkDescription} -> 
+                            viewRuamk ruamkPrice ruamkDescription
+                        Nothing -> 
+                            viewNotEnoughParams
+            
+            Types.Client ->
+                let
+                    needed = payment.paidByClient
+                in
+                    case needed of 
+                        Just clientPrice -> 
+                            viewClient clientPrice
+                        
+                        Nothing -> 
+                            viewNotEnoughParams
+                    
+            Types.Mixed ->
+                let
+                    needed = 
+                        Maybe.map2
+                        (\{ruamkPrice, ruamkDescription} clientPrice -> (ruamkPrice, ruamkDescription, clientPrice)) 
+                        (unpackRUAMK payment)
+                        payment.paidByClient 
+                in
+                    case needed of 
+                        Just (ruamkPrice, ruamkDesc, clientPrice) -> 
+                            viewMixed ruamkPrice ruamkDesc clientPrice
 
-                    Partner a ->
-                        case paytype of
-                            Types.RUAMK ->
-                                viewRuamk a.partnerPrice a.partnerTranscipt
-                            
-                            Types.Client ->
-                                viewWithClientPrice a.clientPrice viewClient 
-                                    
-                            Types.Mixed ->
-                                viewWithClientPrice a.clientPrice <| viewMixed a.partnerPrice a.partnerTranscipt
-                                    
-                            Types.Refund ->
-                                viewWithClientPrice a.clientPrice viewRefund
+                        Nothing -> 
+                            viewNotEnoughParams
+                    
+            Types.Refund ->
+                let
+                    needed = payment.paidByClient
+                in
+                    case needed of 
+                        Just clientPrice -> 
+                            viewRefund clientPrice
+                        
+                        Nothing -> 
+                            viewNotEnoughParams
 
-
                             
-            Nothing -> 
-                Ui.viewSpinner "10rem"
+
 
 
 
