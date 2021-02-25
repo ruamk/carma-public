@@ -114,6 +114,7 @@ type Msg
     | ShowEditDriverDialog Driver
     | UpdateCustomMessageToast (MessageToast Msg)
     | UsermenuMsg Dropdown.State
+    | Settings
 
 
 page : Page Flags Model Msg
@@ -532,6 +533,12 @@ update global msg model =
             , Cmd.none
             )
 
+        Settings ->
+            ( model
+            , Cmd.none
+            , Global.settings
+            )
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -553,6 +560,7 @@ view global model =
             , buttons =
                 [ ( False, GoToCases, "Текущие заявки" )
                 , ( False, GoToSearchCases, "Поиск заявок" )
+                , ( True, Settings, "Настройки" )
                 ]
             }
           <|

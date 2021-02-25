@@ -5,6 +5,7 @@ module Service.Util
     , serviceActionNotFound
     , serviceAlreadyPerformed
     , servicePerformed
+    , setStatusClosed
     , setStatusInPlace
     , setStatusPartnerDelay
     , setStatusPerformed
@@ -12,7 +13,7 @@ module Service.Util
     ) where
 
 
-import           Control.Monad                    (when)
+import           Control.Monad                    (void, when)
 import           Control.Monad.IO.Class           (liftIO)
 import qualified Data.ByteString.Char8            as BS
 import           Data.Configurator                (lookupDefault)
@@ -106,6 +107,16 @@ caseForService serviceId =
               _             -> Nothing)
 
 
+setStatusClosed
+    :: IdentI Service
+    -> IdentI Action
+    -> AppHandler (M.Map Text Text)
+setStatusClosed serviceId checkActionId = do
+  void $ withCookie $ \cookie ->
+      CarmaApi.serviceClosed cookie serviceId checkActionId
+  return serviceClosed
+
+
 setStatusInPlace :: Int -> AppHandler (M.Map Text Text)
 setStatusInPlace serviceId = do
   [(caseId, status)] <- query
@@ -166,6 +177,10 @@ setStatusPartnerDelay serviceId uid minutes reason comment = do
 
   carmaPostPartnerDelay caseId serviceId uid partnerId minutes reason comment
 
+
+-- Услуга закрыта
+serviceClosed :: M.Map Text Text
+serviceClosed = serviceMessage "service_closed"
 
 -- Услуга выполнена
 servicePerformed :: M.Map Text Text

@@ -303,7 +303,6 @@ update _ msg model =
             , Global.settings
             )
 
-
         TypeOfServiceSynonymDownloaded result ->
             case result of
                 Err _ ->
@@ -402,6 +401,7 @@ view global model =
             , buttons =
                 [ ( False, Services, "Текущие заявки" )
                 , ( True, NavbarMsg model.navbarState, "Поиск заявок" )
+                , ( False, Settings, "Настройки" )
                 ]
             }
           <|

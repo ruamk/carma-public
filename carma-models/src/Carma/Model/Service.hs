@@ -62,7 +62,7 @@ data Service = Service
                                  "Обработка счёта (число)"
   , payment_claimsCostTranscript :: F (Maybe Text) "payment_claimsCostTranscript"
                                  "Расшифровка обработки счёта"
-  , payment_billNumber           :: F (Maybe Int) "payment_billNumber"
+  , payment_billNumber           :: F (Maybe Text) "payment_billNumber"
                                  "Номер счёта"
   , payment_billingDate          :: F (Maybe Day) "payment_billingDate"
                                  "Дата выставления счёта"
