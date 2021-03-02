@@ -1929,7 +1929,6 @@ viewCard model cci =
         highlightAccordTime : String -> Html msg
         highlightAccordTime s =
             case s of
-<<<<<<< HEAD
                 "Опоздание" -> 
                     div 
                         [ style "color" "white" 
@@ -1937,20 +1936,10 @@ viewCard model cci =
                         , style "padding" "3px"
                         , style "border-radius" "3px" 
                         , style "background-color" "tomato"
-=======
-                "Опоздание" ->
-                    div
-                        [ style "color" "red"
-                        , style "border" "1px solid red"
-                        , style "padding" "3px"
-                        , style "border-radius" "3px"
-                        , style "background-color" "white"
->>>>>>> 883b7970e9ab333a67308b35301e748d0b014b9d
                         , style "float" "right"
                         , style "font-weight" "bold"
                         ]
                         [ text s ]
-<<<<<<< HEAD
                 _ -> 
                     div 
                         [ style "color" "white" 
@@ -1962,11 +1951,6 @@ viewCard model cci =
                         , style "font-weight" "bold"
                         ]
                         [text s]
-=======
-
-                _ ->
-                    div [] [ text s ]
->>>>>>> 883b7970e9ab333a67308b35301e748d0b014b9d
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )
