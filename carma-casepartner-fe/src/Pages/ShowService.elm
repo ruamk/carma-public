@@ -68,9 +68,11 @@ import Types as Types
         , Payment
         , ServiceDescription
         , emptyServiceDescription
+        , Location
         )
 import Ui
 import Utils exposing (formatTime)
+import Html exposing (a)
 
 
 type alias Flags =
@@ -1493,6 +1495,36 @@ viewCasePanel model serviceId =
 
             else
                 div [] []
+        
+        locationLink : Location -> Maybe String
+        locationLink location = 
+            let 
+                locationLink_ latitude longitude = 
+                    "https://maps.yandex.ru/?z=18&l=map&pt="
+                        ++ String.fromFloat longitude
+                        ++ ","
+                        ++ String.fromFloat latitude
+            in 
+                Maybe.map2 
+                    locationLink_ 
+                    location.latitude 
+                    location.longitude
+
+        
+        viewAddress : Maybe Location -> String -> Html a
+        viewAddress mbLocation addressText =
+            case mbLocation of 
+                Just location -> 
+                    case locationLink location of  
+                        Just link -> 
+                            a [ A.href link, A.target "_blank" ] [ text addressText ]
+                        
+                        Nothing -> 
+                            text addressText 
+
+                Nothing -> 
+                    text addressText
+
     in
     Grid.row [ Row.attrs [ Spacing.p1 ] ]
         (if model.service.caseId == 0 then
@@ -1511,26 +1543,10 @@ viewCasePanel model serviceId =
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
                 [ h2 [ class "text-center" ] [ text <| "Номер заявки: " ++ caseId ]
                 , Grid.row []
-                    [ Grid.col []
+                    [ Grid.col [] 
                         [ field "Вид помощи" <| text c.serviceType
                         , field "Клиент" <| text c.client
                         , field "Телефон клиента" <| text c.clientPhone
-                        , br [] []
-                        , field "Адрес начала работы" <| text c.firstAddress
-                        , if c.serviceType == "Техпомощь" then
-                            div [] []
-
-                          else
-                            optionalField "Адрес доставки" <| c.lastAddress
-                        , field "Желаемая дата оказания услуг" <|
-                            text <|
-                                formatTime_ c.expectedServiceStart
-                        , field "Факт. время оказания услуг" <|
-                            text <|
-                                formatTime_ c.factServiceStart
-                        , field "Время окончания работы" <|
-                            text <|
-                                formatTime_ c.factServiceEnd
                         ]
                     , Grid.col []
                         [ field "Марка/Модель" <| text c.makeModel
@@ -1556,10 +1572,24 @@ viewCasePanel model serviceId =
                           in
                           case c.payType of
                             Just p ->
-                                field "Тип оплаты" <| text <| formatPaymentType p
+                                field "Тип оплаты" <| text (formatPaymentType p)
 
                             Nothing ->
                                 field "Тип оплаты" <| text "неизвестен"
+                        ]
+                    , Grid.colBreak []
+                    , Grid.col []
+                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress
+                        , field "Желаемая дата оказания услуг" <| text (formatTime_ c.expectedServiceStart)
+                        , field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
+                        , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
+                        ]
+                    , Grid.col []
+                        [ if c.serviceType == "Техпомощь" then
+                            div [] []
+
+                          else
+                            optionalField "Адрес доставки" <| c.lastAddress
                         ]
                     ]
                 , hr [] []
@@ -1929,28 +1959,29 @@ viewCard model cci =
         highlightAccordTime : String -> Html msg
         highlightAccordTime s =
             case s of
-                "Опоздание" -> 
-                    div 
-                        [ style "color" "white" 
+                "Опоздание" ->
+                    div
+                        [ style "color" "white"
                         , style "border" "1px solid red"
                         , style "padding" "3px"
-                        , style "border-radius" "3px" 
+                        , style "border-radius" "3px"
                         , style "background-color" "tomato"
                         , style "float" "right"
                         , style "font-weight" "bold"
                         ]
                         [ text s ]
-                _ -> 
-                    div 
-                        [ style "color" "white" 
-                        , style "border" "1px solid #28a745" 
-                        , style "padding" "3px" 
+
+                _ ->
+                    div
+                        [ style "color" "white"
+                        , style "border" "1px solid #28a745"
+                        , style "padding" "3px"
                         , style "border-radius" "3px"
                         , style "background-color" "#28a745"
                         , style "float" "right"
                         , style "font-weight" "bold"
                         ]
-                        [text s]
+                        [ text s ]
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )
