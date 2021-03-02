@@ -1,35 +1,35 @@
 module CarmaApi
     where
 
-import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Data.Configurator (lookupDefault)
-import           Data.Text (Text)
-import qualified Data.Text as T
-import           Data.Time.Clock (getCurrentTime)
-import           Network.HTTP (HeaderName(HdrCookie), mkHeader)
-import           Snap.Snaplet (MonadSnaplet, getSnapletUserConfig)
+import           Control.Monad                        (void)
+import           Control.Monad.IO.Class               (MonadIO, liftIO)
+import           Data.Configurator                    (lookupDefault)
+import           Data.Text                            (Text)
+import qualified Data.Text                            as T
+import           Data.Time.Clock                      (getCurrentTime)
+import           Network.HTTP                         (HeaderName (HdrCookie),
+                                                       mkHeader)
+import           Snap.Snaplet                         (MonadSnaplet,
+                                                       getSnapletUserConfig)
 
-import           Carma.HTTP
-                 ( CarmaIO
-                 , runCarma
-                 , defaultCarmaOptions
-                 , CarmaOptions(..)
-                 )
-import           Carma.HTTP.New
-                 ( createInstance
-                 , updateInstance
-                 )
-import           Carma.Utils.Operators ((&))
-import           Carma.Model (IdentI, Ident(..))
-import           Carma.Model.Action as Action
-import           Carma.Model.ActionResult as ActionResult
-import           Carma.Model.PartnerDelay as PartnerDelay
-import           Carma.Model.PartnerDelay.Confirmed as Confirmed
+import           Carma.HTTP                           (CarmaIO,
+                                                       CarmaOptions (..),
+                                                       defaultCarmaOptions,
+                                                       runCarma)
+import           Carma.HTTP.New                       (createInstance,
+                                                       updateInstance)
+import           Carma.Model                          (Ident (..), IdentI)
+import           Carma.Model.Action                   as Action
+import           Carma.Model.ActionResult             as ActionResult
+import           Carma.Model.CaseComment              as CaseComment
+import           Carma.Model.PartnerDelay             as PartnerDelay
+import           Carma.Model.PartnerDelay.Confirmed   as Confirmed
 import           Carma.Model.PartnerDelay.Exceptional as Exceptional
-import           Carma.Model.PartnerDelay.Notified as Notified
-import           Carma.Model.CaseComment as CaseComment
-import           Carma.Model.Service as Service
-import           Data.Model.Patch as Patch
+import           Carma.Model.PartnerDelay.Notified    as Notified
+import           Carma.Model.Service                  as Service
+import           Carma.Model.ServiceStatus            as ServiceStatus
+import           Carma.Utils.Operators                ((&))
+import           Data.Model.Patch                     as Patch
 
 
 defaultHostname :: String
@@ -43,7 +43,7 @@ carma :: (MonadIO (m b v), MonadSnaplet m) => String -> CarmaIO b1 -> m b v b1
 carma cookie action = do
   cfg <- getSnapletUserConfig
 
-  (hostname :: String) <- liftIO $ lookupDefault defaultHostname cfg "carma.host" 
+  (hostname :: String) <- liftIO $ lookupDefault defaultHostname cfg "carma.host"
   port <- liftIO $ lookupDefault defaultPort cfg "carma.port"
 
   let carmaOptions = defaultCarmaOptions
@@ -112,6 +112,25 @@ serviceInProgress cookie actionId = do
                      )
 
 
+serviceClosed
+    :: ( MonadIO (m b v )
+      , MonadSnaplet m
+      )
+    => String
+    -> IdentI Service
+    -> IdentI Action
+    -> m b v (Patch Service)
+serviceClosed cookie serviceId closeActionId{-checkActionId-} = do
+  void $ carma cookie
+       $ updateInstance closeActionId
+             ( Patch.empty
+             & Patch.put Action.result (Just ActionResult.caseClosed)
+             )
+  carma cookie $ updateInstance serviceId
+                     ( Patch.empty
+                     & Patch.put Service.status ServiceStatus.closed
+                     )
+
 updateFactServiceStartTime
     :: ( MonadIO (m b v)
       , MonadSnaplet m
@@ -126,4 +145,3 @@ updateFactServiceStartTime cookie serviceId = do
                        ( Patch.empty
                        & Patch.put Service.times_factServiceStart (Just now)
                        )
-

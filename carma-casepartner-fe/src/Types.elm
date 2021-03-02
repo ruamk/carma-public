@@ -5,10 +5,10 @@ module Types exposing
     , CurrentCaseInfo
     , Dictionary
     , Driver
-    , ServiceDescription
-    , ServiceInfo
     , Payment
     , PaymentType(..)
+    , ServiceDescription
+    , ServiceInfo
     , emptyServiceDescription
     )
 
@@ -82,7 +82,8 @@ type alias ServiceDescription =
     , payment : Maybe Payment
     }
 
-type alias Payment = 
+
+type alias Payment =
     { partnerCost : Maybe Float
     , checkCost : Maybe Float
     , partnerCostTranscript : Maybe String
@@ -90,7 +91,8 @@ type alias Payment =
     , paidByClient : Maybe String
     }
 
-type PaymentType 
+
+type PaymentType
     = RUAMK
     | Client
     | Mixed
@@ -117,7 +119,6 @@ emptyServiceDescription =
     , payType = Nothing
     , payment = Nothing
     }
-
 
 
 type CaseCommentDetails

@@ -6,11 +6,11 @@ module AppHandlers.Service
     , serviceLocation
     , servicePerformed
     , statusInPlace
+    , statusServiceClosed
     , statusServicePerformed
     ) where
 
-import           Control.Monad                        (when)
---import           Control.Monad.IO.Class               (liftIO)
+import           Control.Monad                        (void, when)
 import           Data.Aeson                           (ToJSON, Value (..),
                                                        genericToJSON, object,
                                                        toJSON)
@@ -28,13 +28,19 @@ import           Database.PostgreSQL.Simple.FromField (FromField, fromField,
 import           Database.PostgreSQL.Simple.SqlQQ
 import           GHC.Generics                         (Generic)
 import           Snap
-import           Snap.Snaplet.PostgresqlSimple        (Only (..), query)
+import           Snap.Snaplet.PostgresqlSimple        (Only (..), execute,
+                                                       query)
 
 import           AppHandlers.Users
 import           AppHandlers.Util
 import           Application
-import           Carma.Model
+import           Carma.Model                          (Ident (..), IdentI)
+import           Carma.Model.Action                   (Action)
+import qualified Carma.Model.ActionType               as ActionType
+import qualified Carma.Model.PaymentType              as PaymentType
+import qualified Carma.Model.ServiceStatus            as ServiceStatus
 import qualified Carma.Model.Usermeta                 as Usermeta
+import           Carma.Utils.Snap                     (getDoubleParam)
 import qualified Data.Model.Patch                     as Patch
 import           Service.Util
 import           Snaplet.Auth.PGUsers
@@ -46,11 +52,24 @@ instance FromField LoadingDifficulties where
     fromField = fromJSONField
 
 
+data Payment = Payment
+    { _partnerCost           :: Maybe Double
+    , _partnerCostTranscript :: Maybe String
+    , _checkCost             :: Maybe Double
+    , _checkCostTranscript   :: Maybe String
+    , _paidByClient          :: Maybe String
+    } deriving (Show, Generic)
+
+instance ToJSON Payment where
+    toJSON = genericToJSON defaultOptions
+             { fieldLabelModifier = dropWhile (== '_')}
+
+
 data ServiceDescription = ServiceDescription
     { _caseId               :: Int
     , _services             :: Int
     , _serviceType          :: String
-    , _status               :: Int
+    , _status               :: IdentI ServiceStatus.ServiceStatus
     , _statusLabel          :: String
     , _client               :: String
     , _clientPhone          :: String
@@ -63,6 +82,7 @@ data ServiceDescription = ServiceDescription
     , _plateNumber          :: String
     , _vin                  :: Maybe String
     , _payType              :: Maybe Int
+    , _payment              :: Maybe Payment
     } deriving (Show, Generic)
 
 instance ToJSON ServiceDescription where
@@ -112,7 +132,8 @@ handleApiGetService = checkAuthCasePartner $ do
   |] (caseId, serviceId)
 
   [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType
-   , status, statusLabel, payType)] <- query [sql|
+   , status, statusLabel, payType, partnerCost, partnerCostTranscript
+   , checkCost, checkCostTranscript, paidByClient)] <- query [sql|
     SELECT
         times_expectedservicestart
       , times_factservicestart
@@ -121,6 +142,11 @@ handleApiGetService = checkAuthCasePartner $ do
       , status
       , "ServiceStatus".label
       , payType
+      , payment_partnerCost
+      , payment_partnerCostTranscript
+      , payment_checkCost
+      , payment_checkCostTranscript
+      , payment_paidByClient
     FROM servicetbl
     LEFT OUTER JOIN "ServiceType" ON servicetbl.type = "ServiceType".id
     LEFT OUTER JOIN "ServiceStatus" ON servicetbl.status = "ServiceStatus".id
@@ -144,6 +170,12 @@ handleApiGetService = checkAuthCasePartner $ do
                                     (Only h:_) -> h
                                     _          -> ""
 
+  let payment = if status `elem` [ServiceStatus.ok, ServiceStatus.closed]
+                then Just $  Payment partnerCost partnerCostTranscript
+                                     checkCost checkCostTranscript
+                                     paidByClient
+                else Nothing
+
   writeJSON $ ServiceDescription
                caseId serviceSerial serviceType
                status statusLabel
@@ -151,7 +183,7 @@ handleApiGetService = checkAuthCasePartner $ do
                firstAddress lastAddress
                expectedServiceStart factServiceStart factServiceEnd
                makeModel plateNumber
-               vin payType
+               vin payType payment
 
 
 serviceComments :: AppHandler ()
@@ -269,3 +301,105 @@ statusServicePerformed = checkAuthCasePartner $ do
   when (T.null comment) $ error "empty comment"
 
   setStatusPerformed serviceId (T.unpack comment) >>= writeJSON
+
+
+statusServiceClosed :: AppHandler ()
+statusServiceClosed = checkAuthCasePartner $ do
+  Just user <- currentUserMeta
+  let Just (Ident _uid) = Patch.get user Usermeta.ident
+
+  serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
+
+  [Only serviceClosed] <- query [sql|
+    SELECT EXISTS (
+      SELECT id
+        FROM actiontbl
+       WHERE serviceId = ?
+         AND type = ?
+         AND result IS NOT NULL
+    )
+  |] (serviceId, ActionType.closeCase)
+
+  when serviceClosed $ error $ "service " ++ show serviceId ++ " already closed"
+
+  -- Услуга может быть закрыта, если проведена оценка оператором в карме
+  -- то есть существует действие (action) с типом ActionType.checkEndOfService
+  -- и результат действия определён.
+  closeActionId :: [Only (IdentI Action)] <- query [sql|
+    SELECT id
+      FROM actiontbl
+     WHERE serviceId = ?
+       AND type = ?
+       AND result IS NULL
+  |] (serviceId, ActionType.closeCase)
+
+  case closeActionId of
+    [Only closeActionId'] -> closeService serviceId closeActionId'
+    _ -> error $ "service " ++ show serviceId ++ " not checked"
+
+  where
+    closeService serviceId closeActionId = do
+      partner <- getDoubleParam "partner"
+      partnerCostTranscript <- (\case
+                                Just s  -> Just $ T.strip $ TE.decodeUtf8 s
+                                Nothing -> Nothing
+                              ) <$> getParam "partnerTranscript"
+      client <- getDoubleParam "client"
+
+      result :: [Only (IdentI PaymentType.PaymentType)] <- query
+        "SELECT payType FROM servicetbl WHERE id = ?"
+        $ Only serviceId
+
+      message <- case result of
+        [] -> error "service id not found"
+        (Only payType):_
+            | payType == PaymentType.ruamc  -> do
+                 case partner of
+                   Just partnerCost -> do
+                     when (partnerCost < 0.0) $ error "partner < 0.0"
+                     void $ execute [sql|
+                       UPDATE servicetbl
+                          SET payment_partnerCost = ?
+                            , payment_partnerCostTranscript = ?
+                        WHERE id = ?
+                     |] (partnerCost, partnerCostTranscript, serviceId)
+                     setStatusClosed (Ident serviceId) closeActionId
+                   Nothing -> error "partner not specified"
+
+            | payType == PaymentType.client ||
+              payType == PaymentType.refund -> do
+                 case client of
+                   Just clientCost -> do
+                     when (clientCost < 0.0) $ error "client < 0.0"
+                     void $ execute [sql|
+                       UPDATE servicetbl
+                          SET payment_paidByClient = ?
+                        WHERE id = ?
+                     |] (clientCost, serviceId)
+                     setStatusClosed (Ident serviceId) closeActionId
+                   Nothing -> error "client not specified"
+
+            | payType == PaymentType.mixed  -> do
+                 case (partner, client) of
+                   (Just partnerCost, Just clientCost)
+                       | partnerCost < 0.0 -> error "partner < 0.0"
+                       | clientCost  < 0.0 -> error "client < 0.0"
+                       | otherwise -> do
+                           void $ execute [sql|
+                             UPDATE servicetbl
+                                SET payment_partnerCost = ?
+                                  , payment_partnerCostTranscript = ?
+                                  , payment_paidByClient = ?
+                              WHERE id =?
+                           |] ( partnerCost
+                              , partnerCostTranscript
+                              , clientCost
+                              , serviceId
+                              )
+                           setStatusClosed (Ident serviceId) closeActionId
+                   (Nothing, _) -> error "partner not specified"
+                   (_, Nothing) -> error "client not specified"
+
+            | otherwise -> error $ "unknown payType" ++ show payType
+
+      writeJSON message

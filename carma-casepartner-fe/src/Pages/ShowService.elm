@@ -4,6 +4,7 @@ import Api
 import Bootstrap.Alert as Alert
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
+import Bootstrap.Card.Block exposing (titleH3)
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
@@ -64,14 +65,12 @@ import Types as Types
         , CurrentCaseInfo
         , Dictionary
         , Driver
-        , ServiceDescription
         , Payment
+        , ServiceDescription
         , emptyServiceDescription
         )
 import Ui
 import Utils exposing (formatTime)
-import Maybe
-import Bootstrap.Card.Block exposing (titleH3)
 
 
 type alias Flags =
@@ -87,17 +86,17 @@ type alias Comment =
     }
 
 
-type ClosingServiceForm 
-    = RUAMK 
+type ClosingServiceForm
+    = RUAMK
         { price : String -- Float
-        , red : Bool 
+        , red : Bool
         , description : String
         }
     | Client
         { price : String -- Float
         , red : Bool
         }
-    | Mixed 
+    | Mixed
         { priceRUAMK : String -- Float
         , ruamkRed : Bool
         , descriptionRUAMK : String
@@ -110,16 +109,16 @@ type ClosingServiceForm
         }
 
 
-type ClosedBy 
-    = Operator 
+type ClosedBy
+    = Operator
         { checkPrice : Float
         , checkTranscipt : String
-        , clientPrice : Maybe String 
+        , clientPrice : Maybe String
         }
-    | Partner 
+    | Partner
         { partnerPrice : Float
         , partnerTranscipt : String
-        , clientPrice : Maybe String 
+        , clientPrice : Maybe String
         }
 
 
@@ -238,8 +237,9 @@ commentsUpdateTime : Float
 commentsUpdateTime =
     10
 
+
 servicesListUpdateSeconds : Float
-servicesListUpdateSeconds = 
+servicesListUpdateSeconds =
     60
 
 
@@ -407,74 +407,88 @@ update global msg model =
                     ( { model
                         | service = service
                         , closingServiceForm =
-                            let 
-                                makeEmpty form = 
-                                    case form of 
-                                        RUAMK f -> 
-                                            RUAMK 
+                            let
+                                makeEmpty form =
+                                    case form of
+                                        RUAMK f ->
+                                            RUAMK
                                                 { price = ""
                                                 , description = ""
-                                                , red = False 
-                                                }
-                                        
-                                        Client f -> 
-                                            Client 
-                                                { price = "" 
                                                 , red = False
                                                 }
-                                        
-                                        Mixed f -> 
-                                            Mixed 
-                                                { priceRUAMK = ""
-                                                , ruamkRed = False
-                                                , descriptionRUAMK = ""
-                                                , priceClient = "" 
-                                                , clientRed = False
-                                                }
-                                        
-                                        Refund f -> 
-                                            Refund 
-                                                { price = ""
-                                                , red = False
-                                                }
-                                
-                                emptyForm n = 
-                                    case service.payType of
-                                            Just 1 -> Just <| RUAMK 
-                                                { price = ""
-                                                , description = ""
-                                                , red = False 
-                                                }
-                                            Just 2 -> Just <| Client 
-                                                { price = "" 
-                                                , red = False
-                                                }
-                                            Just 3 -> Just <| Mixed 
-                                                { priceRUAMK = ""
-                                                , ruamkRed = False
-                                                , descriptionRUAMK = ""
-                                                , priceClient = "" 
-                                                , clientRed = False
-                                                }
-                                            Just 4 -> Just <| Refund 
-                                                { price = ""
-                                                , red = False
-                                                }
-                                            _ -> Nothing
-                                        
-                            in   
-                                case model.closingServiceForm of
-                                    Just f -> 
-                                        case Maybe.map2 (==) (Just <| makeEmpty f) (emptyForm (Maybe.withDefault 0 service.payType)) of
-                                            Just True -> Just f
-                                            Just False -> emptyForm (Maybe.withDefault 0 service.payType)
-                                            Nothing -> Nothing
 
-                                    Nothing -> emptyForm (Maybe.withDefault 0 service.payType)
-                                        
-                                
-                                
-                                        
+                                        Client f ->
+                                            Client
+                                                { price = ""
+                                                , red = False
+                                                }
+
+                                        Mixed f ->
+                                            Mixed
+                                                { priceRUAMK = ""
+                                                , ruamkRed = False
+                                                , descriptionRUAMK = ""
+                                                , priceClient = ""
+                                                , clientRed = False
+                                                }
+
+                                        Refund f ->
+                                            Refund
+                                                { price = ""
+                                                , red = False
+                                                }
+
+                                emptyForm n =
+                                    case service.payType of
+                                        Just 1 ->
+                                            Just <|
+                                                RUAMK
+                                                    { price = ""
+                                                    , description = ""
+                                                    , red = False
+                                                    }
+
+                                        Just 2 ->
+                                            Just <|
+                                                Client
+                                                    { price = ""
+                                                    , red = False
+                                                    }
+
+                                        Just 3 ->
+                                            Just <|
+                                                Mixed
+                                                    { priceRUAMK = ""
+                                                    , ruamkRed = False
+                                                    , descriptionRUAMK = ""
+                                                    , priceClient = ""
+                                                    , clientRed = False
+                                                    }
+
+                                        Just 4 ->
+                                            Just <|
+                                                Refund
+                                                    { price = ""
+                                                    , red = False
+                                                    }
+
+                                        _ ->
+                                            Nothing
+                            in
+                            case model.closingServiceForm of
+                                Just f ->
+                                    case Maybe.map2 (==) (Just <| makeEmpty f) (emptyForm (Maybe.withDefault 0 service.payType)) of
+                                        Just True ->
+                                            Just f
+
+                                        Just False ->
+                                            emptyForm (Maybe.withDefault 0 service.payType)
+
+                                        Nothing ->
+                                            Nothing
+
+                                Nothing ->
+                                    emptyForm (Maybe.withDefault 0 service.payType)
                         , statusButton1 = statusButton1
                         , statusButton2 = statusButton2
                       }
@@ -1031,28 +1045,28 @@ update global msg model =
 
         GetCurrentCases result ->
             case result of
-                    Err _ ->
-                        let
-                            messageToast : MessageToast Msg
-                            messageToast =
-                                model.messageToast
-                                    |> MessageToast.danger
-                                    |> MessageToast.withMessage "Error get current latest cases "
-                        in
-                        ( { model
-                            | messageToast = messageToast
-                        }
-                        , Cmd.none
-                        , Cmd.none
-                        )
+                Err _ ->
+                    let
+                        messageToast : MessageToast Msg
+                        messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "Error get current latest cases "
+                    in
+                    ( { model
+                        | messageToast = messageToast
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
 
-                    Ok currentCases ->
-                        ( { model
-                            | currentCases = currentCases
-                        }
-                        , Cmd.none
-                        , Cmd.none
-                        )
+                Ok currentCases ->
+                    ( { model
+                        | currentCases = currentCases
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
 
         CurrentCase serviceId ->
             ( model
@@ -1062,7 +1076,7 @@ update global msg model =
                 , Global.navigate Route.ShowService
                 ]
             )
-        
+
         TypeOfServiceSynonymDownloaded result ->
             case result of
                 Err _ ->
@@ -1079,57 +1093,56 @@ update global msg model =
                     , Cmd.none
                     )
 
-        UpdateClosingServiceForm new -> 
+        UpdateClosingServiceForm new ->
             ( { model | closingServiceForm = Just new }
-            , Cmd.none 
-            , Cmd.none 
+            , Cmd.none
+            , Cmd.none
             )
 
-        CloseService -> 
-            let 
-                extractForm : ClosingServiceForm -> Maybe (Float, String, Float)
+        CloseService ->
+            let
+                extractForm : ClosingServiceForm -> Maybe ( Float, String, Float )
                 extractForm csf =
-                    let 
-                        extract = 
-                            Maybe.map3 (\partner transcript client -> (partner, transcript, client))
-                    in 
-                        case csf of 
-                            RUAMK p ->
-                                extract (String.toFloat p.price) (Just p.description) (Just 0)
-                            
-                            Client p ->
-                                extract (Just 0) (Just "") (String.toFloat p.price)
+                    let
+                        extract =
+                            Maybe.map3 (\partner transcript client -> ( partner, transcript, client ))
+                    in
+                    case csf of
+                        RUAMK p ->
+                            extract (String.toFloat p.price) (Just p.description) (Just 0)
 
-                            Mixed p ->
-                                extract (String.toFloat p.priceRUAMK) (Just "") (String.toFloat p.priceClient)
-                            
-                            Refund p ->
-                                extract (Just 0) (Just "") (String.toFloat p.price)
-                
+                        Client p ->
+                            extract (Just 0) (Just "") (String.toFloat p.price)
+
+                        Mixed p ->
+                            extract (String.toFloat p.priceRUAMK) (Just "") (String.toFloat p.priceClient)
+
+                        Refund p ->
+                            extract (Just 0) (Just "") (String.toFloat p.price)
             in
-                case model.closingServiceForm |> Maybe.andThen extractForm of
-                    Just (partner, partnerTranscript, client) ->
-                        ( model
-                        , Api.closeService global.serviceId partner partnerTranscript client ServiceClosed
-                        , Cmd.none 
-                        )
+            case model.closingServiceForm |> Maybe.andThen extractForm of
+                Just ( partner, partnerTranscript, client ) ->
+                    ( model
+                    , Api.closeService global.serviceId partner partnerTranscript client ServiceClosed
+                    , Cmd.none
+                    )
 
-                    Nothing ->
-                        ( { model 
-                            | messageToast =
-                                model.messageToast
-                                    |> MessageToast.danger
-                                    |> MessageToast.withMessage "You cant send an undefined form"
-                          }
-                        , Cmd.none
-                        , Cmd.none
-                        )
+                Nothing ->
+                    ( { model
+                        | messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "You cant send an undefined form"
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
 
         ServiceClosed response ->
             case response of
                 Err e ->
-                    ( { model 
-                        | messageToast = 
+                    ( { model
+                        | messageToast =
                             model.messageToast
                                 |> MessageToast.danger
                                 |> MessageToast.withMessage "Ошибка при закрытии услуги."
@@ -1139,29 +1152,28 @@ update global msg model =
                     )
 
                 Ok status ->
-                    case status of 
-                        True -> 
-                            ( { model 
-                                | messageToast = 
+                    case status of
+                        True ->
+                            ( { model
+                                | messageToast =
                                     model.messageToast
                                         |> MessageToast.success
                                         |> MessageToast.withMessage "Услуга отправлена на закрытие."
-                            }
-                            , Cmd.none
-                            , Cmd.none
-                            )
-                        
-                        False -> 
-                            ( { model 
-                                | messageToast = 
-                                    model.messageToast
-                                        |> MessageToast.danger
-                                        |> MessageToast.withMessage "произошло что то очень плохое...."
-                            }
+                              }
                             , Cmd.none
                             , Cmd.none
                             )
 
+                        False ->
+                            ( { model
+                                | messageToast =
+                                    model.messageToast
+                                        |> MessageToast.danger
+                                        |> MessageToast.withMessage "произошло что то очень плохое...."
+                              }
+                            , Cmd.none
+                            , Cmd.none
+                            )
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
@@ -1178,7 +1190,7 @@ formatServiceSerial : Model -> String
 formatServiceSerial model =
     let
         s : ServiceDescription
-        s = 
+        s =
             model.service
     in
     String.fromInt s.caseId
@@ -1491,7 +1503,7 @@ viewCasePanel model serviceId =
 
          else
             [ Grid.col [ Col.sm2 ]
-                [ h2 [style "text-align" "center"] [ text "Текущие заявки" ]
+                [ h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
                 , viewServicesList
                     model
                     model.currentCases
@@ -1524,31 +1536,30 @@ viewCasePanel model serviceId =
                         [ field "Марка/Модель" <| text c.makeModel
                         , field "Гос. номер" <| text c.plateNumber
                         , field "VIN" <| text <| String.toUpper vin
-                        , 
-                            let 
-                                formatPaymentType n =
-                                    case n of
-                                        1 -> 
-                                            "РАМК"
+                        , let
+                            formatPaymentType n =
+                                case n of
+                                    1 ->
+                                        "РАМК"
 
-                                        2 -> 
-                                            "Клиент"
+                                    2 ->
+                                        "Клиент"
 
-                                        3 -> 
-                                            "Смешанный"
+                                    3 ->
+                                        "Смешанный"
 
-                                        4 -> 
-                                            "Клиент с возмещением"
+                                    4 ->
+                                        "Клиент с возмещением"
 
-                                        _ -> 
-                                            "неизвестен"
-                            in 
-                                case c.payType of
-                                    Just p -> 
-                                        field "Тип оплаты" <| text <| formatPaymentType p
+                                    _ ->
+                                        "неизвестен"
+                          in
+                          case c.payType of
+                            Just p ->
+                                field "Тип оплаты" <| text <| formatPaymentType p
 
-                                    Nothing -> 
-                                        field "Тип оплаты" <| text "неизвестен"
+                            Nothing ->
+                                field "Тип оплаты" <| text "неизвестен"
                         ]
                     ]
                 , hr [] []
@@ -1679,35 +1690,41 @@ viewCasePanel model serviceId =
                     , text "проверяются ООС на соответствие условий в договоре и правил "
                     , text "бухгалтерского учета"
                     ]
-                , div [ Spacing.ml0 ] 
-                    [ if model.service.status == Const.serviceStatus.closed
-                        then 
-                            let 
-                                convertPayType n =
-                                    case n of 
-                                        1 -> Just Types.RUAMK
-                                        2 -> Just Types.Client
-                                        3 -> Just Types.Mixed
-                                        4 -> Just Types.Refund
-                                        _ -> Nothing
-                                
-                                needed =
-                                    Maybe.map2 
-                                        (\a b -> (a, b)) 
-                                        model.service.payment 
-                                        (model.service.payType |> Maybe.andThen convertPayType)
-                                        
+                , div [ Spacing.ml0 ]
+                    [ if model.service.status == Const.serviceStatus.closed then
+                        let
+                            convertPayType n =
+                                case n of
+                                    1 ->
+                                        Just Types.RUAMK
 
-                            in 
-                                case needed of 
-                                    Just (payment_, paytype) ->  
-                                        viewClosingCaseForClosed payment_ paytype
-                                        
-                                    Nothing -> 
-                                        div [] [ text "couldnt fetch payment" ]
-                        
-                        else 
-                            viewClosingCaseField model 
+                                    2 ->
+                                        Just Types.Client
+
+                                    3 ->
+                                        Just Types.Mixed
+
+                                    4 ->
+                                        Just Types.Refund
+
+                                    _ ->
+                                        Nothing
+
+                            needed =
+                                Maybe.map2
+                                    (\a b -> ( a, b ))
+                                    model.service.payment
+                                    (model.service.payType |> Maybe.andThen convertPayType)
+                        in
+                        case needed of
+                            Just ( payment_, paytype ) ->
+                                viewClosingCaseForClosed payment_ paytype
+
+                            Nothing ->
+                                div [] [ text "couldnt fetch payment" ]
+
+                      else
+                        viewClosingCaseField model
                     ]
                 ]
             ]
@@ -1777,7 +1794,7 @@ viewDetails { details } =
                             params
 
                         time : Maybe String
-                        time = 
+                        time =
                             case delayMinutes of
                                 Just mm ->
                                     let
@@ -1908,10 +1925,11 @@ viewCard model cci =
 
                 Nothing ->
                     t
-        
+
         highlightAccordTime : String -> Html msg
-        highlightAccordTime s = 
+        highlightAccordTime s =
             case s of
+<<<<<<< HEAD
                 "Опоздание" -> 
                     div 
                         [ style "color" "white" 
@@ -1919,10 +1937,20 @@ viewCard model cci =
                         , style "padding" "3px"
                         , style "border-radius" "3px" 
                         , style "background-color" "tomato"
+=======
+                "Опоздание" ->
+                    div
+                        [ style "color" "red"
+                        , style "border" "1px solid red"
+                        , style "padding" "3px"
+                        , style "border-radius" "3px"
+                        , style "background-color" "white"
+>>>>>>> 883b7970e9ab333a67308b35301e748d0b014b9d
                         , style "float" "right"
                         , style "font-weight" "bold"
-                        ] 
+                        ]
                         [ text s ]
+<<<<<<< HEAD
                 _ -> 
                     div 
                         [ style "color" "white" 
@@ -1934,6 +1962,11 @@ viewCard model cci =
                         , style "font-weight" "bold"
                         ]
                         [text s]
+=======
+
+                _ ->
+                    div [] [ text s ]
+>>>>>>> 883b7970e9ab333a67308b35301e748d0b014b9d
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )
@@ -1984,22 +2017,19 @@ viewCard model cci =
         ]
 
 
-
-
-
 viewClosingCaseForClosed : Payment -> Types.PaymentType -> Html Msg
-viewClosingCaseForClosed payment paytype = 
+viewClosingCaseForClosed payment paytype =
     let
         priceInputStyles =
-                [ Input.attrs 
-                    [ Spacing.ml0
-                    , Spacing.mr0
-                    , Spacing.mt3
-                    , Spacing.mb3
-                    ]
-                , Input.disabled True
+            [ Input.attrs
+                [ Spacing.ml0
+                , Spacing.mr0
+                , Spacing.mt3
+                , Spacing.mb3
                 ]
-        
+            , Input.disabled True
+            ]
+
         descriptionInputStyles =
             [ Textarea.id "priceDescription"
             , Textarea.rows 4
@@ -2011,131 +2041,135 @@ viewClosingCaseForClosed payment paytype =
                 ]
             , Textarea.disabled
             ]
-        
+
         viewRuamk : Float -> String -> Html msg
-        viewRuamk price description = 
-            div [] 
+        viewRuamk price description =
+            div []
                 [ h3 [] [ text "Заявка закрыта: Оплата РАМК" ]
-                , Input.text <| (Input.attrs [placeholder <| String.fromFloat price]) :: priceInputStyles
+                , Input.text <| Input.attrs [ placeholder <| String.fromFloat price ] :: priceInputStyles
                 , Textarea.textarea (Textarea.attrs [ placeholder description ] :: descriptionInputStyles)
                 ]
-        
+
         viewClient : String -> Html msg
-        viewClient price =  
+        viewClient price =
             div []
                 [ h3 [] [ text "Заявка закрыта: Оплата клиент" ]
-                , Input.text <| (Input.attrs [placeholder price]) :: priceInputStyles
+                , Input.text <| Input.attrs [ placeholder price ] :: priceInputStyles
                 ]
-        
+
         viewMixed : Float -> String -> String -> Html msg
-        viewMixed price description priceClient =  
+        viewMixed price description priceClient =
             div []
                 [ h3 [] [ text "Заявка закрыта: Оплата РАМК" ]
-                , Input.text <| (Input.attrs [placeholder <| String.fromFloat price]) :: priceInputStyles     
+                , Input.text <| Input.attrs [ placeholder <| String.fromFloat price ] :: priceInputStyles
                 , Textarea.textarea (Textarea.attrs [ placeholder description ] :: descriptionInputStyles)
                 , h3 [] [ text "Заявка закрыта: Оплата клиент" ]
-                , Input.text <| (Input.attrs [placeholder <| priceClient]) :: priceInputStyles
+                , Input.text <| Input.attrs [ placeholder <| priceClient ] :: priceInputStyles
                 ]
 
         viewRefund : String -> Html msg
-        viewRefund price =  
+        viewRefund price =
             div []
                 [ h3 [] [ text "Заявка закрыта: Оплата клиент с возмещением" ]
-                , Input.text <| (Input.attrs [placeholder price]) :: priceInputStyles
+                , Input.text <| Input.attrs [ placeholder price ] :: priceInputStyles
                 ]
-
 
         -- this is becasue we have to find out who closed the service
         unpackRUAMK : Payment -> Maybe { ruamkPrice : Float, ruamkDescription : String }
-        unpackRUAMK p = 
+        unpackRUAMK p =
             let
-                byPartner = 
-                    Maybe.map2 
-                        (\a b -> { ruamkPrice = a, ruamkDescription = b }) 
-                        p.partnerCost 
+                byPartner =
+                    Maybe.map2
+                        (\a b -> { ruamkPrice = a, ruamkDescription = b })
+                        p.partnerCost
                         p.partnerCostTranscript
 
-                byOperator = 
-                    Maybe.map2 
-                        (\a b -> { ruamkPrice = a, ruamkDescription = b }) 
-                        p.checkCost 
+                byOperator =
+                    Maybe.map2
+                        (\a b -> { ruamkPrice = a, ruamkDescription = b })
+                        p.checkCost
                         p.checkCostTranscript
-            in 
-                case byPartner of
-                    Just x -> Just x
-                    Nothing -> byOperator
-        
-        viewNotEnoughParams = 
+            in
+            case byPartner of
+                Just x ->
+                    Just x
+
+                Nothing ->
+                    byOperator
+
+        viewNotEnoughParams =
             div [] [ text "Информация о закрытии не вяжется с указанным типом услуги" ]
-    in 
-        case paytype of
-            Types.RUAMK ->
-                let
-                    needed = unpackRUAMK payment
-                in
-                    case needed of 
-                        Just {ruamkPrice, ruamkDescription} -> 
-                            viewRuamk ruamkPrice ruamkDescription
-                        Nothing -> 
-                            viewNotEnoughParams
-            
-            Types.Client ->
-                let
-                    needed = payment.paidByClient
-                in
-                    case needed of 
-                        Just clientPrice -> 
-                            viewClient clientPrice
-                        
-                        Nothing -> 
-                            viewNotEnoughParams
-                    
-            Types.Mixed ->
-                let
-                    needed = 
-                        Maybe.map2
-                        (\{ruamkPrice, ruamkDescription} clientPrice -> (ruamkPrice, ruamkDescription, clientPrice)) 
+    in
+    case paytype of
+        Types.RUAMK ->
+            let
+                needed =
+                    unpackRUAMK payment
+            in
+            case needed of
+                Just { ruamkPrice, ruamkDescription } ->
+                    viewRuamk ruamkPrice ruamkDescription
+
+                Nothing ->
+                    viewNotEnoughParams
+
+        Types.Client ->
+            let
+                needed =
+                    payment.paidByClient
+            in
+            case needed of
+                Just clientPrice ->
+                    viewClient clientPrice
+
+                Nothing ->
+                    viewNotEnoughParams
+
+        Types.Mixed ->
+            let
+                needed =
+                    Maybe.map2
+                        (\{ ruamkPrice, ruamkDescription } clientPrice -> ( ruamkPrice, ruamkDescription, clientPrice ))
                         (unpackRUAMK payment)
-                        payment.paidByClient 
-                in
-                    case needed of 
-                        Just (ruamkPrice, ruamkDesc, clientPrice) -> 
-                            viewMixed ruamkPrice ruamkDesc clientPrice
+                        payment.paidByClient
+            in
+            case needed of
+                Just ( ruamkPrice, ruamkDesc, clientPrice ) ->
+                    viewMixed ruamkPrice ruamkDesc clientPrice
 
-                        Nothing -> 
-                            viewNotEnoughParams
-                    
-            Types.Refund ->
-                let
-                    needed = payment.paidByClient
-                in
-                    case needed of 
-                        Just clientPrice -> 
-                            viewRefund clientPrice
-                        
-                        Nothing -> 
-                            viewNotEnoughParams
+                Nothing ->
+                    viewNotEnoughParams
 
-                            
+        Types.Refund ->
+            let
+                needed =
+                    payment.paidByClient
+            in
+            case needed of
+                Just clientPrice ->
+                    viewRefund clientPrice
 
-
+                Nothing ->
+                    viewNotEnoughParams
 
 
 
 -- TODO: Refactor it in the same way as viewClosingCaseForClosed
+
+
 viewClosingCaseField : Model -> Html Msg
-viewClosingCaseField model = 
+viewClosingCaseField model =
     let
         priceInputStyles =
-                [ Input.attrs [ placeholder "Стоимость заявки (одной суммой)*" ]
-                , Input.attrs 
-                    [ Spacing.ml0
-                    , Spacing.mr0
-                    , Spacing.mt3
-                    , Spacing.mb3
-                    ]
+            [ Input.attrs [ placeholder "Стоимость заявки (одной суммой)*" ]
+            , Input.attrs
+                [ Spacing.ml0
+                , Spacing.mr0
+                , Spacing.mt3
+                , Spacing.mb3
                 ]
-        
+            ]
+
         descriptionInputStyles =
             [ Textarea.id "priceDescription"
             , Textarea.rows 4
@@ -2147,189 +2181,243 @@ viewClosingCaseField model =
                 , Spacing.mb3
                 ]
             ]
-        
-        
-        button enable = 
-            Button.button 
+
+        button enable =
+            Button.button
                 [ Button.primary
                 , Button.attrs [ Spacing.mt3, class "float-right", onClick CloseService ]
-                , 
-                    if (model.service.status == Const.serviceStatus.ok) && enable
-                        then 
-                            Button.disabled False
-                        
-                        else 
-                            Button.disabled True
-                            
-                
-                ] 
-                [  if (model.service.status == Const.serviceStatus.inProgress || model.service.status == Const.serviceStatus.ordered)
-                        then 
-                            text "Заявка выполняется"
-                        
-                        else
-                            text "Закрыть заявку"
+                , if (model.service.status == Const.serviceStatus.ok) && enable then
+                    Button.disabled False
 
+                  else
+                    Button.disabled True
                 ]
+                [ if model.service.status == Const.serviceStatus.inProgress || model.service.status == Const.serviceStatus.ordered then
+                    text "Заявка выполняется"
 
-    in      
-        case model.closingServiceForm of
-            Just form -> 
-                case form of
-                    RUAMK f -> 
-                        let
-                            updatePriceRUAMK s =
-                                setPriceRUAMK s (RUAMK f)
-                                    |> UpdateClosingServiceForm
+                  else
+                    text "Закрыть заявку"
+                ]
+    in
+    case model.closingServiceForm of
+        Just form ->
+            case form of
+                RUAMK f ->
+                    let
+                        updatePriceRUAMK s =
+                            setPriceRUAMK s (RUAMK f)
+                                |> UpdateClosingServiceForm
 
-                            updateDescriptionRUAMK s =
-                                setDescriptionRUAMK s (RUAMK f)
-                                    |> UpdateClosingServiceForm
-                        in    
-                            div [] 
-                                [ h3 [] [ text "Оплата РАМК" ]
-                                , Input.text <| Input.attrs 
-                                    [ onInput updatePriceRUAMK
-                                    , if f.red then class "border-danger" else class ""
-                                    ] :: priceInputStyles
-                                , Textarea.textarea (Textarea.attrs [ onInput updateDescriptionRUAMK ] :: descriptionInputStyles)
-                                , button (isJust <| String.toFloat f.price)
+                        updateDescriptionRUAMK s =
+                            setDescriptionRUAMK s (RUAMK f)
+                                |> UpdateClosingServiceForm
+                    in
+                    div []
+                        [ h3 [] [ text "Оплата РАМК" ]
+                        , Input.text <|
+                            Input.attrs
+                                [ onInput updatePriceRUAMK
+                                , if f.red then
+                                    class "border-danger"
+
+                                  else
+                                    class ""
                                 ]
+                                :: priceInputStyles
+                        , Textarea.textarea (Textarea.attrs [ onInput updateDescriptionRUAMK ] :: descriptionInputStyles)
+                        , button (isJust <| String.toFloat f.price)
+                        ]
 
-                    Client f -> 
-                        let
-                            updatePriceClient s =
-                                setPriceClient s (Client f)
-                                    |> UpdateClosingServiceForm 
-                        in    
-                            div []
-                                [ h3 [] [ text "Оплата клиент" ]
-                                , Input.text 
-                                    (Input.attrs 
-                                        [ onInput updatePriceClient
-                                        , if f.red then class "border-danger" else class "" 
-                                        ] :: priceInputStyles 
-                                    )
-                                , button (isJust <| String.toFloat f.price)
+                Client f ->
+                    let
+                        updatePriceClient s =
+                            setPriceClient s (Client f)
+                                |> UpdateClosingServiceForm
+                    in
+                    div []
+                        [ h3 [] [ text "Оплата клиент" ]
+                        , Input.text
+                            (Input.attrs
+                                [ onInput updatePriceClient
+                                , if f.red then
+                                    class "border-danger"
+
+                                  else
+                                    class ""
                                 ]
+                                :: priceInputStyles
+                            )
+                        , button (isJust <| String.toFloat f.price)
+                        ]
 
-                    Mixed f ->
-                        let
-                            updateRUAMKPrice s = 
-                                setRUAMKPriceMixed s (Mixed f)
-                                    |> UpdateClosingServiceForm 
-                            
-                            updateClientPrice s = 
-                                setClientPriceMixed s (Mixed f)
-                                    |> UpdateClosingServiceForm
-                            
-                            updateRUAMKDescription s =
-                                setRUAMKDescriptionMixed s (Mixed f)
-                                    |> UpdateClosingServiceForm
-                            
+                Mixed f ->
+                    let
+                        updateRUAMKPrice s =
+                            setRUAMKPriceMixed s (Mixed f)
+                                |> UpdateClosingServiceForm
 
-                        in
-                            div []
-                                [ h3 [] [ text "Оплата РАМК" ]
-                                , Input.text <| Input.attrs 
-                                    [ onInput updateRUAMKPrice
-                                    , if f.ruamkRed && f.clientRed then class "border-danger" else class "" 
-                                    ] :: priceInputStyles
+                        updateClientPrice s =
+                            setClientPriceMixed s (Mixed f)
+                                |> UpdateClosingServiceForm
 
-                                , Textarea.textarea (Textarea.attrs [ onInput updateRUAMKDescription ] :: descriptionInputStyles)
-                                , h3 [] [ text "Оплата клиент" ]
-                                , Input.text <| Input.attrs 
-                                    [ onInput updateClientPrice
-                                    , if f.clientRed then class "border-danger" else class ""
-                                    ] :: priceInputStyles
+                        updateRUAMKDescription s =
+                            setRUAMKDescriptionMixed s (Mixed f)
+                                |> UpdateClosingServiceForm
+                    in
+                    div []
+                        [ h3 [] [ text "Оплата РАМК" ]
+                        , Input.text <|
+                            Input.attrs
+                                [ onInput updateRUAMKPrice
+                                , if f.ruamkRed && f.clientRed then
+                                    class "border-danger"
 
-                                , button <| List.foldr (&&) True 
-                                    [ isJust <| String.toFloat f.priceRUAMK 
-                                    , isJust <| String.toFloat f.priceClient
-                                    ]
+                                  else
+                                    class ""
                                 ]
-                        
-                    Refund f ->
-                        let 
-                            updatePriceRefund s = 
-                                setPriceRefund s (Refund f)
-                                    |> UpdateClosingServiceForm
-                        in   
-                            div []
-                                [ h3 [] [ text "Оплата клиент" ]
-                                , Input.text <| Input.attrs 
-                                    [ onInput updatePriceRefund
-                                    ,  if f.red then class "border-danger" else class "" 
-                                    ] :: priceInputStyles
-                                , button (isJust <| String.toFloat f.price)
-                                ]
+                                :: priceInputStyles
+                        , Textarea.textarea (Textarea.attrs [ onInput updateRUAMKDescription ] :: descriptionInputStyles)
+                        , h3 [] [ text "Оплата клиент" ]
+                        , Input.text <|
+                            Input.attrs
+                                [ onInput updateClientPrice
+                                , if f.clientRed then
+                                    class "border-danger"
 
-            Nothing -> 
-                Ui.viewSpinner "10rem"
+                                  else
+                                    class ""
+                                ]
+                                :: priceInputStyles
+                        , button <|
+                            List.foldr (&&)
+                                True
+                                [ isJust <| String.toFloat f.priceRUAMK
+                                , isJust <| String.toFloat f.priceClient
+                                ]
+                        ]
+
+                Refund f ->
+                    let
+                        updatePriceRefund s =
+                            setPriceRefund s (Refund f)
+                                |> UpdateClosingServiceForm
+                    in
+                    div []
+                        [ h3 [] [ text "Оплата клиент" ]
+                        , Input.text <|
+                            Input.attrs
+                                [ onInput updatePriceRefund
+                                , if f.red then
+                                    class "border-danger"
+
+                                  else
+                                    class ""
+                                ]
+                                :: priceInputStyles
+                        , button (isJust <| String.toFloat f.price)
+                        ]
+
+        Nothing ->
+            Ui.viewSpinner "10rem"
 
 
 isJust : Maybe a -> Bool
 isJust x =
     case x of
-        Just _ -> True
-        Nothing -> False
+        Just _ ->
+            True
+
+        Nothing ->
+            False
 
 
-{- 
 
-type ClosingCaseForm 
-    = RUAMK 
-        { price : Float
-        , description : String
-        }
-    | Client
-        { price : Float
-        }
-    | Mixed 
-        { priceRUAMK : Float
-        , priceClient : Float
-        }
-    | Refund
-        { price : Float
-        }
+{-
+
+   type ClosingCaseForm
+       = RUAMK
+           { price : Float
+           , description : String
+           }
+       | Client
+           { price : Float
+           }
+       | Mixed
+           { priceRUAMK : Float
+           , priceClient : Float
+           }
+       | Refund
+           { price : Float
+           }
 
 -}
 
+
 setPriceRUAMK : String -> ClosingServiceForm -> ClosingServiceForm
-setPriceRUAMK n form = 
-    case form of 
-        RUAMK f -> RUAMK { f | price = n }
-        _ -> form 
+setPriceRUAMK n form =
+    case form of
+        RUAMK f ->
+            RUAMK { f | price = n }
+
+        _ ->
+            form
+
 
 setDescriptionRUAMK : String -> ClosingServiceForm -> ClosingServiceForm
-setDescriptionRUAMK desc form = 
-    case form of 
-        RUAMK f -> RUAMK { f | description = desc }
-        _ -> form 
+setDescriptionRUAMK desc form =
+    case form of
+        RUAMK f ->
+            RUAMK { f | description = desc }
+
+        _ ->
+            form
+
 
 setPriceClient : String -> ClosingServiceForm -> ClosingServiceForm
-setPriceClient n form = 
-    case form of 
-        Client f -> Client { f | price = n }
-        _ -> form 
+setPriceClient n form =
+    case form of
+        Client f ->
+            Client { f | price = n }
+
+        _ ->
+            form
+
 
 setRUAMKPriceMixed : String -> ClosingServiceForm -> ClosingServiceForm
-setRUAMKPriceMixed n form = case form of 
-        Mixed f -> Mixed { f | priceRUAMK = n }
-        _ -> form 
+setRUAMKPriceMixed n form =
+    case form of
+        Mixed f ->
+            Mixed { f | priceRUAMK = n }
+
+        _ ->
+            form
+
 
 setRUAMKDescriptionMixed : String -> ClosingServiceForm -> ClosingServiceForm
-setRUAMKDescriptionMixed n form = case form of 
-        Mixed f -> Mixed { f | descriptionRUAMK = n }
-        _ -> form 
+setRUAMKDescriptionMixed n form =
+    case form of
+        Mixed f ->
+            Mixed { f | descriptionRUAMK = n }
+
+        _ ->
+            form
+
 
 setClientPriceMixed : String -> ClosingServiceForm -> ClosingServiceForm
-setClientPriceMixed n form = case form of 
-        Mixed f -> Mixed { f | priceClient = n }
-        _ -> form 
+setClientPriceMixed n form =
+    case form of
+        Mixed f ->
+            Mixed { f | priceClient = n }
+
+        _ ->
+            form
+
 
 setPriceRefund : String -> ClosingServiceForm -> ClosingServiceForm
-setPriceRefund n form = case form of 
-        Refund f -> Refund { f | price = n }
-        _ -> form 
+setPriceRefund n form =
+    case form of
+        Refund f ->
+            Refund { f | price = n }
 
+        _ ->
+            form

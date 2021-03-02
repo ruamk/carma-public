@@ -20,7 +20,7 @@ latenessReasons =
     }
 
 
-paymentType = 
+paymentType =
     { ruamc = 1
     , client = 2
     , mixed = 3

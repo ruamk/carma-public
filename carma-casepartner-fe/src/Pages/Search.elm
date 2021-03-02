@@ -303,7 +303,6 @@ update _ msg model =
             , Global.settings
             )
 
-
         TypeOfServiceSynonymDownloaded result ->
             case result of
                 Err _ ->
