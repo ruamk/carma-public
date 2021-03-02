@@ -1524,6 +1524,19 @@ viewCasePanel model serviceId =
 
                 Nothing -> 
                     text addressText
+        
+        formatPaymentType n =
+            case n of
+                1 ->
+                    "РАМК"
+                2 ->
+                    "Клиент"
+                3 ->
+                    "Смешанный"
+                4 ->
+                    "Клиент с возмещением"
+                _ ->
+                    "неизвестен"
 
     in
     Grid.row [ Row.attrs [ Spacing.p1 ] ]
@@ -1538,43 +1551,25 @@ viewCasePanel model serviceId =
                 [ viewServicesList
                     model
                     model.currentCases
-                ]
+                ] -- Заявка: 666666 | Оплата: РАМК
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
-                [ h2 [ class "text-center" ] [ text <| "Номер заявки: " ++ caseId ]
+                [ h2 [ class "text-center" ] 
+                    [ text <| 
+                        "Заявка: " 
+                            ++ caseId 
+                            ++ " | Оплата: " 
+                            ++ formatPaymentType (Maybe.withDefault 0 c.payType)
+                    ]
                 , Grid.row []
                     [ Grid.col [] 
                         [ field "Вид помощи" <| text c.serviceType
                         , field "Клиент" <| text c.client
-                        , field "Телефон клиента" <| text c.clientPhone
+                        , field "Телефон клиента" <| a [A.href ("tel:" ++ c.clientPhone)] [ text c.clientPhone ]
                         ]
                     , Grid.col []
                         [ field "Марка/Модель" <| text c.makeModel
                         , field "Гос. номер" <| text c.plateNumber
                         , field "VIN" <| text <| String.toUpper vin
-                        , let
-                            formatPaymentType n =
-                                case n of
-                                    1 ->
-                                        "РАМК"
-
-                                    2 ->
-                                        "Клиент"
-
-                                    3 ->
-                                        "Смешанный"
-
-                                    4 ->
-                                        "Клиент с возмещением"
-
-                                    _ ->
-                                        "неизвестен"
-                          in
-                          case c.payType of
-                            Just p ->
-                                field "Тип оплаты" <| text (formatPaymentType p)
-
-                            Nothing ->
-                                field "Тип оплаты" <| text "неизвестен"
                         ]
                     , Grid.colBreak []
                     , Grid.col []
