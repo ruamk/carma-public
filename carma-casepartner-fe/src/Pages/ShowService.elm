@@ -1535,8 +1535,7 @@ viewCasePanel model serviceId =
 
          else
             [ Grid.col [ Col.sm2 ]
-                [ h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
-                , viewServicesList
+                [ viewServicesList
                     model
                     model.currentCases
                 ]
@@ -1910,10 +1909,20 @@ viewServicesList model ccs =
     let
         cases =
             List.map (viewCard model) ccs
+        
+        header = 
+            h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
+
+        hideMobile = 
+            class "d-none d-lg-block"
     in
-    Card.deck
-        [ Card.customListGroup cases (Card.config [ Card.attrs [ class "d-none d-lg-block" ] ])
+    div [ hideMobile ] 
+        [ header
+        , Card.deck
+            [ Card.customListGroup cases (Card.config [])
+            ]
         ]
+    
 
 
 viewCard : Model -> CurrentCaseInfo -> ListGroup.CustomItem Msg
