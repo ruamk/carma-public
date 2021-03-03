@@ -1512,7 +1512,17 @@ viewCasePanel model serviceId =
                 [ h2 [ class "text-center" ] [ text <| "Номер заявки: " ++ caseId ]
                 , Grid.row []
                     [ Grid.col []
-                        [ field "Вид помощи" <| text c.serviceType
+                        [ 
+                            let 
+                                shortcutted = 
+                                     case Dict.get c.serviceType model.typeOfServiceSynonym of
+                                        Just v ->
+                                            v
+
+                                        Nothing ->
+                                            c.serviceType
+                            in 
+                            field "Вид помощи" <| text shortcutted
                         , field "Клиент" <| text c.client
                         , field "Телефон клиента" <| text c.clientPhone
                         , br [] []

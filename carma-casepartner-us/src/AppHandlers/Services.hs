@@ -360,21 +360,6 @@ getServices uid = do
           , "LIMIT ? OFFSET ?"
           ]) :: Query
 
-{-
-
-data ServiceInfo = ServiceInfo
-    { caseId          :: Int
-    , serviceId       :: Int -- идентификатор услуги
-    , serviceSerial   :: Int -- номер услиги в списке услуг для заявки
-    , _callDate       :: Maybe ZonedTime
-    , _typeOfService  :: Maybe String
-    , _makeModel      :: String
-    , _breakdownPlace :: String
-    , _payType        :: String
-    } deriving (Show, Generic)
-
--}
-
 
   rows :: [ServiceInfo] <- query sqlQuery ( tech, towage, bikeTowage
                                         , uid, limit, offset
