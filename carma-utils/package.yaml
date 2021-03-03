@@ -24,6 +24,7 @@ dependencies:
   - swagger2
   - snap
   - text
+  - time
   - type-operators
   - unordered-containers
   - vector

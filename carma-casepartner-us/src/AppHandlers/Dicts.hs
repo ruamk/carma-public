@@ -12,8 +12,8 @@ import           Data.Text                     (Text)
 import           Snap.Snaplet.PostgresqlSimple (query_)
 
 import           AppHandlers.Users
-import           AppHandlers.Util
 import           Application
+import           Carma.Utils.Snap
 
 
 getDict :: String -> AppHandler (M.Map Int Text)

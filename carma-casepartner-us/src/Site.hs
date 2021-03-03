@@ -94,6 +94,15 @@ apiDriverStatus = "/api/v1/driver/status"
 apiDriverSettings :: ByteString
 apiDriverSettings = "/api/v1/driver/settings"
 
+apiDriverPhoto :: ByteString
+apiDriverPhoto = "/api/v1/driver/photo"
+
+apiDriverPhotosByService :: ByteString
+apiDriverPhotosByService = "/api/v1/driver/photo/:serviceId"
+
+apiDriverPhotoImage :: ByteString
+apiDriverPhotoImage = "/api/v1/driver/photo/:serviceId/:photoId"
+
 apiGetDrivers :: ByteString
 apiGetDrivers = "/api/v1/settings/drivers" -- GET
 
@@ -160,6 +169,9 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiDriverLocation,         method POST MobileAPI.location)
          , (apiDriverDelayReason,      method GET  MobileAPI.delayReason)
          , (apiDriverSettings,         method GET  MobileAPI.settings)
+         , (apiDriverPhoto,            method POST MobileAPI.savePhoto)
+         , (apiDriverPhotosByService,  method GET  MobileAPI.getPhotos)
+         , (apiDriverPhotoImage,       method GET  MobileAPI.getPhoto)
 
          , (apiGetDrivers,             method GET    Drivers.getDrivers)
          , (apiCreateDriver,           method POST   Drivers.createDriver)
