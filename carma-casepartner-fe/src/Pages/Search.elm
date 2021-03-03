@@ -549,6 +549,12 @@ viewServices model =
                         , th "Тип оплаты"
                         ]
                 , tbody =
+                    let 
+                        -- it's more correct to hide them 
+                        withoutBackOffice : List ServiceInfo -> List ServiceInfo
+                        withoutBackOffice xs =
+                            List.filter (\si -> si.status /= "В Back Office") xs
+                    in 
                     Table.tbody [] <|
                         List.map (Table.tr []) <|
                             List.map
@@ -584,7 +590,7 @@ viewServices model =
                                         [ Ui.cell theCase.payType ]
                                     ]
                                 )
-                                model.services
+                                (withoutBackOffice model.services)
                 }
             , viewServicesTitle model
                 ""
