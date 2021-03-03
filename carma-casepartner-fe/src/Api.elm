@@ -75,7 +75,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    ""
+    "/elm-live"
 
 
 apiLogin : String
@@ -315,6 +315,7 @@ servicesDecoder =
                 |> required "makeModel" string
                 |> required "breakdownPlace" string
                 |> required "payType" string
+                |> required "status" string
     in
     list decodeServiceInfo
 
