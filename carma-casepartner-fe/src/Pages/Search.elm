@@ -543,6 +543,7 @@ viewServices model =
                         [ th "Заявка"
                         , th "Дата подачи"
                         , th "Услуга"
+                        , th "Статус"
                         , th "Марка/Модель"
                         , Table.th (hideMobile :: ha) [ text "Адрес места поломки" ]
                         , th "Тип оплаты"
@@ -573,6 +574,7 @@ viewServices model =
                                                 Nothing ->
                                                     ""
                                         ]
+                                    , Table.td [ hideMobile, hC, vC, thW 5 ] [ Ui.cell theCase.status ]
                                     , Table.td [ hC, vC, thW 15 ] [ Ui.cell theCase.makeModel ]
                                     , Table.td [ hideMobile, vC ] [ Ui.addressCell theCase.breakdownPlace ]
                                     , Table.td
