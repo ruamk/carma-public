@@ -29,6 +29,7 @@ import Global
 import Html
     exposing
         ( Html
+        , a
         , b
         , br
         , div
@@ -65,14 +66,13 @@ import Types as Types
         , CurrentCaseInfo
         , Dictionary
         , Driver
+        , Location
         , Payment
         , ServiceDescription
         , emptyServiceDescription
-        , Location
         )
 import Ui
 import Utils exposing (formatTime)
-import Html exposing (a)
 
 
 type alias Flags =
@@ -1495,49 +1495,51 @@ viewCasePanel model serviceId =
 
             else
                 div [] []
-        
+
         locationLink : Location -> Maybe String
-        locationLink location = 
-            let 
-                locationLink_ latitude longitude = 
+        locationLink location =
+            let
+                locationLink_ latitude longitude =
                     "https://maps.yandex.ru/?z=18&l=map&pt="
                         ++ String.fromFloat longitude
                         ++ ","
                         ++ String.fromFloat latitude
-            in 
-                Maybe.map2 
-                    locationLink_ 
-                    location.latitude 
-                    location.longitude
+            in
+            Maybe.map2
+                locationLink_
+                location.latitude
+                location.longitude
 
-        
         viewAddress : Maybe Location -> String -> Html a
         viewAddress mbLocation addressText =
-            case mbLocation of 
-                Just location -> 
-                    case locationLink location of  
-                        Just link -> 
+            case mbLocation of
+                Just location ->
+                    case locationLink location of
+                        Just link ->
                             a [ A.href link, A.target "_blank" ] [ text addressText ]
-                        
-                        Nothing -> 
-                            text addressText 
 
-                Nothing -> 
+                        Nothing ->
+                            text addressText
+
+                Nothing ->
                     text addressText
-        
+
         formatPaymentType n =
             case n of
                 1 ->
                     "РАМК"
+
                 2 ->
                     "Клиент"
+
                 3 ->
                     "Смешанный"
+
                 4 ->
                     "Клиент с возмещением"
+
                 _ ->
                     "неизвестен"
-
     in
     Grid.row [ Row.attrs [ Spacing.p1 ] ]
         (if model.service.caseId == 0 then
@@ -1551,20 +1553,22 @@ viewCasePanel model serviceId =
                 [ viewServicesList
                     model
                     model.currentCases
-                ] -- Заявка: 666666 | Оплата: РАМК
+                ]
+
+            -- Заявка: 666666 | Оплата: РАМК
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
-                [ h2 [ class "text-center" ] 
-                    [ text <| 
-                        "Заявка: " 
-                            ++ caseId 
-                            ++ " | Оплата: " 
+                [ h2 [ class "text-center" ]
+                    [ text <|
+                        "Заявка: "
+                            ++ caseId
+                            ++ " | Оплата: "
                             ++ formatPaymentType (Maybe.withDefault 0 c.payType)
                     ]
                 , Grid.row []
-                    [ Grid.col [] 
+                    [ Grid.col []
                         [ field "Вид помощи" <| text c.serviceType
                         , field "Клиент" <| text c.client
-                        , field "Телефон клиента" <| a [A.href ("tel:" ++ c.clientPhone)] [ text c.clientPhone ]
+                        , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
                         ]
                     , Grid.col []
                         [ field "Марка/Модель" <| text c.makeModel
@@ -1904,20 +1908,24 @@ viewServicesList model ccs =
     let
         cases =
             List.map (viewCard model) ccs
-        
-        header = 
+
+        header =
             h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
 
-        hideMobile = 
+        hideMobile =
             class "d-none d-lg-block"
+
+        dropInProgressDown xs = 
+            let
+                rule x = x
+            in rule 
     in
-    div [ hideMobile ] 
+    div [ hideMobile ]
         [ header
         , Card.deck
             [ Card.customListGroup cases (Card.config [])
             ]
         ]
-    
 
 
 viewCard : Model -> CurrentCaseInfo -> ListGroup.CustomItem Msg

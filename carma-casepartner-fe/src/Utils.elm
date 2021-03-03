@@ -2,11 +2,15 @@ module Utils exposing
     ( formatDate
     , formatTime
     , fromUrl
+    , WithToast
+    , withToast
+    , noToast
     )
 
 import Generated.Route as Route exposing (Route)
 import ISO8601 exposing (Time)
 import Url exposing (Url)
+import MessageToast exposing (MessageToast)
 
 
 fromUrl : Url -> Route
@@ -38,3 +42,18 @@ formatDate nt =
             List.map (\field -> field nt |> String.fromInt |> String.padLeft 2 '0')
     in
     String.join "." (f [ .day, .month, .year ])
+
+
+type alias WithToast msg a = (Maybe (MessageToast msg), a)
+
+
+withToast : MessageToast msg -> a -> WithToast msg a
+withToast toast a = 
+    (Just toast, a)
+
+
+noToast : a -> WithToast msg a
+noToast a = 
+    (Nothing, a)
+
+
