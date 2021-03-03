@@ -3,44 +3,71 @@
 module AppHandlers.MobileAPI
     ( androidVersionAndURL
     , delayReason
+    , getPhoto
+    , getPhotos
     , location
     , login
     , order
+    , savePhoto
     , settings
     , status
     ) where
 
 
-import           Control.Exception                (SomeException, handle)
-import           Control.Monad                    (void)
-import           Control.Monad.IO.Class           (liftIO)
-import           Data.Aeson                       (FromJSON (..), ToJSON (..),
-                                                   Value (..), eitherDecode,
-                                                   genericToJSON, object,
-                                                   withObject, (.:))
-import           Data.Aeson.Types                 (defaultOptions,
-                                                   fieldLabelModifier)
-import           Data.ByteString                  (ByteString)
-import qualified Data.ByteString.Char8            as BS
-import qualified Data.Configurator                as Config
-import qualified Data.Configurator.Types          as Config
-import qualified Data.Map                         as M
-import           Data.Text                        (Text)
-import qualified Data.Text                        as T
-import qualified Data.Text.IO                     as T
-import           Data.Time.LocalTime              (ZonedTime)
+import           Control.Exception                    (SomeException, bracket,
+                                                       handle)
+import           Control.Monad                        (void)
+import           Control.Monad.IO.Class               (liftIO)
+import           Data.Aeson                           (FromJSON (..),
+                                                       ToJSON (..), Value (..),
+                                                       eitherDecode,
+                                                       genericToJSON, object,
+                                                       withObject, (.:))
+import           Data.Aeson.Types                     (constructorTagModifier,
+                                                       defaultOptions,
+                                                       fieldLabelModifier)
+import           Data.ByteString                      (ByteString)
+import qualified Data.ByteString.Char8                as BS
+import           Data.Char                            (toLower)
+import qualified Data.Configurator                    as Config
+import qualified Data.Configurator.Types              as Config
+import           Data.List                            (find)
+import qualified Data.Map                             as M
+import           Data.Text                            (Text)
+import qualified Data.Text                            as T
+import qualified Data.Text.IO                         as T
+import           Data.Time.Calendar                   (toGregorian)
+import           Data.Time.LocalTime                  (ZonedTime, localDay,
+                                                       zonedTimeToLocalTime)
+import           Database.PostgreSQL.Simple.FromField (FromField (..),
+                                                       ResultError (..),
+                                                       returnError, typename)
+import           Database.PostgreSQL.Simple.FromRow   (FromRow (..), field)
 import           Database.PostgreSQL.Simple.SqlQQ
+import           Database.PostgreSQL.Simple.ToField   (ToField (..))
 import           GHC.Generics
-import           GHC.Word                         (Word64)
+import           GHC.Word                             (Word64)
 import           Snap
-import           Snap.Snaplet.PostgresqlSimple    (Only (..), execute, query)
+import           Snap.Snaplet.PostgresqlSimple        (Only (..), execute,
+                                                       query)
+import           Snap.Util.FileUploads                (defaultUploadPolicy,
+                                                       handleMultipart,
+                                                       partContentType,
+                                                       partFieldName,
+                                                       partFileName)
+import           System.Directory                     (createDirectoryIfMissing)
+import           System.FilePath                      ((</>))
+import           System.IO                            (hClose)
+import qualified System.IO.Streams                    as Streams
+import           System.IO.Temp                       (openBinaryTempFile)
+import           Text.Read                            (readMaybe)
 import           Web.ClientSession
 
 import           AppHandlers.Dicts
-import           AppHandlers.Util
 import           Application
 import           Carma.Model
-import qualified Carma.Model.Usermeta             as Usermeta
+import qualified Carma.Model.Usermeta                 as Usermeta
+import           Carma.Utils.Snap
 import           Service.Util
 
 
@@ -121,7 +148,63 @@ emptyService = Service 0 Nothing 0
                   Nothing Nothing Nothing
                   Nothing Nothing Nothing
                   Nothing Nothing Nothing
---ServiceStatusInPlace
+
+
+data DriverPhotoType = DriverPhotoBefore
+                     | DriverPhotoAfter
+                     | DriverPhotoDifficult
+                     | DriverPhotoOrder
+                       deriving (Generic, Read)
+
+instance Show DriverPhotoType where
+    show DriverPhotoBefore    = "Before"
+    show DriverPhotoAfter     = "After"
+    show DriverPhotoDifficult = "Difficult"
+    show DriverPhotoOrder     = "Order"
+
+instance ToField DriverPhotoType where
+    toField = toField . show
+
+instance FromField DriverPhotoType where
+    fromField f mdata = do
+      typeName <- typename f
+      if typeName /= "DriverPhotoType"
+      then returnError Incompatible f ""
+      else case BS.unpack `fmap` mdata of
+             Nothing -> returnError UnexpectedNull f ""
+             Just v  -> case readMaybe ("DriverPhoto" ++ v) of
+                         Nothing -> returnError ConversionFailed f
+                                               "mismatched enums"
+                         Just v' -> return v'
+
+
+instance ToJSON DriverPhotoType where
+    toJSON = genericToJSON defaultOptions
+             { constructorTagModifier = map toLower . drop 11 }
+
+
+data PhotoInfo = PhotoInfo
+    { _driverId  :: Int
+    , _serviceId :: Int
+    , _latitude  :: Maybe Double
+    , _longitude :: Maybe Double
+    , _created   :: Maybe ZonedTime
+    , _type      :: Maybe DriverPhotoType
+    , image      :: Maybe Text
+    } deriving (Generic, Show)
+
+instance ToJSON PhotoInfo where
+    toJSON = genericToJSON defaultOptions
+             { fieldLabelModifier = dropWhile (== '_')}
+
+instance FromRow PhotoInfo where
+    fromRow = PhotoInfo <$> field
+                        <*> field
+                        <*> field
+                        <*> field
+                        <*> field
+                        <*> field
+                        <*> field
 
 requestSize :: Word64
 requestSize = 4096
@@ -129,16 +212,20 @@ requestSize = 4096
 sessionCookieName :: ByteString
 sessionCookieName = "_session"
 
+
 response :: Text -> Text -> Value
 response s m = object [ ("status",  String s)
                       , ("message", String m)
                       ]
+
+
 okResponse :: Text -> AppHandler ()
 okResponse message = writeJSON $ response "ok" message
 
 
 errorResponse :: Text -> AppHandler ()
 errorResponse message = writeJSON $ response "error" message
+
 
 -- todo: использовать isActive в проверке
 isValidDriver :: AppHandler (Maybe Int)
@@ -499,3 +586,158 @@ androidVersionAndURL cfg = do
 -- | Возвращает справочник причин задержки
 delayReason :: AppHandler ()
 delayReason = checkDriver $ \_ -> getDict "PartnerDelay_Reason" >>= writeJSON
+
+
+getPhotoTypeParam :: ByteString -> Handler a b (Either Text DriverPhotoType)
+getPhotoTypeParam name =
+  getParam name >>= \v ->
+      return $ case v of
+                 Just "after"     -> Right DriverPhotoAfter
+                 Just "before"    -> Right DriverPhotoBefore
+                 Just "difficult" -> Right DriverPhotoDifficult
+                 Just "order"     -> Right DriverPhotoOrder
+                 Just iv          -> Left $ T.concat [ "invalid value '"
+                                                    , T.pack $ BS.unpack iv
+                                                    , "' for parameter "
+                                                    , T.pack $ BS.unpack name
+                                                    ]
+                 Nothing          -> Left $ T.concat [ T.pack $ BS.unpack name
+                                                    , " not specified"
+                                                    ]
+
+
+savePhoto :: AppHandler ()
+savePhoto = checkDriver $ \driverId -> do
+  parts <- handleMultipart defaultUploadPolicy partHandler
+
+  let image = case find (\(name, _, _, _) -> "image" == name) parts of
+                Nothing -> Left $ T.pack "image is not specified"
+
+                Just (_, _, "image/jpeg", rawData) ->
+                    if BS.null rawData
+                    then Left $ T.pack "image is empty"
+                    else Right rawData
+
+                Just _ -> Left $ T.pack "image Content-Type is not image/jpeg"
+
+  serviceId <- getIntParam "serviceId"
+  latitude  <- getLatitudeParam "latitude"
+  longitude <- getLongitudeParam "longitude"
+  created   <- getDateTimeParam "created"
+  photoType <- getPhotoTypeParam "type"
+
+  case (image, serviceId, latitude, longitude, created, photoType) of
+    (Left err, _, _, _, _, _) -> errorResponse err
+
+    (_, Nothing, _, _, _, _)  ->
+        errorResponse "serviceId is not specified or contains invalid value"
+
+    (_, _, Left err, _, _, _) ->  errorResponse err
+
+    (_, _, _, Left err, _, _) ->  errorResponse err
+
+    (_, _, _, _, Nothing, _) ->
+        errorResponse "created is not specified or contains invalid value"
+
+    (_, _, _, _, _, Left err) ->  errorResponse err
+
+    ( Right rawPhoto, Just serviceId', Right lat, Right lon, Just created', Right photoType') -> do
+      filename <- saveFile rawPhoto serviceId' photoType' created'
+      photoId <- savePhotoInfo driverId serviceId' lat lon created' photoType' filename
+      okResponse $ T.pack $ show photoId
+
+  where
+    partHandler pInfo stream = do
+      let fieldname   = BS.unpack $ partFieldName pInfo
+          filename    = partFileName pInfo
+          contentType = BS.unpack $ partContentType pInfo
+      body <- BS.concat <$> Streams.toList stream
+      return (fieldname, filename, contentType, body)
+
+
+    saveFile rawPhoto serviceId photoType created = do
+      cfg <- getSnapletUserConfig
+      dirPrefix <- liftIO $ Config.require cfg "photo.directory"
+
+      let (year, m, _) = toGregorian $ localDay $ zonedTimeToLocalTime created
+          month = (if m < 10 then "0" else "") ++ show m
+          dirname = dirPrefix </> show photoType </> show year </> month
+          filenameTemplate = show serviceId ++ "_.jpg"
+
+      liftIO $ createDirectoryIfMissing True dirname
+      liftIO $ bracket (openBinaryTempFile dirname filenameTemplate)
+                       (\(_, h) -> hClose h)
+                       (\(filePath, h) ->
+                            BS.hPut h rawPhoto >>
+                            return (drop (length dirPrefix) filePath)
+                       )
+
+
+    savePhotoInfo driverId serviceId lat lon created photoType filename = do
+      [Only photoId] :: [Only Int] <- query [sql|
+        INSERT INTO driversPhotos
+                    (driverId, serviceId, coord, created, photoType, filename)
+             VALUES (?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?, ?)
+          RETURNING id
+      |] ( driverId, serviceId, lon, lat, created, photoType, filename)
+      return photoId
+
+
+getPhotos :: AppHandler ()
+getPhotos = checkDriver $ \driverId -> do
+  hasPhotos <- getPhotosFromDB driverId
+
+  case hasPhotos of
+    Right photos -> writeJSON $ object [ ("status", "ok")
+                                      , ("message", toJSON photos)]
+    Left err -> errorResponse err
+
+  where
+    getPhotosFromDB :: Int -> AppHandler (Either Text [PhotoInfo])
+    getPhotosFromDB driverId = do
+      hasService <- getIntParam "serviceId"
+
+      case hasService of
+        Nothing -> return $ Left $ T.pack "serviceId is not specified"
+
+        Just serviceId -> do
+          r <- getRequest
+
+          photosInfo :: [PhotoInfo] <- query [sql|
+            SELECT driverId
+                 , serviceId
+                 , ST_Y(coord)
+                 , ST_X(coord)
+                 , created
+                 , photoType
+                 , ? || '/' || id::text
+              FROM driversPhotos
+             WHERE driverId = ? and serviceId = ?
+          |] ( rqURI r, driverId, serviceId)
+
+          return $ Right photosInfo
+
+
+getPhoto :: AppHandler ()
+getPhoto = checkDriver $ \driverId -> do
+  hasPhoto <- getIntParam "photoId"
+
+  case hasPhoto of
+    Nothing -> errorResponse "photo id is not specified"
+
+    Just photoId -> do
+      [Only filename] :: [Only (Maybe String)] <- query [sql|
+        SELECT filename
+          FROM driversPhotos
+         WHERE driverId = ?
+           AND id = ?
+      |] ( driverId, photoId )
+
+      case filename of
+        Nothing -> errorResponse "invalid photo file name"
+        Just "" -> errorResponse "empty photo file name"
+        Just f  -> do
+          cfg <- getSnapletUserConfig
+          dirPrefix <- liftIO $ Config.require cfg "photo.directory"
+          modifyResponse $ setContentType "image/jpeg"
+          sendFile $ dirPrefix </> f

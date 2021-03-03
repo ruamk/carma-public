@@ -1,5 +1,5 @@
 {-# LANGUAGE DoAndIfThenElse #-}
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes     #-}
 
 {-|
 
@@ -9,61 +9,56 @@ data/states.
 -}
 
 module AppHandlers.Users
-    ( chkAuth
-    , chkAuthLocal
+    ( checkAuthCasePartner
+    , chkAuth
     , chkAuthAdmin
+    , chkAuthLocal
     , chkAuthPartner
-    , checkAuthCasePartner
-
-    , chkUserActiveness
-
     , chkAuthRoles
+    , chkUserActiveness
     , hasAnyOfRoles
     , hasNoneOfRoles
-
     , serveUserCake
     , serveUserStates
     , userIsInState
     , userIsReady
     , usersInStates
-    )
+    ) where
 
-where
-
-import           Data.Maybe
 import           Data.Bool
-import           Data.Text (Text)
-import qualified Data.Text           as T
-import           Data.String (fromString)
-import           Data.Time.Calendar (Day)
-import qualified Data.ByteString.Char8 as BS
-import qualified Data.Vector as V
+import qualified Data.ByteString.Char8                            as BS
+import           Data.Maybe
+import           Data.String                                      (fromString)
+import           Data.Text                                        (Text)
+import qualified Data.Text                                        as T
+import           Data.Time.Calendar                               (Day)
+import qualified Data.Vector                                      as V
 
 import           Control.Monad
 import           Control.Monad.IO.Class
 
 import           Text.Printf
 
-import           Database.PostgreSQL.Simple (query)
+import           Database.PostgreSQL.Simple                       (query)
 import           Database.PostgreSQL.Simple.SqlQQ.Alt
 
 import           Snap
-import           Snap.Snaplet.PostgresqlSimple hiding (query)
+import           Snap.Snaplet.PostgresqlSimple                    hiding (query)
 
-import Data.Model
-import Data.Model.Patch as Patch
-import qualified Data.Model.Patch.Sql as Patch
-import Data.Model.Utils.LegacyModel (readIdent)
-import Data.Model.Utils.PostgreSQL.InterpolationHelpers
+import           Data.Model
+import           Data.Model.Patch                                 as Patch
+import qualified Data.Model.Patch.Sql                             as Patch
+import           Data.Model.Utils.LegacyModel                     (readIdent)
+import           Data.Model.Utils.PostgreSQL.InterpolationHelpers
 
-import Carma.Model.Role      as Role
-import Carma.Model.Usermeta  as Usermeta
-import Carma.Model.UserState as UserState
+import           Carma.Model.Role                                 as Role
+import           Carma.Model.UserState                            as UserState
+import           Carma.Model.Usermeta                             as Usermeta
+import           Carma.Utils.Snap
 
-import Application
-import AppHandlers.Util
-import Snaplet.Auth.PGUsers
-import Snaplet.Search.Types (mkSel)
+import           Application
+import           Snaplet.Auth.PGUsers
+import           Snaplet.Search.Types                             (mkSel)
 
 
 ------------------------------------------------------------------------------

@@ -25,10 +25,10 @@ import           Snap.Snaplet.PostgresqlSimple      (In (..), Only (..), Query,
                                                      query)
 
 import           AppHandlers.Users
-import           AppHandlers.Util
 import           Application
 import qualified Carma.Model.ServiceStatus          as SS
 import qualified Carma.Model.ServiceType            as ST
+import           Carma.Utils.Snap
 import           Data.Model
 import           Types
 
@@ -295,8 +295,8 @@ getServices uid = do
           <$> getIntParam "limit"
 
   sId           <- getIntParam "serviceId"
-  callDateStart <- getParamDate "callDateStart"
-  callDateEnd   <- getParamDate "callDateEnd"
+  callDateStart <- getDateParam "callDateStart"
+  callDateEnd   <- getDateParam "callDateEnd"
 
   let ds v = formatTime defaultTimeLocale "'%Y-%m-%d'" v
       de v = formatTime defaultTimeLocale "'%Y-%m-%d 23:59:59'" v
