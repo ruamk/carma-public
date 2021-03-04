@@ -38,8 +38,8 @@ import           Carma.Model.Action                   (Action)
 import qualified Carma.Model.ActionType               as ActionType
 import qualified Carma.Model.PaymentType              as PaymentType
 import qualified Carma.Model.ServiceStatus            as ServiceStatus
-import qualified Carma.Model.Usermeta                 as Usermeta
 import qualified Carma.Model.ServiceType              as ServiceType
+import qualified Carma.Model.Usermeta                 as Usermeta
 import           Carma.Utils.Snap
 import qualified Data.Model.Patch                     as Patch
 import           Service.Util
