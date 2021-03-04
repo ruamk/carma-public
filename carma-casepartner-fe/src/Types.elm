@@ -30,6 +30,7 @@ type alias ServiceInfo =
     , makeModel : String
     , breakdownPlace : String
     , payType : String
+    , status : String
     }
 
 

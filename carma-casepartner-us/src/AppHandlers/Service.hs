@@ -38,6 +38,7 @@ import           Carma.Model.Action                   (Action)
 import qualified Carma.Model.ActionType               as ActionType
 import qualified Carma.Model.PaymentType              as PaymentType
 import qualified Carma.Model.ServiceStatus            as ServiceStatus
+import qualified Carma.Model.ServiceType              as ServiceType
 import qualified Carma.Model.Usermeta                 as Usermeta
 import           Carma.Utils.Snap
 import qualified Data.Model.Patch                     as Patch
@@ -130,29 +131,47 @@ handleApiGetService = checkAuthCasePartner $ do
     WHERE id = ?;
   |] (caseId, serviceId)
 
+  let [tech, towage, bikeTowage] =
+          map (\(Ident i) -> i) [ServiceType.tech, ServiceType.towage, ServiceType.bikeTowage]
+
   [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType
    , status, statusLabel, payType, partnerCost, partnerCostTranscript
    , checkCost, checkCostTranscript, paidByClient)] <- query [sql|
-    SELECT
-        times_expectedservicestart
-      , times_factservicestart
-      , times_factserviceend
-      , "ServiceType".label
-      , status
-      , "ServiceStatus".label
-      , payType
-      , payment_partnerCost
-      , payment_partnerCostTranscript
-      , payment_checkCost
-      , payment_checkCostTranscript
-      , payment_paidByClient
+        SELECT
+        servicetbl.times_expectedservicestart
+      , servicetbl.times_factservicestart
+      , servicetbl.times_factserviceend
+      , CASE
+          WHEN servicetbl.type = ?
+               THEN st.label || ' - ' || tt.label
+          WHEN servicetbl.type = ?
+               THEN st.label || ' - ' || ts.label
+          WHEN servicetbl.type = ?
+               THEN st.label || ' - ' || btt.label
+          ELSE
+               st.label
+        END AS typeofservice
+      , servicetbl.status
+      , ss.label
+      , servicetbl.payType
+      , servicetbl.payment_partnerCost
+      , servicetbl.payment_partnerCostTranscript
+      , servicetbl.payment_checkCost
+      , servicetbl.payment_checkCostTranscript
+      , servicetbl.payment_paidByClient
     FROM servicetbl
-    LEFT OUTER JOIN "ServiceType" ON servicetbl.type = "ServiceType".id
-    LEFT OUTER JOIN "ServiceStatus" ON servicetbl.status = "ServiceStatus".id
+    LEFT OUTER JOIN techtbl             ON techtbl.id   = servicetbl.id
+    LEFT OUTER JOIN towagetbl           ON towagetbl.id = servicetbl.id
+    LEFT OUTER JOIN "BikeTowage"    bt  ON bt.id  = servicetbl.id
+    LEFT OUTER JOIN "BikeTowType"   btt ON btt.id = bt.biketowtype
+    LEFT OUTER JOIN "ServiceStatus" ss  ON ss.id  = servicetbl.status
+    LEFT OUTER JOIN "ServiceType"   st  ON st.id  = servicetbl.type
+    LEFT OUTER JOIN "TechType"      tt  ON tt.id  = techtbl.techtype
+    LEFT OUTER JOIN "TowSort"       ts  ON ts.id  = towagetbl.towsort
     WHERE servicetbl.id = ?
     ORDER by servicetbl.id DESC
     LIMIT 1
-  |] $ Only serviceId
+  |] $ (tech, towage, bikeTowage, serviceId)
 
   lastAddress <- query [sql|
                   WITH service AS (

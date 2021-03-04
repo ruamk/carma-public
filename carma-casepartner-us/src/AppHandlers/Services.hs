@@ -106,6 +106,7 @@ data ServiceInfo = ServiceInfo
     , _makeModel      :: String
     , _breakdownPlace :: String
     , _payType        :: String
+    , _status         :: String 
     } deriving (Show, Generic)
 
 instance ToJSON ServiceInfo where
@@ -114,6 +115,7 @@ instance ToJSON ServiceInfo where
 
 instance FromRow ServiceInfo where
     fromRow = ServiceInfo <$> field
+                          <*> field
                           <*> field
                           <*> field
                           <*> field
@@ -338,6 +340,7 @@ getServices uid = do
           , ", coalesce(make.label || ' / ' || regexp_replace(model.label, '^([^/]*)/.*','\\1'), '')::text"
           , ", coalesce(casetbl.caseaddress_address, '')::text"
           , ", coalesce(pt.label, '')::text"
+          , ", ss.label as status"
           , "FROM servicetbl"
           , "LEFT OUTER JOIN casetbl                 ON casetbl.id = parentid"
           , "LEFT OUTER JOIN techtbl                 ON techtbl.id = servicetbl.id"

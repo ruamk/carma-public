@@ -317,6 +317,7 @@ servicesDecoder =
                 |> required "makeModel" string
                 |> required "breakdownPlace" string
                 |> required "payType" string
+                |> required "status" string
     in
     list decodeServiceInfo
 

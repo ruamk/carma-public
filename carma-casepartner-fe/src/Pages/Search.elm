@@ -543,11 +543,18 @@ viewServices model =
                         [ th "Заявка"
                         , th "Дата подачи"
                         , th "Услуга"
+                        , th "Статус"
                         , th "Марка/Модель"
                         , Table.th (hideMobile :: ha) [ text "Адрес места поломки" ]
                         , th "Тип оплаты"
                         ]
                 , tbody =
+                    let 
+                        -- it's more correct to hide them 
+                        withoutBackOffice : List ServiceInfo -> List ServiceInfo
+                        withoutBackOffice xs =
+                            List.filter (\si -> si.status /= "В Back Office") xs
+                    in 
                     Table.tbody [] <|
                         List.map (Table.tr []) <|
                             List.map
@@ -573,6 +580,7 @@ viewServices model =
                                                 Nothing ->
                                                     ""
                                         ]
+                                    , Table.td [ hideMobile, hC, vC, thW 5 ] [ Ui.cell theCase.status ]
                                     , Table.td [ hC, vC, thW 15 ] [ Ui.cell theCase.makeModel ]
                                     , Table.td [ hideMobile, vC ] [ Ui.addressCell theCase.breakdownPlace ]
                                     , Table.td
@@ -582,7 +590,7 @@ viewServices model =
                                         [ Ui.cell theCase.payType ]
                                     ]
                                 )
-                                model.services
+                                (withoutBackOffice model.services)
                 }
             , viewServicesTitle model
                 ""
