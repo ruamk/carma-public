@@ -360,7 +360,6 @@ getServices uid = do
           , "LIMIT ? OFFSET ?"
           ]) :: Query
 
-
   rows :: [ServiceInfo] <- query sqlQuery ( tech, towage, bikeTowage
                                         , uid, limit, offset
                                         )
