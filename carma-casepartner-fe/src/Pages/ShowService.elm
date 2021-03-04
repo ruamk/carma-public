@@ -1564,7 +1564,17 @@ viewCasePanel model serviceId =
                     ]
                 , Grid.row []
                     [ Grid.col []
-                        [ field "Вид помощи" <| text c.serviceType
+                        [ 
+                            let 
+                                shortcutted = 
+                                     case Dict.get c.serviceType model.typeOfServiceSynonym of
+                                        Just v ->
+                                            v
+
+                                        Nothing ->
+                                            c.serviceType
+                            in 
+                            field "Вид помощи" <| text shortcutted
                         , field "Клиент" <| text c.client
                         , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
                         ]
