@@ -1554,8 +1554,6 @@ viewCasePanel model serviceId =
                     model
                     model.currentCases
                 ]
-
-            -- Заявка: 666666 | Оплата: РАМК
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
                 [ h2 [ class "text-center" ]
                     [ text <|
