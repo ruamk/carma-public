@@ -29,6 +29,7 @@ import Global
 import Html
     exposing
         ( Html
+        , a
         , b
         , br
         , div
@@ -65,6 +66,7 @@ import Types as Types
         , CurrentCaseInfo
         , Dictionary
         , Driver
+        , Location
         , Payment
         , ServiceDescription
         , emptyServiceDescription
@@ -1493,6 +1495,51 @@ viewCasePanel model serviceId =
 
             else
                 div [] []
+
+        locationLink : Location -> Maybe String
+        locationLink location =
+            let
+                locationLink_ latitude longitude =
+                    "https://maps.yandex.ru/?z=18&l=map&pt="
+                        ++ String.fromFloat longitude
+                        ++ ","
+                        ++ String.fromFloat latitude
+            in
+            Maybe.map2
+                locationLink_
+                location.latitude
+                location.longitude
+
+        viewAddress : Maybe Location -> String -> Html a
+        viewAddress mbLocation addressText =
+            case mbLocation of
+                Just location ->
+                    case locationLink location of
+                        Just link ->
+                            a [ A.href link, A.target "_blank" ] [ text addressText ]
+
+                        Nothing ->
+                            text addressText
+
+                Nothing ->
+                    text addressText
+
+        formatPaymentType n =
+            case n of
+                1 ->
+                    "РАМК"
+
+                2 ->
+                    "Клиент"
+
+                3 ->
+                    "Смешанный"
+
+                4 ->
+                    "Клиент с возмещением"
+
+                _ ->
+                    "неизвестен"
     in
     Grid.row [ Row.attrs [ Spacing.p1 ] ]
         (if model.service.caseId == 0 then
@@ -1503,63 +1550,52 @@ viewCasePanel model serviceId =
 
          else
             [ Grid.col [ Col.sm2 ]
-                [ h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
-                , viewServicesList
+                [ viewServicesList
                     model
                     model.currentCases
                 ]
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
-                [ h2 [ class "text-center" ] [ text <| "Номер заявки: " ++ caseId ]
+                [ h2 [ class "text-center" ]
+                    [ text <|
+                        "Заявка: "
+                            ++ caseId
+                            ++ " | Оплата: "
+                            ++ formatPaymentType (Maybe.withDefault 0 c.payType)
+                    ]
                 , Grid.row []
                     [ Grid.col []
-                        [ field "Вид помощи" <| text c.serviceType
-                        , field "Клиент" <| text c.client
-                        , field "Телефон клиента" <| text c.clientPhone
-                        , br [] []
-                        , field "Адрес начала работы" <| text c.firstAddress
-                        , if c.serviceType == "Техпомощь" then
-                            div [] []
+                        [ 
+                            let 
+                                shortcutted = 
+                                     case Dict.get c.serviceType model.typeOfServiceSynonym of
+                                        Just v ->
+                                            v
 
-                          else
-                            optionalField "Адрес доставки" <| c.lastAddress
-                        , field "Желаемая дата оказания услуг" <|
-                            text <|
-                                formatTime_ c.expectedServiceStart
-                        , field "Факт. время оказания услуг" <|
-                            text <|
-                                formatTime_ c.factServiceStart
-                        , field "Время окончания работы" <|
-                            text <|
-                                formatTime_ c.factServiceEnd
+                                        Nothing ->
+                                            c.serviceType
+                            in 
+                            field "Вид помощи" <| text shortcutted
+                        , field "Клиент" <| text c.client
+                        , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
                         ]
                     , Grid.col []
                         [ field "Марка/Модель" <| text c.makeModel
                         , field "Гос. номер" <| text c.plateNumber
                         , field "VIN" <| text <| String.toUpper vin
-                        , let
-                            formatPaymentType n =
-                                case n of
-                                    1 ->
-                                        "РАМК"
+                        ]
+                    , Grid.colBreak []
+                    , Grid.col []
+                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress
+                        , field "Желаемая дата оказания услуг" <| text (formatTime_ c.expectedServiceStart)
+                        , field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
+                        , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
+                        ]
+                    , Grid.col []
+                        [ if c.serviceType == "Техпомощь" then
+                            div [] []
 
-                                    2 ->
-                                        "Клиент"
-
-                                    3 ->
-                                        "Смешанный"
-
-                                    4 ->
-                                        "Клиент с возмещением"
-
-                                    _ ->
-                                        "неизвестен"
-                          in
-                          case c.payType of
-                            Just p ->
-                                field "Тип оплаты" <| text <| formatPaymentType p
-
-                            Nothing ->
-                                field "Тип оплаты" <| text "неизвестен"
+                          else
+                            optionalField "Адрес доставки" <| c.lastAddress
                         ]
                     ]
                 , hr [] []
@@ -1880,9 +1916,23 @@ viewServicesList model ccs =
     let
         cases =
             List.map (viewCard model) ccs
+
+        header =
+            h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
+
+        hideMobile =
+            class "d-none d-lg-block"
+
+        dropInProgressDown xs = 
+            let
+                rule x = x
+            in rule 
     in
-    Card.deck
-        [ Card.customListGroup cases (Card.config [ Card.attrs [ class "d-none d-lg-block" ] ])
+    div [ hideMobile ]
+        [ header
+        , Card.deck
+            [ Card.customListGroup cases (Card.config [])
+            ]
         ]
 
 
@@ -1931,18 +1981,27 @@ viewCard model cci =
             case s of
                 "Опоздание" ->
                     div
-                        [ style "color" "red"
+                        [ style "color" "white"
                         , style "border" "1px solid red"
                         , style "padding" "3px"
                         , style "border-radius" "3px"
-                        , style "background-color" "white"
+                        , style "background-color" "tomato"
                         , style "float" "right"
                         , style "font-weight" "bold"
                         ]
                         [ text s ]
 
                 _ ->
-                    div [] [ text s ]
+                    div
+                        [ style "color" "white"
+                        , style "border" "1px solid #28a745"
+                        , style "padding" "3px"
+                        , style "border-radius" "3px"
+                        , style "background-color" "#28a745"
+                        , style "float" "right"
+                        , style "font-weight" "bold"
+                        ]
+                        [ text s ]
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )

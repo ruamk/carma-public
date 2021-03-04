@@ -31,10 +31,10 @@ import           Snap.Snaplet.PostgresqlSimple      (Only (..), execute, query)
 
 import           AppHandlers.MobileAPI              (androidVersionAndURL)
 import           AppHandlers.Users
-import           AppHandlers.Util
 import           Application
 import           Carma.Model
 import qualified Carma.Model.Usermeta               as Usermeta
+import           Carma.Utils.Snap
 import qualified Data.Model.Patch                   as Patch
 import           Snaplet.Auth.PGUsers
 

@@ -38,3 +38,4 @@ formatDate nt =
             List.map (\field -> field nt |> String.fromInt |> String.padLeft 2 '0')
     in
     String.join "." (f [ .day, .month, .year ])
+

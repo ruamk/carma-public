@@ -25,10 +25,10 @@ import           Snap.Snaplet.PostgresqlSimple      (In (..), Only (..), Query,
                                                      query)
 
 import           AppHandlers.Users
-import           AppHandlers.Util
 import           Application
 import qualified Carma.Model.ServiceStatus          as SS
 import qualified Carma.Model.ServiceType            as ST
+import           Carma.Utils.Snap
 import           Data.Model
 import           Types
 
@@ -106,6 +106,7 @@ data ServiceInfo = ServiceInfo
     , _makeModel      :: String
     , _breakdownPlace :: String
     , _payType        :: String
+    , _status         :: String 
     } deriving (Show, Generic)
 
 instance ToJSON ServiceInfo where
@@ -114,6 +115,7 @@ instance ToJSON ServiceInfo where
 
 instance FromRow ServiceInfo where
     fromRow = ServiceInfo <$> field
+                          <*> field
                           <*> field
                           <*> field
                           <*> field
@@ -295,8 +297,8 @@ getServices uid = do
           <$> getIntParam "limit"
 
   sId           <- getIntParam "serviceId"
-  callDateStart <- getParamDate "callDateStart"
-  callDateEnd   <- getParamDate "callDateEnd"
+  callDateStart <- getDateParam "callDateStart"
+  callDateEnd   <- getDateParam "callDateEnd"
 
   let ds v = formatTime defaultTimeLocale "'%Y-%m-%d'" v
       de v = formatTime defaultTimeLocale "'%Y-%m-%d 23:59:59'" v
@@ -338,6 +340,7 @@ getServices uid = do
           , ", coalesce(make.label || ' / ' || regexp_replace(model.label, '^([^/]*)/.*','\\1'), '')::text"
           , ", coalesce(casetbl.caseaddress_address, '')::text"
           , ", coalesce(pt.label, '')::text"
+          , ", ss.label as status"
           , "FROM servicetbl"
           , "LEFT OUTER JOIN casetbl                 ON casetbl.id = parentid"
           , "LEFT OUTER JOIN techtbl                 ON techtbl.id = servicetbl.id"
