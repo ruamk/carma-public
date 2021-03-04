@@ -39,11 +39,12 @@ import qualified Carma.Model.ActionType               as ActionType
 import qualified Carma.Model.PaymentType              as PaymentType
 import qualified Carma.Model.ServiceStatus            as ServiceStatus
 import qualified Carma.Model.Usermeta                 as Usermeta
+import qualified Carma.Model.ServiceType              as ServiceType
 import           Carma.Utils.Snap
 import qualified Data.Model.Patch                     as Patch
 import           Service.Util
 import           Snaplet.Auth.PGUsers
-import qualified Carma.Model.ServiceType              as ST
+
 
 type LoadingDifficulties = M.Map String (Maybe Bool)
 
@@ -131,27 +132,27 @@ handleApiGetService = checkAuthCasePartner $ do
   |] (caseId, serviceId)
 
   let [tech, towage, bikeTowage] =
-          map (\(Ident i) -> i) [ST.tech, ST.towage, ST.bikeTowage]
+          map (\(Ident i) -> i) [ServiceType.tech, ServiceType.towage, ServiceType.bikeTowage]
 
   [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType
    , status, statusLabel, payType, partnerCost, partnerCostTranscript
    , checkCost, checkCostTranscript, paidByClient)] <- query [sql|
-    SELECT
+        SELECT
         servicetbl.times_expectedservicestart
       , servicetbl.times_factservicestart
       , servicetbl.times_factserviceend
       , CASE
           WHEN servicetbl.type = ?
-               THEN st.label || ' - '::text || tt.label
+               THEN st.label || ' - ' || tt.label
           WHEN servicetbl.type = ?
-               THEN st.label || ' - '::text || ts.label
+               THEN st.label || ' - ' || ts.label
           WHEN servicetbl.type = ?
-               THEN st.label || ' - '::text || btt.label
+               THEN st.label || ' - ' || btt.label
           ELSE
                st.label
         END AS typeofservice
       , servicetbl.status
-      , "ServiceStatus".label
+      , ss.label
       , servicetbl.payType
       , servicetbl.payment_partnerCost
       , servicetbl.payment_partnerCostTranscript
@@ -159,15 +160,14 @@ handleApiGetService = checkAuthCasePartner $ do
       , servicetbl.payment_checkCostTranscript
       , servicetbl.payment_paidByClient
     FROM servicetbl
-    LEFT OUTER JOIN techtbl             ON techtbl.id = servicetbl.id
+    LEFT OUTER JOIN techtbl             ON techtbl.id   = servicetbl.id
     LEFT OUTER JOIN towagetbl           ON towagetbl.id = servicetbl.id
-    LEFT OUTER JOIN "ServiceType"       ON servicetbl.type = "ServiceType".id
-    LEFT OUTER JOIN "ServiceStatus"     ON servicetbl.status = "ServiceStatus".id
-    LEFT OUTER JOIN "ServiceType"   st  ON st.id = servicetbl.type
-    LEFT OUTER JOIN "BikeTowage"        ON "BikeTowage".id = servicetbl.id
-    LEFT OUTER JOIN "BikeTowType"   btt ON btt.id = "BikeTowage".biketowtype
-    LEFT OUTER JOIN "TechType"      tt  ON tt.id = techtbl.techtype
-    LEFT OUTER JOIN "TowSort"       ts  ON ts.id = towagetbl.towsort
+    LEFT OUTER JOIN "BikeTowage"    bt  ON bt.id  = servicetbl.id
+    LEFT OUTER JOIN "BikeTowType"   btt ON btt.id = bt.biketowtype
+    LEFT OUTER JOIN "ServiceStatus" ss  ON ss.id  = servicetbl.status
+    LEFT OUTER JOIN "ServiceType"   st  ON st.id  = servicetbl.type
+    LEFT OUTER JOIN "TechType"      tt  ON tt.id  = techtbl.techtype
+    LEFT OUTER JOIN "TowSort"       ts  ON ts.id  = towagetbl.towsort
     WHERE servicetbl.id = ?
     ORDER by servicetbl.id DESC
     LIMIT 1
