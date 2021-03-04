@@ -17,14 +17,20 @@ import           Data.Text                        (Text)
 import qualified Data.Text                        as T
 import qualified Data.Text.Encoding               as T
 import qualified Data.Text.Read                   as T
+import           Data.Time                        (Day)
+import           Data.Time.Format                 (defaultTimeLocale,
+                                                   parseTimeM)
+import           Data.Time.Format.ISO8601         (formatParseM, iso8601Format)
+import           Data.Time.LocalTime              (ZonedTime)
 import           Data.Typeable
 
 import           Snap
 
+
 -- | Use the supplied parser to read a parameter from request. Fail
 -- when the parameter is not present or can't be parsed.
-parseMayParam :: MonadSnap m =>
-                 Atto.Parser a
+parseMayParam :: MonadSnap m
+              => Atto.Parser a
               -> ByteString
               -- ^ Parameter name.
               -> m (Maybe a)
@@ -37,6 +43,7 @@ parseMayParam parser k = do
 getJSONBody :: Aeson.FromJSON v => Handler a b v
 getJSONBody = readJSONfromLBS <$> readRequestBody (4 * 1024 * 1024)
 
+
 data JSONParseException
   = AttoparsecError FilePath String
   | FromJSONError FilePath String
@@ -48,8 +55,10 @@ instance Ex.Exception JSONParseException
 readJSON :: FromJSON v => FilePath -> IO v
 readJSON f = readJSONfromLBS' f `fmap` L.readFile f
 
+
 readJSONfromLBS :: FromJSON v => L.ByteString -> v
 readJSONfromLBS = readJSONfromLBS' "LBS"
+
 
 readJSONfromLBS' :: FromJSON v => String -> L.ByteString -> v
 readJSONfromLBS' src s
@@ -59,25 +68,27 @@ readJSONfromLBS' src s
       Error err -> Ex.throw $ FromJSONError src err
     err -> Ex.throw $ AttoparsecError src (show err)
 
+
 writeJSON :: ToJSON v => v -> Snap.Handler a b ()
 writeJSON v = do
   modifyResponse $ setContentType "application/json"
   writeLBS $ encode v
+
 
 mbreadInt :: Text -> Maybe Int
 mbreadInt s = case T.decimal s of
   Right (i, "") -> Just i
   _             -> Nothing
 
+
 mbreadDouble :: Text -> Maybe Double
 mbreadDouble s =  case T.double s of
   Right (i,"") -> Just i
   _            -> Nothing
 
+
 readDouble :: Text -> Double
 readDouble = fromMaybe 0 . mbreadDouble
-
-
 
 
 handleError :: MonadSnap m => Int -> m ()
@@ -106,6 +117,51 @@ getIntParam name = do
 
 getDoubleParam :: ByteString -> Handler a b (Maybe Double)
 getDoubleParam name = parseMayParam Atto8.double name
+
+
+getDoubleInRange :: ByteString
+                 -> Double
+                 -> Double
+                 -> Handler a b (Either Text Double)
+getDoubleInRange name minValue maxValue = do
+  getDoubleParam name >>= \v ->
+      return $ case v of
+                  Nothing   -> Left $ T.concat [ T.pack $ B.unpack name
+                                              , " is not specified"
+                                              ]
+                  Just val' -> if val' >= minValue && val' <= maxValue
+                              then Right $ val'
+                              else Left $ T.concat [ T.pack $ B.unpack name
+                                                   , " is out of range "
+                                                   , T.pack $ show minValue
+                                                   , " .. "
+                                                   , T.pack $ show maxValue
+                                                   ]
+
+
+getLatitudeParam :: ByteString -> Handler a b (Either Text Double)
+getLatitudeParam name = getDoubleInRange name (-90.0) 90.0
+
+
+getLongitudeParam :: ByteString -> Handler a b (Either Text Double)
+getLongitudeParam name = getDoubleInRange name (-180.0) 180.0
+
+
+getDateParam :: ByteString -> Handler a b (Maybe Day)
+getDateParam name =
+  getParam name >>= \v ->
+      return $ case v of
+                 Just d -> parseTimeM False defaultTimeLocale "%Y-%m-%d" $
+                          B.unpack d
+                 _      -> Nothing
+
+
+getDateTimeParam :: ByteString -> Handler a b (Maybe ZonedTime)
+getDateTimeParam name =
+  getParam name >>= \v ->
+      return $ case v of
+                 Just d -> formatParseM iso8601Format $ B.unpack d
+                 _      -> Nothing
 
 
 withLens :: MonadState s (Handler b v')

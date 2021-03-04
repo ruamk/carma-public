@@ -59,7 +59,9 @@ import Types
         , Payment
         , ServiceDescription
         , ServiceInfo
+        , Location
         )
+import Types exposing (Location)
 
 
 type alias Session =
@@ -75,7 +77,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    "/elm-live"
+    ""
 
 
 apiLogin : String
@@ -398,6 +400,8 @@ getService serviceId message =
                 |> required "vin" (nullable string)
                 |> required "payType" (nullable int)
                 |> required "payment" (nullable payment)
+                |> required "firstLocation" (nullable location)
+                |> required "lastLocation" (nullable location)
 
         payment : Decoder Payment
         payment =
@@ -407,6 +411,12 @@ getService serviceId message =
                 |> required "partnerCostTranscript" (nullable string)
                 |> required "checkCostTranscript" (nullable string)
                 |> required "paidByClient" (nullable string)
+        
+        location : Decoder Location
+        location = 
+            succeed Location
+                |> required "latitude" (nullable float)
+                |> required "longitude" (nullable float)
     in
     HttpBuilder.get (apiGetService serviceId)
         |> HttpBuilder.withExpect (Http.expectJson message getCaseDecoder)

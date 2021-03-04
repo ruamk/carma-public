@@ -10,6 +10,7 @@ module Types exposing
     , ServiceDescription
     , ServiceInfo
     , emptyServiceDescription
+    , Location
     )
 
 import Dict
@@ -80,6 +81,8 @@ type alias ServiceDescription =
     , vin : Maybe String
     , payType : Maybe Int
     , payment : Maybe Payment
+    , firstLocation : Maybe Location
+    , lastLocation : Maybe Location
     }
 
 
@@ -89,6 +92,12 @@ type alias Payment =
     , partnerCostTranscript : Maybe String
     , checkCostTranscript : Maybe String
     , paidByClient : Maybe String
+    }
+
+
+type alias Location =
+    { latitude : Maybe Float
+    , longitude : Maybe Float
     }
 
 
@@ -118,6 +127,8 @@ emptyServiceDescription =
     , vin = Nothing
     , payType = Nothing
     , payment = Nothing
+    , firstLocation = Nothing
+    , lastLocation = Nothing
     }
 
 
