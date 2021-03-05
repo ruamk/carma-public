@@ -1555,7 +1555,7 @@ viewCasePanel model serviceId =
                     model.currentCases
                 ]
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
-                [ h2 [ class "text-center" ]
+                [ h3 [ class "text-center" ]
                     [ text <|
                         "Заявка: "
                             ++ caseId
