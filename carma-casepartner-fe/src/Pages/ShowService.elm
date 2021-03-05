@@ -73,6 +73,7 @@ import Types as Types
         )
 import Ui
 import Utils exposing (formatTime)
+import List
 
 
 type alias Flags =
@@ -1914,19 +1915,48 @@ viewLog model =
 viewServicesList : Model -> List CurrentCaseInfo -> Html Msg
 viewServicesList model ccs =
     let
-        cases =
-            List.map (viewCard model) ccs
-
         header =
             h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
 
         hideMobile =
             class "d-none d-lg-block"
 
-        dropInProgressDown xs = 
+        -- it's reversed, newest first
+        sortByCallDate : List CurrentCaseInfo -> List CurrentCaseInfo
+        sortByCallDate xs = 
+            let 
+                emptyTime = 
+                    { year = 0, month = 0, day = 0
+                    , hour = 0, minute = 0, second = 0
+                    , millisecond = 0, offset = 0 
+                    }
+
+                time : CurrentCaseInfo -> ISO8601.Time
+                time c =
+                    Maybe.withDefault emptyTime c.cuCallDate 
+
+                rule : CurrentCaseInfo -> CurrentCaseInfo -> Order
+                rule a b = 
+                    compare
+                        (ISO8601.toTime <| time a)
+                        (ISO8601.toTime <| time b)
+            in
+            List.reverse <| List.sortWith rule xs
+        
+        -- drop down the services with status `in progress`
+        sortServices : List CurrentCaseInfo -> List CurrentCaseInfo
+        sortServices cs = 
             let
-                rule x = x
-            in rule 
+                (inProgress, others) = 
+                    List.partition (\c -> c.cuAccordTime == "В работе") cs
+            in
+            List.append 
+                (sortByCallDate others) 
+                (sortByCallDate inProgress)
+        
+        cases =
+            List.map (viewCard model) (sortServices ccs)
+
     in
     div [ hideMobile ]
         [ header
