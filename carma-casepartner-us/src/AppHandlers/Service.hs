@@ -44,6 +44,8 @@ import           Carma.Utils.Snap
 import qualified Data.Model.Patch                     as Patch
 import           Service.Util
 import           Snaplet.Auth.PGUsers
+import           Types                                (Location (..),
+                                                       coords2Location)
 
 
 type LoadingDifficulties = M.Map String (Maybe Bool)
@@ -75,6 +77,8 @@ data ServiceDescription = ServiceDescription
     , _clientPhone          :: String
     , _firstAddress         :: String
     , _lastAddress          :: String
+    , _firstLocation        :: Maybe Location
+    , _lastLocation         :: Maybe Location
     , _expectedServiceStart :: Maybe ZonedTime
     , _factServiceStart     :: Maybe ZonedTime
     , _factServiceEnd       :: Maybe ZonedTime
@@ -104,13 +108,14 @@ instance ToJSON CaseComment where
 handleApiGetService :: AppHandler ()
 handleApiGetService = checkAuthCasePartner $ do
   serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
-  [( caseId, client, clientPhone, firstAddress, makeModel, plateNumber
+  [( caseId, client, clientPhone, firstAddress, firstLonLat, makeModel, plateNumber
    , vin)] <- query [sql|
     SELECT
         casetbl.id
       , contact_name
       , contact_phone1
       , caseaddress_address
+      , coalesce(caseAddress_coords, ''::text)
       , "CarMake".label || ' / ' ||
         regexp_replace("CarModel".label, '^([^/]*)/.*','\1')
       , car_platenum
@@ -173,6 +178,8 @@ handleApiGetService = checkAuthCasePartner $ do
     LIMIT 1
   |] $ (tech, towage, bikeTowage, serviceId)
 
+  let firstLocation = coords2Location firstLonLat
+
   lastAddress <- query [sql|
                   WITH service AS (
                     SELECT id, towaddress_address FROM towagetbl
@@ -199,6 +206,7 @@ handleApiGetService = checkAuthCasePartner $ do
                status statusLabel
                client clientPhone
                firstAddress lastAddress
+               firstLocation Nothing
                expectedServiceStart factServiceStart factServiceEnd
                makeModel plateNumber
                vin payType payment

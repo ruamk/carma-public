@@ -69,18 +69,14 @@ import           Carma.Model
 import qualified Carma.Model.Usermeta                 as Usermeta
 import           Carma.Utils.Snap
 import           Service.Util
+import           Types                                (Location (..),
+                                                       coords2Location)
 
 
 data LoginForm = LoginForm
     { username :: Text
     , password :: Text
     } deriving (FromJSON, Generic, Show)
-
-
-data Location = Location
-    { latitude  :: Double
-    , longitude :: Double
-    } deriving (FromJSON, ToJSON, Generic, Show)
 
 
 data ServiceStatus = ServiceStatusInPlace
@@ -379,11 +375,7 @@ order = checkDriver $ \driverId -> do
              WHERE servicetbl.id = ?
           |] $ Only serviceId
 
-          let firstLocation = if T.null firstLonLat
-                              then Nothing
-                              else let [lon, lat] = map (read . T.unpack) $
-                                                    T.split (==',') firstLonLat
-                                   in Just $ Location lat lon
+          let firstLocation = coords2Location firstLonLat
 
           lastAddress <- query [sql|
                           WITH service AS (
@@ -399,7 +391,6 @@ order = checkDriver $ \driverId -> do
                         >>= \r -> return $ case r of
                                             [Only a] -> Just a
                                             _        -> Nothing
-
 
           return $ Just
                  $ emptyService { serviceId = serviceId
@@ -490,6 +481,7 @@ location = checkDriver $ \driverId -> do
                      )
 
             _ -> return ()
+
 
 -- | Смена статуса: "на месте", "оказана" или "задержка"
 status :: AppHandler ()
