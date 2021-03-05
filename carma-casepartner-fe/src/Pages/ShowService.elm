@@ -2000,7 +2000,7 @@ viewCard model cci =
                         , style "border" "1px solid red"
                         , style "padding" "3px"
                         , style "border-radius" "3px"
-                        , style "background-color" "tomato"
+                        , style "background-color" "#dc3545"
                         , style "float" "right"
                         , style "font-weight" "bold"
                         ]
