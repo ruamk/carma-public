@@ -1962,16 +1962,31 @@ viewCard model cci =
 
         formatAccordTime : String -> String
         formatAccordTime t =
+            let
+                formatHM hours minutes =
+                    let
+                        f : Int -> String
+                        f x =
+                            if x > 9 then
+                                String.fromInt x
+
+                            else
+                                String.cons '0' (String.fromInt x)
+                    in
+                    String.concat
+                        [ f hours
+                        , ":"
+                        , f minutes
+                        ]
+            in
             case parseTime t of
                 Just ( 0, hours, minutes ) ->
-                    String.fromInt hours ++ ":" ++ String.fromInt minutes
+                    formatHM hours minutes
 
                 Just ( days, hours, minutes ) ->
                     String.fromInt days
                         ++ " дн. "
-                        ++ String.fromInt hours
-                        ++ ":"
-                        ++ String.fromInt minutes
+                        ++ formatHM hours minutes
 
                 Nothing ->
                     t
