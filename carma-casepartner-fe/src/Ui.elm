@@ -22,6 +22,7 @@ import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
+import Generated.Route exposing (Route(..), toHref)
 import Html
     exposing
         ( Attribute
@@ -40,7 +41,7 @@ import Html.Attributes
 import Html.Events exposing (onClick)
 import ISO8601 exposing (Time)
 import Utils exposing (formatDate, formatTime)
-import Generated.Route exposing (toHref, Route(..))
+
 
 email : String
 email =

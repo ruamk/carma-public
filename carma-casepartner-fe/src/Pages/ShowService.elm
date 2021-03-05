@@ -54,6 +54,7 @@ import Html.Attributes as A
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import ISO8601
+import List
 import Maybe exposing (withDefault)
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
@@ -73,7 +74,6 @@ import Types as Types
         )
 import Ui
 import Utils exposing (formatTime)
-import List
 
 
 type alias Flags =
@@ -1565,17 +1565,16 @@ viewCasePanel model serviceId =
                     ]
                 , Grid.row []
                     [ Grid.col []
-                        [ 
-                            let 
-                                shortcutted = 
-                                     case Dict.get c.serviceType model.typeOfServiceSynonym of
-                                        Just v ->
-                                            v
+                        [ let
+                            shortcutted =
+                                case Dict.get c.serviceType model.typeOfServiceSynonym of
+                                    Just v ->
+                                        v
 
-                                        Nothing ->
-                                            c.serviceType
-                            in 
-                            field "Вид помощи" <| text shortcutted
+                                    Nothing ->
+                                        c.serviceType
+                          in
+                          field "Вид помощи" <| text shortcutted
                         , field "Клиент" <| text c.client
                         , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
                         ]
@@ -1923,40 +1922,44 @@ viewServicesList model ccs =
 
         -- it's reversed, newest first
         sortByCallDate : List CurrentCaseInfo -> List CurrentCaseInfo
-        sortByCallDate xs = 
-            let 
-                emptyTime = 
-                    { year = 0, month = 0, day = 0
-                    , hour = 0, minute = 0, second = 0
-                    , millisecond = 0, offset = 0 
+        sortByCallDate xs =
+            let
+                emptyTime =
+                    { year = 0
+                    , month = 0
+                    , day = 0
+                    , hour = 0
+                    , minute = 0
+                    , second = 0
+                    , millisecond = 0
+                    , offset = 0
                     }
 
                 time : CurrentCaseInfo -> ISO8601.Time
                 time c =
-                    Maybe.withDefault emptyTime c.cuCallDate 
+                    Maybe.withDefault emptyTime c.cuCallDate
 
                 rule : CurrentCaseInfo -> CurrentCaseInfo -> Order
-                rule a b = 
+                rule a b =
                     compare
                         (ISO8601.toTime <| time a)
                         (ISO8601.toTime <| time b)
             in
             List.reverse <| List.sortWith rule xs
-        
+
         -- drop down the services with status `in progress`
         sortServices : List CurrentCaseInfo -> List CurrentCaseInfo
-        sortServices cs = 
+        sortServices cs =
             let
-                (inProgress, others) = 
+                ( inProgress, others ) =
                     List.partition (\c -> c.cuAccordTime == "В работе") cs
             in
-            List.append 
-                (sortByCallDate others) 
+            List.append
+                (sortByCallDate others)
                 (sortByCallDate inProgress)
-        
+
         cases =
             List.map (viewCard model) (sortServices ccs)
-
     in
     div [ hideMobile ]
         [ header

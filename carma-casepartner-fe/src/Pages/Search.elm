@@ -551,12 +551,13 @@ viewServices model =
                 , tbody =
                     let
                         hideUseless : List ServiceInfo -> List ServiceInfo
-                        hideUseless xs = 
+                        hideUseless xs =
                             let
-                                useless = ["В Back Office", "Ожидание обработки"]  
+                                useless =
+                                    [ "В Back Office", "Ожидание обработки" ]
                             in
                             List.filter (\x -> not <| List.member x.status useless) xs
-                    in 
+                    in
                     Table.tbody [] <|
                         List.map (Table.tr []) <|
                             List.map
