@@ -40,7 +40,7 @@ import Html.Attributes
 import Html.Events exposing (onClick)
 import ISO8601 exposing (Time)
 import Utils exposing (formatDate, formatTime)
-
+import Generated.Route exposing (toHref, Route(..))
 
 email : String
 email =
@@ -122,10 +122,13 @@ mainMenu { navbarMsg, logoutMsg, settingsMsg, usermenuMsg, navbarState, usermenu
         |> Navbar.brand
             [ style "background-color" "yellow"
             , style "font-weight" "800"
+            , style "text-decoration" "none"
+            , style "color" "black"
             , Spacing.pb2
             , Spacing.pl2
             , Spacing.pr2
             , Spacing.pt0
+            , href <| toHref Services
             ]
             [ text "Р"
             , span [ style "color" "red" ]
