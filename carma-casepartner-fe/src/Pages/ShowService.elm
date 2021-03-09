@@ -1920,46 +1920,8 @@ viewServicesList model ccs =
         hideMobile =
             class "d-none d-lg-block"
 
-        -- it's reversed, newest first
-        sortByCallDate : List CurrentCaseInfo -> List CurrentCaseInfo
-        sortByCallDate xs =
-            let
-                emptyTime =
-                    { year = 0
-                    , month = 0
-                    , day = 0
-                    , hour = 0
-                    , minute = 0
-                    , second = 0
-                    , millisecond = 0
-                    , offset = 0
-                    }
-
-                time : CurrentCaseInfo -> ISO8601.Time
-                time c =
-                    Maybe.withDefault emptyTime c.cuCallDate
-
-                rule : CurrentCaseInfo -> CurrentCaseInfo -> Order
-                rule a b =
-                    compare
-                        (ISO8601.toTime <| time a)
-                        (ISO8601.toTime <| time b)
-            in
-            List.reverse <| List.sortWith rule xs
-
-        -- drop down the services with status `in progress`
-        sortServices : List CurrentCaseInfo -> List CurrentCaseInfo
-        sortServices cs =
-            let
-                ( inProgress, others ) =
-                    List.partition (\c -> c.cuAccordTime == "В работе") cs
-            in
-            List.append
-                (sortByCallDate others)
-                (sortByCallDate inProgress)
-
         cases =
-            List.map (viewCard model) (sortServices ccs)
+            List.map (viewCard model) (Utils.sortServices ccs)
     in
     div [ hideMobile ]
         [ header

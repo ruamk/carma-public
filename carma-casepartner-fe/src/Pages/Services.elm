@@ -37,6 +37,7 @@ import Task
 import Time
 import Types exposing (ClosingCaseInfo, CurrentCaseInfo, Dictionary)
 import Ui
+import Utils
 
 
 {-| seconds between updates
@@ -649,6 +650,7 @@ viewCurrentCases model =
                                         ]
                                     )
                                     (model.currentCases
+                                        |> Utils.sortServices
                                         |> List.drop ((model.currentCasesPage - 1) * pageSize)
                                         |> List.take pageSize
                                     )
