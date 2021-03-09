@@ -54,6 +54,7 @@ import Html.Attributes as A
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import ISO8601
+import List
 import Maybe exposing (withDefault)
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
@@ -1555,7 +1556,7 @@ viewCasePanel model serviceId =
                     model.currentCases
                 ]
             , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
-                [ h2 [ class "text-center" ]
+                [ h3 [ class "text-center" ]
                     [ text <|
                         "Заявка: "
                             ++ caseId
@@ -1564,17 +1565,16 @@ viewCasePanel model serviceId =
                     ]
                 , Grid.row []
                     [ Grid.col []
-                        [ 
-                            let 
-                                shortcutted = 
-                                     case Dict.get c.serviceType model.typeOfServiceSynonym of
-                                        Just v ->
-                                            v
+                        [ let
+                            shortcutted =
+                                case Dict.get c.serviceType model.typeOfServiceSynonym of
+                                    Just v ->
+                                        v
 
-                                        Nothing ->
-                                            c.serviceType
-                            in 
-                            field "Вид помощи" <| text shortcutted
+                                    Nothing ->
+                                        c.serviceType
+                          in
+                          field "Вид помощи" <| text shortcutted
                         , field "Клиент" <| text c.client
                         , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
                         ]
@@ -1914,19 +1914,14 @@ viewLog model =
 viewServicesList : Model -> List CurrentCaseInfo -> Html Msg
 viewServicesList model ccs =
     let
-        cases =
-            List.map (viewCard model) ccs
-
         header =
             h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
 
         hideMobile =
             class "d-none d-lg-block"
 
-        dropInProgressDown xs = 
-            let
-                rule x = x
-            in rule 
+        cases =
+            List.map (viewCard model) (Utils.sortServices ccs)
     in
     div [ hideMobile ]
         [ header
@@ -1962,16 +1957,31 @@ viewCard model cci =
 
         formatAccordTime : String -> String
         formatAccordTime t =
+            let
+                formatHM hours minutes =
+                    let
+                        f : Int -> String
+                        f x =
+                            if x > 9 then
+                                String.fromInt x
+
+                            else
+                                String.cons '0' (String.fromInt x)
+                    in
+                    String.concat
+                        [ f hours
+                        , ":"
+                        , f minutes
+                        ]
+            in
             case parseTime t of
                 Just ( 0, hours, minutes ) ->
-                    String.fromInt hours ++ ":" ++ String.fromInt minutes
+                    formatHM hours minutes
 
                 Just ( days, hours, minutes ) ->
                     String.fromInt days
                         ++ " дн. "
-                        ++ String.fromInt hours
-                        ++ ":"
-                        ++ String.fromInt minutes
+                        ++ formatHM hours minutes
 
                 Nothing ->
                     t
@@ -1985,7 +1995,7 @@ viewCard model cci =
                         , style "border" "1px solid red"
                         , style "padding" "3px"
                         , style "border-radius" "3px"
-                        , style "background-color" "tomato"
+                        , style "background-color" "#dc3545"
                         , style "float" "right"
                         , style "font-weight" "bold"
                         ]

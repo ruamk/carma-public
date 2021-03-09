@@ -56,12 +56,11 @@ import Types
         , CurrentCaseInfo
         , Dictionary
         , Driver
+        , Location
         , Payment
         , ServiceDescription
         , ServiceInfo
-        , Location
         )
-import Types exposing (Location)
 
 
 type alias Session =
@@ -412,9 +411,9 @@ getService serviceId message =
                 |> required "partnerCostTranscript" (nullable string)
                 |> required "checkCostTranscript" (nullable string)
                 |> required "paidByClient" (nullable string)
-        
+
         location : Decoder Location
-        location = 
+        location =
             succeed Location
                 |> required "latitude" (nullable float)
                 |> required "longitude" (nullable float)
