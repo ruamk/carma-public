@@ -2,12 +2,13 @@ module Utils exposing
     ( formatDate
     , formatTime
     , fromUrl
+    , sortServices
     )
 
 import Generated.Route as Route exposing (Route)
 import ISO8601 exposing (Time)
 import Url exposing (Url)
-
+import Types exposing (CurrentCaseInfo)
 
 fromUrl : Url -> Route
 fromUrl =
@@ -39,3 +40,42 @@ formatDate nt =
     in
     String.join "." (f [ .day, .month, .year ])
 
+
+-- drop down the services with status `in progress`
+sortServices : List CurrentCaseInfo -> List CurrentCaseInfo
+sortServices cs =
+    let
+        ( inProgress, others ) =
+            List.partition (\c -> c.cuAccordTime == "В работе") cs
+        
+        -- it's reversed, newest first
+        sortByCallDate : List CurrentCaseInfo -> List CurrentCaseInfo
+        sortByCallDate xs =
+            let
+                emptyTime =
+                    { year = 0
+                    , month = 0
+                    , day = 0
+                    , hour = 0
+                    , minute = 0
+                    , second = 0
+                    , millisecond = 0
+                    , offset = 0
+                    }
+
+                time : CurrentCaseInfo -> ISO8601.Time
+                time c =
+                    Maybe.withDefault emptyTime c.cuCallDate
+
+                rule : CurrentCaseInfo -> CurrentCaseInfo -> Order
+                rule a b =
+                    compare
+                        (ISO8601.toTime <| time a)
+                        (ISO8601.toTime <| time b)
+                        
+            in
+            List.reverse <| List.sortWith rule xs
+    in
+    List.append
+        (sortByCallDate others)
+        (sortByCallDate inProgress)

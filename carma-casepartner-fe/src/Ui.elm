@@ -22,6 +22,7 @@ import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles as Icon
+import Generated.Route exposing (Route(..), toHref)
 import Html
     exposing
         ( Attribute
@@ -122,10 +123,13 @@ mainMenu { navbarMsg, logoutMsg, settingsMsg, usermenuMsg, navbarState, usermenu
         |> Navbar.brand
             [ style "background-color" "yellow"
             , style "font-weight" "800"
+            , style "text-decoration" "none"
+            , style "color" "black"
             , Spacing.pb2
             , Spacing.pl2
             , Spacing.pr2
             , Spacing.pt0
+            , href <| toHref Services
             ]
             [ text "Р"
             , span [ style "color" "red" ]
