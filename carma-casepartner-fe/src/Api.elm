@@ -23,6 +23,7 @@ module Api exposing
     , statusInPlace
     , statusServicePerformed
     , updateDriver
+    , getPhotos
     )
 
 import Http
@@ -58,6 +59,7 @@ import Types
         , Driver
         , Location
         , Payment
+        , Photo
         , ServiceDescription
         , ServiceInfo
         )
@@ -76,7 +78,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    ""
+    "/elm-live"
 
 
 apiLogin : String
@@ -186,6 +188,13 @@ apiCloseService serviceId =
         ++ "/api/v1/service/"
         ++ String.fromInt serviceId
         ++ "/closed"
+
+
+apiGetPhotos : Int -> String
+apiGetPhotos serviceId =
+    prefix
+        ++ "/api/v1/driver/photo"
+        ++ String.fromInt serviceId
 
 
 clientMapURL : Int -> String
@@ -926,4 +935,26 @@ cancelServiceToDriver serviceId driverId message =
     in
     HttpBuilder.get (apiCancelServiceToDriver serviceId driverId)
         |> HttpBuilder.withExpect (Http.expectJson message queueIdDecoder)
+        |> HttpBuilder.request
+
+
+
+
+getPhotos : Int -> (Result Http.Error (List Photo) -> msg) -> Cmd msg 
+getPhotos serviceId message =
+    let
+        photoDecoder = 
+            succeed Photo
+                |> required "serviceId" int
+                |> required "image" string
+                |> required "latitude" float
+                |> required "longtitude" float
+                |> required "created" string
+                |> required "photoType" string
+        
+        decoder = 
+            field "message" (list photoDecoder)
+    in
+    HttpBuilder.get (apiGetPhotos serviceId)
+        |> HttpBuilder.withExpect (Http.expectJson message decoder)
         |> HttpBuilder.request
