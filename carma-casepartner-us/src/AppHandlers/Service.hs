@@ -176,7 +176,7 @@ handleApiGetService = checkAuthCasePartner $ do
     WHERE servicetbl.id = ?
     ORDER by servicetbl.id DESC
     LIMIT 1
-  |] $ (tech, towage, bikeTowage, serviceId)
+  |] (tech, towage, bikeTowage, serviceId)
 
   let firstLocation = coords2Location firstLonLat
 

@@ -145,7 +145,7 @@ render varMap = T.concat . loop
 -- then format the result as a bytestring.
 projNow :: (Int -> Int) -> IO Text
 projNow fn =
-  (T.pack . show . fn . round . utcTimeToPOSIXSeconds) <$> getCurrentTime
+  T.pack . show . fn . round . utcTimeToPOSIXSeconds <$> getCurrentTime
 
 
 -- | Works almost like '(:.)' for 'ToField' instances. Start with `()`
@@ -163,7 +163,7 @@ instance (ToRow a, ToField b) => ToRow (a :* b) where
 
 
 -- | A list of 'ToRow' values with concatenating behavour of 'ToRow'.
-data ToRowList a = ToRowList [a]
+newtype ToRowList a = ToRowList [a]
 
 instance (ToRow a) => ToRow (ToRowList a) where
     toRow (ToRowList l) = concatMap toRow l
