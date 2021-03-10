@@ -193,7 +193,7 @@ apiCloseService serviceId =
 apiGetPhotos : Int -> String
 apiGetPhotos serviceId =
     prefix
-        ++ "/api/v1/driver/photo"
+        ++ "/api/v1/driver/photo/"
         ++ String.fromInt serviceId
 
 

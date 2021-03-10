@@ -69,11 +69,13 @@ import Types as Types
         , Driver
         , Location
         , Payment
+        , Photo
         , ServiceDescription
         , emptyServiceDescription
         )
 import Ui
 import Utils exposing (formatTime)
+import Http exposing (Response(..))
 
 
 type alias Flags =
@@ -170,6 +172,7 @@ type alias Model =
     , currentCases : List CurrentCaseInfo
     , typeOfServiceSynonym : Dictionary
     , closingServiceForm : Maybe ClosingServiceForm
+    , photos : List Photo
     }
 
 
@@ -220,6 +223,7 @@ type Msg
     | UpdateClosingServiceForm ClosingServiceForm
     | CloseService
     | ServiceClosed (Result Http.Error Bool)
+    | GotPhotos (Result Http.Error (List Photo))
 
 
 driverSpinnerSize : String
@@ -304,6 +308,7 @@ init global flags =
       , currentCases = []
       , typeOfServiceSynonym = Dict.empty
       , closingServiceForm = Nothing
+      , photos = []
       }
     , navbarCmd
     , Cmd.none
@@ -348,6 +353,7 @@ update global msg model =
                 , Api.getDrivers DriversDownloaded
                 , Api.getTypeOfServiceSynonym TypeOfServiceSynonymDownloaded
                 , Api.getLatestCurrentCases GetCurrentCases
+                , Api.getPhotos global.serviceId GotPhotos
                 ]
             , Cmd.none
             )
@@ -1177,6 +1183,27 @@ update global msg model =
                             , Cmd.none
                             , Cmd.none
                             )
+
+        GotPhotos res ->
+            case res of
+                Err _ ->
+                    ( { model
+                        | messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "http error: couldnt get photos"
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok photos ->
+                    ( { model
+                        | photos = photos
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
