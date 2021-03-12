@@ -199,6 +199,7 @@ apiGetPhotos serviceId =
         ++ String.fromInt serviceId
         ++ "/photo"
 
+
 apiSavePhoto : Int -> String
 apiSavePhoto serviceId =
     prefix
@@ -948,7 +949,7 @@ cancelServiceToDriver serviceId driverId message =
         |> HttpBuilder.request
 
 
-getPhotos : Int -> (Result Http.Error (List Photo) -> msg) -> Cmd msg
+getPhotos : Int -> (Result Http.Error (Result String (List Photo)) -> msg) -> Cmd msg
 getPhotos serviceId message =
     let
         photoDecoder =
@@ -961,7 +962,17 @@ getPhotos serviceId message =
                 |> required "photoType" string
 
         decoder =
-            field "message" (list photoDecoder)
+            let
+                handleStatus status =
+                    case status of
+                        "ok" ->
+                            D.map Ok <| field "message" (list photoDecoder)
+
+                        err ->
+                            D.map Err <| succeed err
+            in
+            field "status" string
+                |> D.andThen handleStatus
     in
     HttpBuilder.get (apiGetPhotos serviceId)
         |> HttpBuilder.withExpect (Http.expectJson message decoder)
@@ -973,21 +984,26 @@ savePhoto serviceId photo photoType message =
     let
         decoder =
             let
-                status s msg =
-                    case s of
+                handle status msg =
+                    case status of
                         "ok" ->
-                            Ok (Maybe.withDefault 0 <| String.toInt msg)
+                            case String.toInt msg of
+                                Just n ->
+                                    Ok n
+
+                                Nothing ->
+                                    Err "Decoding error: `message` must be an integer"
 
                         "error" ->
                             Err msg
 
                         _ ->
-                            Err "unexpected"
+                            Err "unexpected status"
             in
             D.map2
-                status
+                handle
                 (field "status" string)
-                (field "status" string)
+                (field "message" string)
 
         body =
             [ Http.filePart "image" photo
