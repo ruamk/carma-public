@@ -12,6 +12,7 @@ module Api exposing
     , getLatenessReasons
     , getLatestClosingCases
     , getLatestCurrentCases
+    , getPhotos
     , getService
     , getServiceComments
     , getServices
@@ -23,9 +24,9 @@ module Api exposing
     , statusInPlace
     , statusServicePerformed
     , updateDriver
-    , getPhotos
     )
 
+import File
 import Http
 import HttpBuilder
 import ISO8601
@@ -49,6 +50,7 @@ import Json.Decode as D
         , succeed
         )
 import Json.Decode.Pipeline exposing (optional, required)
+import Maybe
 import Types
     exposing
         ( CaseComment
@@ -195,6 +197,12 @@ apiGetPhotos serviceId =
     prefix
         ++ "/api/v1/driver/photo/"
         ++ String.fromInt serviceId
+
+
+apiSavePhoto : String
+apiSavePhoto =
+    prefix
+        ++ "/api/v1/driver/photo"
 
 
 clientMapURL : Int -> String
@@ -938,12 +946,10 @@ cancelServiceToDriver serviceId driverId message =
         |> HttpBuilder.request
 
 
-
-
-getPhotos : Int -> (Result Http.Error (List Photo) -> msg) -> Cmd msg 
+getPhotos : Int -> (Result Http.Error (List Photo) -> msg) -> Cmd msg
 getPhotos serviceId message =
     let
-        photoDecoder = 
+        photoDecoder =
             succeed Photo
                 |> required "serviceId" int
                 |> required "image" string
@@ -951,10 +957,47 @@ getPhotos serviceId message =
                 |> required "longtitude" float
                 |> required "created" string
                 |> required "photoType" string
-        
-        decoder = 
+
+        decoder =
             field "message" (list photoDecoder)
     in
     HttpBuilder.get (apiGetPhotos serviceId)
         |> HttpBuilder.withExpect (Http.expectJson message decoder)
         |> HttpBuilder.request
+
+
+savePhoto : Int -> File.File -> String -> (Result Http.Error (Result String Int) -> msg) -> Cmd msg
+savePhoto serviceId photo photoType message =
+    let
+        decoder =
+            let
+                status s msg =
+                    case s of
+                        "ok" ->
+                            Ok (Maybe.withDefault 0 <| String.toInt msg)
+
+                        "error" ->
+                            Err msg
+
+                        _ ->
+                            Err "unexpected"
+            in
+            D.map2
+                status
+                (field "status" string)
+                (field "status" string)
+
+        body =
+            [ Http.filePart "image" photo
+            , Http.stringPart "serviceId" (String.fromInt serviceId)
+            , Http.stringPart "latitude" (String.fromFloat 0)
+            , Http.stringPart "longitude" (String.fromFloat 0)
+            , Http.stringPart "created" (File.lastModified photo |> ISO8601.fromPosix |> ISO8601.toString)
+            , Http.stringPart "type" photoType
+            ]
+    in
+    Http.post
+        { url = apiSavePhoto
+        , body = Http.multipartBody body
+        , expect = Http.expectJson message decoder
+        }
