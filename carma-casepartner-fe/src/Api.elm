@@ -195,14 +195,16 @@ apiCloseService serviceId =
 apiGetPhotos : Int -> String
 apiGetPhotos serviceId =
     prefix
-        ++ "/api/v1/driver/photo/"
+        ++ "/api/v1/service/"
         ++ String.fromInt serviceId
+        ++ "/photo"
 
-
-apiSavePhoto : String
-apiSavePhoto =
+apiSavePhoto : Int -> String
+apiSavePhoto serviceId =
     prefix
-        ++ "/api/v1/driver/photo"
+        ++ "/api/v1/service/"
+        ++ String.fromInt serviceId
+        ++ "/photo"
 
 
 clientMapURL : Int -> String
@@ -997,7 +999,7 @@ savePhoto serviceId photo photoType message =
             ]
     in
     Http.post
-        { url = apiSavePhoto
+        { url = apiSavePhoto serviceId
         , body = Http.multipartBody body
         , expect = Http.expectJson message decoder
         }
