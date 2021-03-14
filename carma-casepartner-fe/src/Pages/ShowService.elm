@@ -1,16 +1,17 @@
 module Pages.ShowService exposing (Flags, Model, Msg, page)
 
 import Api
+import Bootstrap.Accordion as Accordion
 import Bootstrap.Alert as Alert
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
-import Bootstrap.Card.Block exposing (titleH3)
+import Bootstrap.Card.Block exposing (custom, titleH3)
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
 import Bootstrap.Form.Select as Select
 import Bootstrap.Form.Textarea as Textarea
-import Bootstrap.Grid as Grid
+import Bootstrap.Grid as Grid exposing (Column)
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.ListGroup as ListGroup
@@ -22,6 +23,8 @@ import Bootstrap.Utilities.Spacing as Spacing
 import Chat
 import Const
 import Dict
+import File exposing (File)
+import File.Select as FileSelect
 import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import Generated.Route as Route
@@ -32,10 +35,12 @@ import Html
         , a
         , b
         , br
+        , button
         , div
         , h2
         , h3
         , hr
+        , img
         , li
         , p
         , s
@@ -52,8 +57,9 @@ import Html.Attributes as A
         , value
         )
 import Html.Events exposing (onClick, onInput, onSubmit)
-import Http
+import Http exposing (Response(..))
 import ISO8601
+import Json.Decode as D
 import List
 import Maybe exposing (withDefault)
 import MessageToast exposing (MessageToast)
@@ -75,7 +81,6 @@ import Types as Types
         )
 import Ui
 import Utils exposing (formatTime)
-import Http exposing (Response(..))
 
 
 type alias Flags =
@@ -173,6 +178,8 @@ type alias Model =
     , typeOfServiceSynonym : Dictionary
     , closingServiceForm : Maybe ClosingServiceForm
     , photos : List Photo
+    , photosAccordion : Accordion.State
+    , uploadDropdown : Dropdown.State
     }
 
 
@@ -223,7 +230,12 @@ type Msg
     | UpdateClosingServiceForm ClosingServiceForm
     | CloseService
     | ServiceClosed (Result Http.Error Bool)
-    | GotPhotos (Result Http.Error (List Photo))
+    | GotPhotosToShow (Result Http.Error (Result String (List Photo)))
+    | UploadPhotosClick String
+    | GotPhotosToUpload String File (List File)
+    | PhotosUploadResponse (Result Http.Error (Result String Int))
+    | PhotosAccordionMsg Accordion.State
+    | UploadDropdown Dropdown.State
 
 
 driverSpinnerSize : String
@@ -308,7 +320,38 @@ init global flags =
       , currentCases = []
       , typeOfServiceSynonym = Dict.empty
       , closingServiceForm = Nothing
-      , photos = []
+      , photos =
+            let
+                photo1 =
+                    { image = "https://sun9-71.userapi.com/impg/Z7618TWE34oRyUrUpkDVqAu7s67fyj1fw1IJnw/4t9TDDjjSaI.jpg?size=800x452&quality=96&sign=1c982ac2a9422b5ebe291b82bd4eaa2f&type=album"
+                    , serviceId = 0
+                    , latitude = 0
+                    , longtitude = 0
+                    , created = ""
+                    , photoType = "before"
+                    }
+
+                photo2 =
+                    { image = "https://sun9-4.userapi.com/impf/c847221/v847221903/1953e7/qqtZDMZjldI.jpg?size=1000x717&quality=96&sign=a028d78653068cd80e8daef52108cb96&type=album"
+                    , serviceId = 0
+                    , latitude = 0
+                    , longtitude = 0
+                    , created = ""
+                    , photoType = "before"
+                    }
+
+                photo3 =
+                    { image = "https://sun9-50.userapi.com/impf/c858336/v858336254/ea912/4lfP6V6u_H4.jpg?size=1024x1024&quality=96&sign=c2d460e7d40db4b14bfdb106c6980a3a&type=album"
+                    , serviceId = 0
+                    , latitude = 0
+                    , longtitude = 0
+                    , created = ""
+                    , photoType = "order"
+                    }
+            in
+            [ photo1, photo2, photo3 ]
+      , photosAccordion = Accordion.initialState
+      , uploadDropdown = Dropdown.initialState
       }
     , navbarCmd
     , Cmd.none
@@ -353,7 +396,8 @@ update global msg model =
                 , Api.getDrivers DriversDownloaded
                 , Api.getTypeOfServiceSynonym TypeOfServiceSynonymDownloaded
                 , Api.getLatestCurrentCases GetCurrentCases
-                , Api.getPhotos global.serviceId GotPhotos
+
+                --, Api.getPhotos global.serviceId GotPhotosToShow
                 ]
             , Cmd.none
             )
@@ -1184,7 +1228,7 @@ update global msg model =
                             , Cmd.none
                             )
 
-        GotPhotos res ->
+        GotPhotosToShow res ->
             case res of
                 Err _ ->
                     ( { model
@@ -1197,13 +1241,94 @@ update global msg model =
                     , Cmd.none
                     )
 
-                Ok photos ->
+                Ok resultPhotos ->
+                    case resultPhotos of
+                        Ok photos ->
+                            ( { model
+                                | photos = photos
+                              }
+                            , Cmd.none
+                            , Cmd.none
+                            )
+
+                        Err error ->
+                            ( { model
+                                | messageToast =
+                                    model.messageToast
+                                        |> MessageToast.danger
+                                        |> MessageToast.withMessage error
+                              }
+                            , Cmd.none
+                            , Cmd.none
+                            )
+
+        GotPhotosToUpload photoType onePhoto otherPhotos ->
+            let
+                driver =
+                    Maybe.withDefault 0 <| Maybe.map .id model.assignedDriver
+
+                savePhoto photo =
+                    Api.savePhoto global.serviceId photo photoType driver PhotosUploadResponse
+            in
+            ( model
+            , Cmd.batch <| List.map savePhoto (onePhoto :: otherPhotos)
+            , Cmd.none
+            )
+
+        PhotosUploadResponse httpResponse ->
+            case httpResponse of
+                Ok uploadResponse ->
+                    case uploadResponse of
+                        Ok _ ->
+                            ( { model
+                                | messageToast =
+                                    model.messageToast
+                                        |> MessageToast.success
+                                        |> MessageToast.withMessage "Фотография успешно загружена."
+                              }
+                            , Cmd.none
+                            , Cmd.none
+                            )
+
+                        Err uploadError ->
+                            ( { model
+                                | messageToast =
+                                    model.messageToast
+                                        |> MessageToast.danger
+                                        |> MessageToast.withMessage uploadError
+                              }
+                            , Cmd.none
+                            , Cmd.none
+                            )
+
+                Err _ ->
                     ( { model
-                        | photos = photos
+                        | messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "http error: couldnt upload photos"
                       }
                     , Cmd.none
                     , Cmd.none
                     )
+
+        UploadPhotosClick photoType ->
+            ( model
+            , FileSelect.files [ "image/png", "image/jpg" ] (GotPhotosToUpload photoType)
+            , Cmd.none
+            )
+
+        PhotosAccordionMsg state ->
+            ( { model | photosAccordion = state }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        UploadDropdown state ->
+            ( { model | uploadDropdown = state }
+            , Cmd.none
+            , Cmd.none
+            )
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
@@ -1213,6 +1338,8 @@ subscriptions global model =
         , Chat.caseReceiver Chat
         , Time.every (commentsUpdateTime * 1000) Tick
         , Time.every (servicesListUpdateSeconds * 1000) UpdateServicesListTick
+        , Accordion.subscriptions model.photosAccordion PhotosAccordionMsg
+        , Dropdown.subscriptions model.uploadDropdown UploadDropdown
         ]
 
 
@@ -1693,7 +1820,8 @@ viewCasePanel model serviceId =
                 , hr [] []
                 , Grid.row []
                     [ Grid.col [ Col.attrs [ Spacing.p3 ] ]
-                        [ Form.form [ action "#", onSubmit AddComment ]
+                        [ viewPhotosAccordion model
+                        , Form.form [ action "#", onSubmit AddComment ]
                             [ Form.group []
                                 [ Textarea.textarea
                                     [ Textarea.id "comment"
@@ -2493,3 +2621,144 @@ setPriceRefund n form =
 
         _ ->
             form
+
+
+viewPhotos : List Photo -> Html Msg
+viewPhotos photos =
+    let
+        viewPhoto photo =
+            let
+                colOptions =
+                    [ Col.sm3
+                    , Col.attrs
+                        [ style "display" "flex"
+                        , style "align-items" "center"
+                        ]
+                    ]
+
+                imgAttributes =
+                    [ A.src photo.image
+                    , style "width" "100%"
+                    , style "height" "100%"
+                    , class "rounded"
+                    , class "border"
+                    , class "img-fluid"
+                    , class "img-thumbnail"
+                    , style "object-fit" "cover"
+                    ]
+            in
+            Grid.col colOptions
+                [ img imgAttributes []
+                ]
+    in
+    Grid.row [] (List.map viewPhoto photos)
+
+
+viewPhotosAccordion : Model -> Html Msg
+viewPhotosAccordion model =
+    let
+        headerStyles =
+            [ style "padding" "0"
+            ]
+
+        toggleStyles =
+            [ style "height" "100%"
+            , style "width" "100%"
+            , style "margin-top" "4px"
+            , style "margin-bottom" "4px"
+            , style "text-align" "left"
+            ]
+
+        viewBefore : List Photo -> Html Msg
+        viewBefore photos =
+            case List.filter (\photo -> photo.photoType == "before") photos of
+                [] ->
+                    text ""
+
+                xs ->
+                    div []
+                        [ h3 [] [ text "Фото до начала заявки" ]
+                        , viewPhotos xs
+                        ]
+
+        viewAfter : List Photo -> Html Msg
+        viewAfter photos =
+            case List.filter (\photo -> photo.photoType == "after") photos of
+                [] ->
+                    text ""
+
+                xs ->
+                    div []
+                        [ h3 [] [ text "Фото после выполнения заявки" ]
+                        , viewPhotos xs
+                        ]
+
+        viewDifficult : List Photo -> Html Msg
+        viewDifficult photos =
+            case List.filter (\photo -> photo.photoType == "difficult") photos of
+                [] ->
+                    text ""
+
+                xs ->
+                    div []
+                        [ h3 [] [ text "Фото сложностей" ]
+                        , viewPhotos xs
+                        ]
+
+        viewOrder : List Photo -> Html Msg
+        viewOrder photos =
+            case List.filter (\photo -> photo.photoType == "order") photos of
+                [] ->
+                    text ""
+
+                xs ->
+                    div []
+                        [ h3 [] [ text "Заказ-наряд" ]
+                        , viewPhotos xs
+                        ]
+    in
+    Accordion.config PhotosAccordionMsg
+        |> Accordion.withAnimation
+        |> Accordion.cards
+            [ Accordion.card
+                { id = "card1"
+                , options = []
+                , header =
+                    Accordion.toggle toggleStyles [ text "Вложенные фотографии" ]
+                        |> Accordion.headerH4 headerStyles
+                , blocks =
+                    [ Accordion.block []
+                        [ custom <|
+                            div []
+                                [ div []
+                                    [ Dropdown.dropdown
+                                        model.uploadDropdown
+                                        { options = []
+                                        , toggleMsg = UploadDropdown
+                                        , toggleButton =
+                                            Dropdown.toggle [ Button.attrs [ class "border" ] ] [ text "Загрузить фото" ]
+                                        , items =
+                                            [ Dropdown.buttonItem [ onClick (UploadPhotosClick "before") ] [ text "Фото до начала заявки" ]
+                                            , Dropdown.buttonItem [ onClick (UploadPhotosClick "after") ] [ text "Фото после выполнения заявки" ]
+                                            , Dropdown.buttonItem [ onClick (UploadPhotosClick "difficult") ] [ text "Фото сложностей" ]
+                                            , Dropdown.buttonItem [ onClick (UploadPhotosClick "order") ] [ text "Заказ-наряд" ]
+                                            ]
+                                        }
+
+                                    -- etc
+                                    ]
+                                , viewBefore model.photos
+                                , viewAfter model.photos
+                                , viewDifficult model.photos
+                                , viewOrder model.photos
+                                ]
+                        ]
+                    ]
+                }
+            ]
+        |> Accordion.view model.photosAccordion
+
+
+viewAddPhoto : String -> Html Msg
+viewAddPhoto photoType =
+    div [] []

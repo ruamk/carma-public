@@ -21,6 +21,7 @@ module Api exposing
     , login
     , postPartnerDelay
     , postServiceComment
+    , savePhoto
     , statusInPlace
     , statusServicePerformed
     , updateDriver
@@ -979,8 +980,8 @@ getPhotos serviceId message =
         |> HttpBuilder.request
 
 
-savePhoto : Int -> File.File -> String -> (Result Http.Error (Result String Int) -> msg) -> Cmd msg
-savePhoto serviceId photo photoType message =
+savePhoto : Int -> File.File -> String -> Int -> (Result Http.Error (Result String Int) -> msg) -> Cmd msg
+savePhoto serviceId photo photoType driverId message =
     let
         decoder =
             let
@@ -1008,6 +1009,7 @@ savePhoto serviceId photo photoType message =
         body =
             [ Http.filePart "image" photo
             , Http.stringPart "serviceId" (String.fromInt serviceId)
+            , Http.stringPart "driverId" (String.fromInt driverId)
             , Http.stringPart "latitude" (String.fromFloat 0)
             , Http.stringPart "longitude" (String.fromFloat 0)
             , Http.stringPart "created" (File.lastModified photo |> ISO8601.fromPosix |> ISO8601.toString)
