@@ -10,7 +10,7 @@ import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
 import Bootstrap.Form.Select as Select
 import Bootstrap.Form.Textarea as Textarea
-import Bootstrap.Grid as Grid
+import Bootstrap.Grid as Grid exposing (Column)
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.ListGroup as ListGroup
@@ -170,6 +170,7 @@ type alias Model =
     , currentCases : List CurrentCaseInfo
     , typeOfServiceSynonym : Dictionary
     , closingServiceForm : Maybe ClosingServiceForm
+    , isTimeVisible : Bool
     }
 
 
@@ -220,6 +221,7 @@ type Msg
     | UpdateClosingServiceForm ClosingServiceForm
     | CloseService
     | ServiceClosed (Result Http.Error Bool)
+    | TimeVisibility Bool
 
 
 driverSpinnerSize : String
@@ -304,6 +306,7 @@ init global flags =
       , currentCases = []
       , typeOfServiceSynonym = Dict.empty
       , closingServiceForm = Nothing
+      , isTimeVisible = False
       }
     , navbarCmd
     , Cmd.none
@@ -1178,6 +1181,14 @@ update global msg model =
                             , Cmd.none
                             )
 
+        TimeVisibility status ->
+            ( { model
+                | isTimeVisible = status
+              }
+            , Cmd.none
+            , Cmd.none
+            )
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -1541,6 +1552,31 @@ viewCasePanel model serviceId =
 
                 _ ->
                     "неизвестен"
+
+        viewTime : List (Html Msg)
+        viewTime =
+            let
+                message =
+                    TimeVisibility <| not model.isTimeVisible
+
+                showButton =
+                    Grid.row [ Row.attrs [ Spacing.p1 ] ]
+                        [ Grid.col [ Col.sm5, Col.attrs [ onClick message ] ]
+                            [ name <| "Желаемая дата оказания услуг" ++ ": " ]
+                        , Grid.col [ Col.sm7 ]
+                            [ value <| text (formatTime_ c.expectedServiceStart) ]
+                        ]
+            in
+            [ showButton
+            , if model.isTimeVisible then
+                div []
+                    [ field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
+                    , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
+                    ]
+
+              else
+                div [] []
+            ]
     in
     Grid.row [ Row.attrs [ Spacing.p1 ] ]
         (if model.service.caseId == 0 then
@@ -1584,12 +1620,13 @@ viewCasePanel model serviceId =
                         , field "VIN" <| text <| String.toUpper vin
                         ]
                     , Grid.colBreak []
-                    , Grid.col []
-                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress
-                        , field "Желаемая дата оказания услуг" <| text (formatTime_ c.expectedServiceStart)
-                        , field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
-                        , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
-                        ]
+                    , Grid.col [] <|
+                        List.concat
+                            [ viewAddress c.firstLocation c.firstAddress
+                                |> field "Адрес начала работы"
+                                |> List.singleton
+                            , viewTime
+                            ]
                     , Grid.col []
                         [ if c.serviceType == "Техпомощь" then
                             div [] []
