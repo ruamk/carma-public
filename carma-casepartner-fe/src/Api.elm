@@ -81,7 +81,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    "/elm-live"
+    ""
 
 
 apiLogin : String
