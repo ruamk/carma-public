@@ -1284,7 +1284,7 @@ update global msg model =
 
         UploadPhotosClick photoType ->
             ( model
-            , FileSelect.files [ "image/png", "image/jpg" ] (GotPhotosToUpload photoType)
+            , FileSelect.files [] (GotPhotosToUpload photoType)
             , Cmd.none
             )
 
