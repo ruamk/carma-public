@@ -1590,8 +1590,8 @@ viewCasePanel model serviceId =
                         ]
 
                 showButton =
-                    Grid.row [ Row.attrs [ Spacing.p1 ] ]
-                        [ Grid.col [ Col.sm5, Col.attrs [ onClick message ] ]
+                    Grid.row [ Row.attrs [ Spacing.p1, onClick message ] ]
+                        [ Grid.col [ Col.sm5 ]
                             [ name <| "Желаемая дата оказания услуг" ++ ": "
                             ]
                         , Grid.col [ Col.sm7 ]
