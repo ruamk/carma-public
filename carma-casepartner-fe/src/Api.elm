@@ -209,6 +209,11 @@ apiSavePhoto serviceId =
         ++ "/photo"
 
 
+apiGetDriverImage : String -> String
+apiGetDriverImage imageUrl =
+    prefix ++ imageUrl
+
+
 clientMapURL : Int -> String
 clientMapURL serviceId =
     prefix ++ "/map-client.html?serviceId=" ++ String.fromInt serviceId
@@ -956,11 +961,11 @@ getPhotos serviceId message =
         photoDecoder =
             succeed Photo
                 |> required "serviceId" int
-                |> required "image" string
+                |> required "image" (D.map apiGetDriverImage string)
                 |> required "latitude" float
-                |> required "longtitude" float
+                |> required "longitude" float
                 |> required "created" string
-                |> required "photoType" string
+                |> required "type" string
 
         decoder =
             let
@@ -980,8 +985,8 @@ getPhotos serviceId message =
         |> HttpBuilder.request
 
 
-savePhoto : Int -> File.File -> String -> Int -> (Result Http.Error (Result String Int) -> msg) -> Cmd msg
-savePhoto serviceId photo photoType driverId message =
+savePhoto : Int -> File.File -> String -> (Result Http.Error (Result String Int) -> msg) -> Cmd msg
+savePhoto serviceId photo photoType message =
     let
         decoder =
             let
@@ -1009,7 +1014,6 @@ savePhoto serviceId photo photoType driverId message =
         body =
             [ Http.filePart "image" photo
             , Http.stringPart "serviceId" (String.fromInt serviceId)
-            , Http.stringPart "driverId" (String.fromInt driverId)
             , Http.stringPart "latitude" (String.fromFloat 0)
             , Http.stringPart "longitude" (String.fromFloat 0)
             , Http.stringPart "created" (File.lastModified photo |> ISO8601.fromPosix |> ISO8601.toString)

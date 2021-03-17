@@ -5,7 +5,7 @@ import Bootstrap.Accordion as Accordion
 import Bootstrap.Alert as Alert
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
-import Bootstrap.Card.Block exposing (custom, titleH3)
+import Bootstrap.Card.Block as CardBlock exposing (custom, titleH3)
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
@@ -320,36 +320,7 @@ init global flags =
       , currentCases = []
       , typeOfServiceSynonym = Dict.empty
       , closingServiceForm = Nothing
-      , photos =
-            let
-                photo1 =
-                    { image = "https://sun9-71.userapi.com/impg/Z7618TWE34oRyUrUpkDVqAu7s67fyj1fw1IJnw/4t9TDDjjSaI.jpg?size=800x452&quality=96&sign=1c982ac2a9422b5ebe291b82bd4eaa2f&type=album"
-                    , serviceId = 0
-                    , latitude = 0
-                    , longtitude = 0
-                    , created = ""
-                    , photoType = "before"
-                    }
-
-                photo2 =
-                    { image = "https://sun9-4.userapi.com/impf/c847221/v847221903/1953e7/qqtZDMZjldI.jpg?size=1000x717&quality=96&sign=a028d78653068cd80e8daef52108cb96&type=album"
-                    , serviceId = 0
-                    , latitude = 0
-                    , longtitude = 0
-                    , created = ""
-                    , photoType = "before"
-                    }
-
-                photo3 =
-                    { image = "https://sun9-50.userapi.com/impf/c858336/v858336254/ea912/4lfP6V6u_H4.jpg?size=1024x1024&quality=96&sign=c2d460e7d40db4b14bfdb106c6980a3a&type=album"
-                    , serviceId = 0
-                    , latitude = 0
-                    , longtitude = 0
-                    , created = ""
-                    , photoType = "order"
-                    }
-            in
-            [ photo1, photo2, photo3 ]
+      , photos = []
       , photosAccordion = Accordion.initialState
       , uploadDropdown = Dropdown.initialState
       }
@@ -396,8 +367,7 @@ update global msg model =
                 , Api.getDrivers DriversDownloaded
                 , Api.getTypeOfServiceSynonym TypeOfServiceSynonymDownloaded
                 , Api.getLatestCurrentCases GetCurrentCases
-
-                --, Api.getPhotos global.serviceId GotPhotosToShow
+                , Api.getPhotos global.serviceId GotPhotosToShow
                 ]
             , Cmd.none
             )
@@ -1264,11 +1234,8 @@ update global msg model =
 
         GotPhotosToUpload photoType onePhoto otherPhotos ->
             let
-                driver =
-                    Maybe.withDefault 0 <| Maybe.map .id model.assignedDriver
-
                 savePhoto photo =
-                    Api.savePhoto global.serviceId photo photoType driver PhotosUploadResponse
+                    Api.savePhoto global.serviceId photo photoType PhotosUploadResponse
             in
             ( model
             , Cmd.batch <| List.map savePhoto (onePhoto :: otherPhotos)
@@ -2727,7 +2694,16 @@ viewPhotosAccordion model =
                     Accordion.toggle toggleStyles [ text "Вложенные фотографии" ]
                         |> Accordion.headerH4 headerStyles
                 , blocks =
-                    [ Accordion.block []
+                    [ Accordion.block
+                        [ if model.photos == [] then
+                            
+                            CardBlock.attrs [ class "sm-4" ]
+
+                          else
+                            CardBlock.attrs []
+
+                        -- nothing
+                        ]
                         [ custom <|
                             div []
                                 [ div []

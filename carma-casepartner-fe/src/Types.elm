@@ -207,7 +207,7 @@ type alias Photo =
     { serviceId : Int
     , image : String
     , latitude : Float
-    , longtitude : Float
+    , longitude : Float
     , created : String
     , photoType : String
     }
