@@ -2606,17 +2606,19 @@ viewPhotos photos =
 
         viewPhoto photo =
             Grid.col colOptions
-                [ img
-                    [ A.src photo.image
-                    , style "width" "100%"
-                    , style "height" "100%"
-                    , class "rounded"
-                    , class "border"
-                    , class "img-fluid"
-                    , class "img-thumbnail"
-                    , style "object-fit" "cover"
+                [ a [ A.href photo.image, A.target "_blank" ]
+                    [ img
+                        [ A.src photo.image
+                        , style "width" "100%"
+                        , style "height" "100%"
+                        , class "rounded"
+                        , class "border"
+                        , class "img-fluid"
+                        , class "img-thumbnail"
+                        , style "object-fit" "cover"
+                        ]
+                        []
                     ]
-                    []
                 ]
     in
     List.map viewPhoto photos
