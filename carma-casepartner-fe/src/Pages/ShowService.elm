@@ -2611,6 +2611,7 @@ viewPhotos photos =
                         [ A.src photo.image
                         , style "width" "100%"
                         , style "height" "100%"
+                        , style "max-height" "150px"
                         , class "rounded"
                         , class "border"
                         , class "img-fluid"
