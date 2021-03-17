@@ -58,6 +58,8 @@ import List
 import Maybe exposing (withDefault)
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
+import Svg
+import Svg.Attributes as SvgAttributes
 import Time
 import Tuple
 import Types as Types
@@ -1559,12 +1561,56 @@ viewCasePanel model serviceId =
                 message =
                     TimeVisibility <| not model.isTimeVisible
 
+                caretRightFill =
+                    Svg.svg
+                        [ SvgAttributes.width "16"
+                        , SvgAttributes.height "16"
+                        , SvgAttributes.fill "currentColor"
+                        , SvgAttributes.class "bi bi-caret-right-fill"
+                        , SvgAttributes.viewBox "0 0 16 16"
+                        ]
+                        [ Svg.path
+                            [ SvgAttributes.d "M12.14 8.753l-5.482 4.796c-.646.566-1.658.106-1.658-.753V3.204a1 1 0 0 1 1.659-.753l5.48 4.796a1 1 0 0 1 0 1.506z"
+                            ]
+                            []
+                        ]
+
+                {-
+                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                   class="bi bi-caret-down-fill" viewBox="0 0 16 16">
+                       <path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+                   </svg>
+                -}
+                caretDownFill =
+                    Svg.svg
+                        [ SvgAttributes.width "16"
+                        , SvgAttributes.height "16"
+                        , SvgAttributes.fill "currentColor"
+                        , SvgAttributes.class "bi bi-caret-down-fill"
+                        , SvgAttributes.viewBox "0 0 16 16"
+                        ]
+                        [ Svg.path
+                            [ SvgAttributes.d "M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"
+                            ]
+                            []
+                        ]
+
                 showButton =
                     Grid.row [ Row.attrs [ Spacing.p1 ] ]
                         [ Grid.col [ Col.sm5, Col.attrs [ onClick message ] ]
-                            [ name <| "Желаемая дата оказания услуг" ++ ": " ]
+                            [ name <| "Желаемая дата оказания услуг" ++ ": "
+                            ]
                         , Grid.col [ Col.sm7 ]
-                            [ value <| text (formatTime_ c.expectedServiceStart) ]
+                            [ value <|
+                                div []
+                                    [ text (formatTime_ c.expectedServiceStart)
+                                    , if model.isTimeVisible then
+                                        caretDownFill
+
+                                      else
+                                        caretRightFill
+                                    ]
+                            ]
                         ]
             in
             [ showButton
