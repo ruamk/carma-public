@@ -1256,7 +1256,7 @@ update global msg model =
                                         |> MessageToast.success
                                         |> MessageToast.withMessage "Фотография успешно загружена."
                               }
-                            , Cmd.none
+                            , Api.getPhotos global.serviceId GotPhotosToShow
                             , Cmd.none
                             )
 
