@@ -2645,7 +2645,7 @@ viewPhotosAccordion model =
         filterByPhotoType photoType =
             List.filter (\photo -> photo.photoType == photoType)
 
-        viewAddPhoto photoType =
+        viewAddPhoto =
             Svg.svg
                 [ SvgAttributes.width "16"
                 , SvgAttributes.height "16"
@@ -2666,34 +2666,58 @@ viewPhotosAccordion model =
 
         viewBefore : List Photo -> Html Msg
         viewBefore photos =
-            div [ onClick (UploadPhotosClick "before") ]
-                [ h4 [] [ text "Фото до начала заявки", viewAddPhoto "before" ]
+            let
+                photoType =
+                    "before"
+            in
+            div []
+                [ h4
+                    [ onClick (UploadPhotosClick photoType) ]
+                    [ text "Фото до начала заявки", viewAddPhoto ]
                 , Grid.row []
-                    (viewPhotos <| filterByPhotoType "before" photos)
+                    (viewPhotos <| filterByPhotoType photoType photos)
                 ]
 
         viewAfter : List Photo -> Html Msg
         viewAfter photos =
-            div [ onClick (UploadPhotosClick "after") ]
-                [ h4 [] [ text "Фото после выполнения заявки", viewAddPhoto "after" ]
+            let
+                photoType =
+                    "after"
+            in
+            div []
+                [ h4
+                    [ onClick (UploadPhotosClick photoType) ]
+                    [ text "Фото после выполнения заявки", viewAddPhoto ]
                 , Grid.row []
-                    (viewPhotos <| filterByPhotoType "after" photos)
+                    (viewPhotos <| filterByPhotoType photoType photos)
                 ]
 
         viewDifficult : List Photo -> Html Msg
         viewDifficult photos =
-            div [ onClick (UploadPhotosClick "difficult") ]
-                [ h4 [] [ text "Фото сложностей", viewAddPhoto "difficult" ]
+            let
+                photoType =
+                    "difficult"
+            in
+            div []
+                [ h4
+                    [ onClick (UploadPhotosClick photoType) ]
+                    [ text "Фото сложностей", viewAddPhoto ]
                 , Grid.row []
-                    (viewPhotos <| filterByPhotoType "difficult" photos)
+                    (viewPhotos <| filterByPhotoType photoType photos)
                 ]
 
         viewOrder : List Photo -> Html Msg
         viewOrder photos =
-            div [ onClick (UploadPhotosClick "order") ]
-                [ h4 [] [ text "Заказ-наряд", viewAddPhoto "order" ]
+            let
+                photoType =
+                    "order"
+            in
+            div []
+                [ h4
+                    [ onClick (UploadPhotosClick photoType) ]
+                    [ text "Заказ-наряд", viewAddPhoto ]
                 , Grid.row []
-                    (viewPhotos <| filterByPhotoType "order" photos)
+                    (viewPhotos <| filterByPhotoType photoType photos)
                 ]
     in
     Accordion.config PhotosAccordionMsg
