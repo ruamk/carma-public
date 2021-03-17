@@ -81,7 +81,8 @@ import Types as Types
         )
 import Ui
 import Utils exposing (formatTime)
-
+import Svg
+import Svg.Attributes as SvgAttributes
 
 type alias Flags =
     ()
@@ -2590,20 +2591,20 @@ setPriceRefund n form =
             form
 
 
-viewPhotos : List Photo -> Html Msg
+viewPhotos : List Photo -> List (Column Msg)
 viewPhotos photos =
     let
-        viewPhoto photo =
-            let
-                colOptions =
-                    [ Col.sm3
-                    , Col.attrs
-                        [ style "display" "flex"
-                        , style "align-items" "center"
-                        ]
-                    ]
+        colOptions =
+            [ Col.sm3
+            , Col.attrs
+                [ style "display" "flex"
+                , style "align-items" "center"
+                ]
+            ]
 
-                imgAttributes =
+        viewPhoto photo =
+            Grid.col colOptions
+                [ img
                     [ A.src photo.image
                     , style "width" "100%"
                     , style "height" "100%"
@@ -2613,12 +2614,10 @@ viewPhotos photos =
                     , class "img-thumbnail"
                     , style "object-fit" "cover"
                     ]
-            in
-            Grid.col colOptions
-                [ img imgAttributes []
+                    []
                 ]
     in
-    Grid.row [] (List.map viewPhoto photos)
+    List.map viewPhoto photos
 
 
 viewPhotosAccordion : Model -> Html Msg
@@ -2636,53 +2635,53 @@ viewPhotosAccordion model =
             , style "text-align" "left"
             ]
 
+        filterByPhotoType : String -> List Photo -> List Photo
+        filterByPhotoType photoType = 
+            List.filter (\photo -> photo.photoType == photoType) 
+
+        {-
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus" 
+            viewBox="0 0 16 16">
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+            </svg>
+        -}
+        viewAddPhoto = 
+            Svg.svg
+                [ 
+                ]
+                []
+
         viewBefore : List Photo -> Html Msg
         viewBefore photos =
-            case List.filter (\photo -> photo.photoType == "before") photos of
-                [] ->
-                    text ""
-
-                xs ->
-                    div []
-                        [ h3 [] [ text "Фото до начала заявки" ]
-                        , viewPhotos xs
-                        ]
+            div []
+                [ h3 [] [ text "Фото до начала заявки" ]
+                , Grid.row []
+                    (viewPhotos <| filterByPhotoType "before" photos)
+                ]
 
         viewAfter : List Photo -> Html Msg
         viewAfter photos =
-            case List.filter (\photo -> photo.photoType == "after") photos of
-                [] ->
-                    text ""
-
-                xs ->
-                    div []
-                        [ h3 [] [ text "Фото после выполнения заявки" ]
-                        , viewPhotos xs
-                        ]
+            div []
+                [ h3 [] [ text "Фото после выполнения заявки" ]
+                , Grid.row []
+                    (viewPhotos <| filterByPhotoType "after" photos)
+                ]
 
         viewDifficult : List Photo -> Html Msg
         viewDifficult photos =
-            case List.filter (\photo -> photo.photoType == "difficult") photos of
-                [] ->
-                    text ""
-
-                xs ->
-                    div []
-                        [ h3 [] [ text "Фото сложностей" ]
-                        , viewPhotos xs
-                        ]
+            div []
+                [ h3 [] [ text "Фото сложностей" ]
+                , Grid.row []
+                    (viewPhotos <| filterByPhotoType "difficult" photos)
+                ]
 
         viewOrder : List Photo -> Html Msg
         viewOrder photos =
-            case List.filter (\photo -> photo.photoType == "order") photos of
-                [] ->
-                    text ""
-
-                xs ->
-                    div []
-                        [ h3 [] [ text "Заказ-наряд" ]
-                        , viewPhotos xs
-                        ]
+            div []
+                [ h3 [] [ text "Заказ-наряд" ]
+                , Grid.row []
+                    (viewPhotos <| filterByPhotoType "order" photos)
+                ]
     in
     Accordion.config PhotosAccordionMsg
         |> Accordion.withAnimation
@@ -2696,7 +2695,6 @@ viewPhotosAccordion model =
                 , blocks =
                     [ Accordion.block
                         [ if model.photos == [] then
-                            
                             CardBlock.attrs [ class "sm-4" ]
 
                           else
@@ -2706,24 +2704,25 @@ viewPhotosAccordion model =
                         ]
                         [ custom <|
                             div []
-                                [ div []
-                                    [ Dropdown.dropdown
-                                        model.uploadDropdown
-                                        { options = []
-                                        , toggleMsg = UploadDropdown
-                                        , toggleButton =
-                                            Dropdown.toggle [ Button.attrs [ class "border" ] ] [ text "Загрузить фото" ]
-                                        , items =
-                                            [ Dropdown.buttonItem [ onClick (UploadPhotosClick "before") ] [ text "Фото до начала заявки" ]
-                                            , Dropdown.buttonItem [ onClick (UploadPhotosClick "after") ] [ text "Фото после выполнения заявки" ]
-                                            , Dropdown.buttonItem [ onClick (UploadPhotosClick "difficult") ] [ text "Фото сложностей" ]
-                                            , Dropdown.buttonItem [ onClick (UploadPhotosClick "order") ] [ text "Заказ-наряд" ]
-                                            ]
-                                        }
+                                [ {- div []
+                                     [ Dropdown.dropdown
+                                         model.uploadDropdown
+                                         { options = []
+                                         , toggleMsg = UploadDropdown
+                                         , toggleButton =
+                                             Dropdown.toggle [ Button.attrs [ class "border" ] ] [ text "Загрузить фото" ]
+                                         , items =
+                                             [ Dropdown.buttonItem [ onClick (UploadPhotosClick "before") ] [ text "Фото до начала заявки" ]
+                                             , Dropdown.buttonItem [ onClick (UploadPhotosClick "after") ] [ text "Фото после выполнения заявки" ]
+                                             , Dropdown.buttonItem [ onClick (UploadPhotosClick "difficult") ] [ text "Фото сложностей" ]
+                                             , Dropdown.buttonItem [ onClick (UploadPhotosClick "order") ] [ text "Заказ-наряд" ]
+                                             ]
+                                         }
 
-                                    -- etc
-                                    ]
-                                , viewBefore model.photos
+                                     -- etc
+                                     ]
+                                  -}
+                                  viewBefore model.photos
                                 , viewAfter model.photos
                                 , viewDifficult model.photos
                                 , viewOrder model.photos
@@ -2733,8 +2732,3 @@ viewPhotosAccordion model =
                 }
             ]
         |> Accordion.view model.photosAccordion
-
-
-viewAddPhoto : String -> Html Msg
-viewAddPhoto photoType =
-    div [] []
