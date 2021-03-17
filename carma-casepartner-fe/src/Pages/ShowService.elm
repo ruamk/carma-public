@@ -39,6 +39,7 @@ import Html
         , div
         , h2
         , h3
+        , h4
         , hr
         , img
         , li
@@ -2666,7 +2667,7 @@ viewPhotosAccordion model =
         viewBefore : List Photo -> Html Msg
         viewBefore photos =
             div [ onClick (UploadPhotosClick "before") ]
-                [ h3 [] [ text "Фото до начала заявки", viewAddPhoto "before" ]
+                [ h4 [] [ text "Фото до начала заявки", viewAddPhoto "before" ]
                 , Grid.row []
                     (viewPhotos <| filterByPhotoType "before" photos)
                 ]
@@ -2674,7 +2675,7 @@ viewPhotosAccordion model =
         viewAfter : List Photo -> Html Msg
         viewAfter photos =
             div [ onClick (UploadPhotosClick "after") ]
-                [ h3 [] [ text "Фото после выполнения заявки", viewAddPhoto "after" ]
+                [ h4 [] [ text "Фото после выполнения заявки", viewAddPhoto "after" ]
                 , Grid.row []
                     (viewPhotos <| filterByPhotoType "after" photos)
                 ]
@@ -2682,7 +2683,7 @@ viewPhotosAccordion model =
         viewDifficult : List Photo -> Html Msg
         viewDifficult photos =
             div [ onClick (UploadPhotosClick "difficult") ]
-                [ h3 [] [ text "Фото сложностей", viewAddPhoto "difficult" ]
+                [ h4 [] [ text "Фото сложностей", viewAddPhoto "difficult" ]
                 , Grid.row []
                     (viewPhotos <| filterByPhotoType "difficult" photos)
                 ]
@@ -2690,7 +2691,7 @@ viewPhotosAccordion model =
         viewOrder : List Photo -> Html Msg
         viewOrder photos =
             div [ onClick (UploadPhotosClick "order") ]
-                [ h3 [] [ text "Заказ-наряд", viewAddPhoto "order" ]
+                [ h4 [] [ text "Заказ-наряд", viewAddPhoto "order" ]
                 , Grid.row []
                     (viewPhotos <| filterByPhotoType "order" photos)
                 ]
