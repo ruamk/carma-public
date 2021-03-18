@@ -2722,25 +2722,7 @@ viewPhotosAccordion model =
                         ]
                         [ custom <|
                             div []
-                                [ {- div []
-                                     [ Dropdown.dropdown
-                                         model.uploadDropdown
-                                         { options = []
-                                         , toggleMsg = UploadDropdown
-                                         , toggleButton =
-                                             Dropdown.toggle [ Button.attrs [ class "border" ] ] [ text "Загрузить фото" ]
-                                         , items =
-                                             [ Dropdown.buttonItem [ onClick (UploadPhotosClick "before") ] [ text "Фото до начала заявки" ]
-                                             , Dropdown.buttonItem [ onClick (UploadPhotosClick "after") ] [ text "Фото после выполнения заявки" ]
-                                             , Dropdown.buttonItem [ onClick (UploadPhotosClick "difficult") ] [ text "Фото сложностей" ]
-                                             , Dropdown.buttonItem [ onClick (UploadPhotosClick "order") ] [ text "Заказ-наряд" ]
-                                             ]
-                                         }
-
-                                     -- etc
-                                     ]
-                                  -}
-                                  viewBefore model.photos
+                                [ viewBefore model.photos
                                 , viewAfter model.photos
                                 , viewDifficult model.photos
                                 , viewOrder model.photos
