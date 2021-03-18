@@ -1,76 +1,73 @@
 module Util
-  (
-    -- * Request processing
-    readJSON
-  , readJSONfromLBS
-  , mbreadInt
-  , mbreadDouble
-  , readDouble
+    ( -- * Request processing
+      mbreadDouble
+    , mbreadInt
+    , readDouble
+    , readJSON
+    , readJSONfromLBS
+      -- * String helpers
+    , bToString
+    , render
+    , stringToB
+    , upCaseName
+      -- * Time and date
+    , projNow
+      -- * Postgres helpers
+    , ToRowList (..)
+    , sqlFlagPair
+    , (:*) (..)
+      -- * Logging
+    , Syslog.Priority (..)
+    , hushExceptions
+    , logExceptions
+    , syslogJSON
+    , syslogTxt
+      --    , (Aeson..=)
+      -- * Spam
+    , newHtmlMail
+    , newTextMail
+      -- * JSON responses
+    , customOkResponse
+    , errorResponse
+    , okResponse
+    ) where
 
-    -- * String helpers
-  , upCaseName
-  , bToString
-  , stringToB
-  , render
 
-    -- * Time and date
-  , projNow
+import           Control.Concurrent                   (myThreadId)
+import qualified Control.Exception                    as Ex
+import           Control.Exception.Lifted
+import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Control          (MonadBaseControl)
+import           Data.Aeson                           as Aeson
+import qualified Data.Aeson.Types                     as Aeson
+import           Data.Attoparsec.ByteString.Lazy      (Result (..))
+import qualified Data.Attoparsec.ByteString.Lazy      as Atto
+import           Data.ByteString.Char8                (ByteString)
+import qualified Data.ByteString.Char8                as B
+import qualified Data.ByteString.Lazy                 as L
+import qualified Data.ByteString.Lazy.Char8           as L8
+import           Data.Map                             (Map)
+import qualified Data.Map                             as Map
+import           Data.Maybe
+import           Data.Text                            (Text)
+import qualified Data.Text                            as T
+import qualified Data.Text.Encoding                   as T
+import qualified Data.Text.Read                       as T
+import           Data.Time
+import           Data.Time.Clock.POSIX
+import           Data.Typeable
+import qualified Data.Vector                          as Vector
+import qualified Database.PostgreSQL.Simple           as PG
+import           Database.PostgreSQL.Simple.SqlQQ.Alt
+import           Database.PostgreSQL.Simple.ToField
+import           Database.PostgreSQL.Simple.ToRow
+import           Database.PostgreSQL.Simple.Types
+import           Foreign.C.Types                      (CInt)
+import qualified System.Posix.Syslog                  as Syslog
+import qualified System.Posix.Syslog.Functions        as Syslog
 
-    -- * Postgres helpers
-  , (:*) (..)
-  , ToRowList (..)
-  , sqlFlagPair
-
-    -- * Logging
-  , syslogJSON, syslogTxt, Syslog.Priority(..)
-  , hushExceptions, logExceptions
-  , (Aeson..=)
-
-    -- * Spam
-  , newTextMail
-  , newHtmlMail
-  ) where
-
-import qualified Data.Map as Map
-import Data.Map (Map)
-import Data.Maybe
-import qualified Data.Vector as Vector
-
-import Control.Monad.IO.Class
-import qualified Control.Exception as Ex
-import Control.Monad.Trans.Control (MonadBaseControl)
-import Control.Exception.Lifted
-import Control.Concurrent (myThreadId)
-import Data.Typeable
-import           Data.ByteString.Char8 (ByteString)
-import qualified Data.ByteString.Lazy  as L
-import qualified Data.ByteString.Lazy.Char8  as L8
-import qualified Data.ByteString.Char8 as B
-
-import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Text.Read as T
-
-import Data.Time
-import Data.Time.Clock.POSIX
-
-import Data.Aeson as Aeson
-import qualified Data.Aeson.Types as Aeson
-import Data.Attoparsec.ByteString.Lazy (Result(..))
-import qualified Data.Attoparsec.ByteString.Lazy as Atto
-
-import Database.PostgreSQL.Simple.ToField
-import Database.PostgreSQL.Simple.ToRow
-import Database.PostgreSQL.Simple.Types
-
-import qualified Database.PostgreSQL.Simple as PG
-import Database.PostgreSQL.Simple.SqlQQ.Alt
-
-import qualified System.Posix.Syslog as Syslog
-import qualified System.Posix.Syslog.Functions as Syslog
-
-import           Foreign.C.Types (CInt)
+import           Application                          (AppHandler)
+import           Carma.Utils.Snap                     (writeJSON)
 
 
 data JSONParseException
@@ -145,7 +142,7 @@ render varMap = T.concat . loop
 -- then format the result as a bytestring.
 projNow :: (Int -> Int) -> IO Text
 projNow fn =
-  (T.pack . show . fn . round . utcTimeToPOSIXSeconds) <$> getCurrentTime
+  T.pack . show . fn . round . utcTimeToPOSIXSeconds <$> getCurrentTime
 
 
 -- | Works almost like '(:.)' for 'ToField' instances. Start with `()`
@@ -163,7 +160,7 @@ instance (ToRow a, ToField b) => ToRow (a :* b) where
 
 
 -- | A list of 'ToRow' values with concatenating behavour of 'ToRow'.
-data ToRowList a = ToRowList [a]
+newtype ToRowList a = ToRowList [a]
 
 instance (ToRow a) => ToRow (ToRowList a) where
     toRow (ToRowList l) = concatMap toRow l
@@ -259,4 +256,23 @@ newMail pg mime from to cc reply subj body why
         |]
 
     syslogJSON Syslog.Info "newMail" ["msgId" .= (res::[[Int]]), "why" .= why]
+
+
+response :: Text -> Value -> Value
+response s m = object [ ("status",  String s)
+                      , ("message", m)
+                      ]
+
+
+okResponse :: Text -> AppHandler ()
+okResponse message = writeJSON $ response "ok" $ String message
+
+
+errorResponse :: Text -> AppHandler ()
+errorResponse message = writeJSON $ response "error" $ String message
+
+
+customOkResponse :: Value -> AppHandler ()
+customOkResponse value = writeJSON $ response "ok" value
+
 

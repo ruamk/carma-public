@@ -69,6 +69,14 @@ apiPostPartnerDelay = "/api/v1/service/:serviceId/partnerdelay"
 apiPostServiceClosed :: ByteString
 apiPostServiceClosed = "/api/v1/service/:serviceId/closed"
 
+-- Photos
+apiPhotosByService :: ByteString
+apiPhotosByService = "/api/v1/service/:serviceId/photo"
+
+apiPhotoImage :: ByteString
+apiPhotoImage = "/api/v1/service/:serviceId/photo/:photoId"
+
+-- Dictionaries
 apiDictPartnerDelayReason :: ByteString
 apiDictPartnerDelayReason = "/api/v1/dict/PartnerDelay_Reason"
 
@@ -162,6 +170,10 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiPostPartnerDelay,       method POST S.postPartnerDelay)
          , (apiDictPartnerDelayReason, D.partnerDelayReason)
          , (apiMapTypeOfService,       D.typeOfService)
+
+         , (apiPhotosByService,        method POST S.savePhoto)
+         , (apiPhotoImage,             method GET  S.getPhoto)
+         , (apiPhotosByService,        method GET  S.getPhotos)
 
          , (apiDriverLogin,            method POST MobileAPI.login)
          , (apiDriverStatus,           method POST MobileAPI.status)
