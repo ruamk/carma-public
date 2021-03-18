@@ -58,8 +58,6 @@ import List
 import Maybe exposing (withDefault)
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
-import Svg
-import Svg.Attributes as SvgAttributes
 import Time
 import Tuple
 import Types as Types
