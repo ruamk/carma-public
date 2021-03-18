@@ -82,6 +82,7 @@ import Types as Types
         )
 import Ui
 import Utils exposing (formatTime)
+import Html exposing (img)
 
 
 type alias Flags =
@@ -178,6 +179,7 @@ type alias Model =
     , currentCases : List CurrentCaseInfo
     , typeOfServiceSynonym : Dictionary
     , closingServiceForm : Maybe ClosingServiceForm
+    , isTimeVisible : Bool
     , photos : List Photo
     , photosAccordion : Accordion.State
     , uploadDropdown : Dropdown.State
@@ -231,12 +233,14 @@ type Msg
     | UpdateClosingServiceForm ClosingServiceForm
     | CloseService
     | ServiceClosed (Result Http.Error Bool)
+    | TimeVisibility Bool
     | GotPhotosToShow (Result Http.Error (Result String (List Photo)))
     | UploadPhotosClick String
     | GotPhotosToUpload String File (List File)
     | PhotosUploadResponse (Result Http.Error (Result String Int))
     | PhotosAccordionMsg Accordion.State
     | UploadDropdown Dropdown.State
+
 
 
 driverSpinnerSize : String
@@ -321,6 +325,7 @@ init global flags =
       , currentCases = []
       , typeOfServiceSynonym = Dict.empty
       , closingServiceForm = Nothing
+      , isTimeVisible = False
       , photos = []
       , photosAccordion = Accordion.initialState
       , uploadDropdown = Dropdown.initialState
@@ -1199,6 +1204,12 @@ update global msg model =
                             , Cmd.none
                             )
 
+
+        TimeVisibility status ->
+            ( { model
+                | isTimeVisible = status
+              }
+
         GotPhotosToShow res ->
             case res of
                 Err _ ->
@@ -1517,9 +1528,9 @@ viewCasePanel model serviceId =
         field : String -> Html Msg -> Html Msg
         field n v =
             Grid.row [ Row.attrs [ Spacing.p1 ] ]
-                [ Grid.col [ Col.sm5 ]
+                [ Grid.col [ Col.sm6 ]
                     [ name <| n ++ ": " ]
-                , Grid.col [ Col.sm7 ]
+                , Grid.col [ Col.sm5 ]
                     [ value v ]
                 ]
 
@@ -1663,6 +1674,49 @@ viewCasePanel model serviceId =
 
                 _ ->
                     "неизвестен"
+
+        viewTime : List (Html Msg)
+        viewTime =
+            let
+                message =
+                    TimeVisibility <| not model.isTimeVisible
+
+                caretRightFill =
+                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] [] 
+
+                caretDownFill =
+                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] [] 
+
+                showButton =
+                    Grid.row [ Row.attrs [ Spacing.p1, onClick message ] ]
+                        [ Grid.col [ Col.sm6 ]
+                            [ name <| "Желаемая дата оказания услуг" ++ ": "
+                            ]
+                        , Grid.col [ Col.sm5 ]
+                            [ div
+                                [ class "value", style "display" "inline" ]
+                                [ text (formatTime_ c.expectedServiceStart) ]
+                            , div 
+                                [ style "margin-left" "5px", style "display" "inline" ]
+                                [ if model.isTimeVisible then
+                                    caretDownFill
+
+                                  else
+                                    caretRightFill
+                                ]
+                            ]
+                        ]
+            in
+            [ showButton
+            , if model.isTimeVisible then
+                div []
+                    [ field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
+                    , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
+                    ]
+
+              else
+                div [] []
+            ]
     in
     Grid.row [ Row.attrs [ Spacing.p1 ] ]
         (if model.service.caseId == 0 then
@@ -1706,12 +1760,13 @@ viewCasePanel model serviceId =
                         , field "VIN" <| text <| String.toUpper vin
                         ]
                     , Grid.colBreak []
-                    , Grid.col []
-                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress
-                        , field "Желаемая дата оказания услуг" <| text (formatTime_ c.expectedServiceStart)
-                        , field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
-                        , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
-                        ]
+                    , Grid.col [] <|
+                        List.concat
+                            [ viewAddress c.firstLocation c.firstAddress
+                                |> field "Адрес начала работы"
+                                |> List.singleton
+                            , viewTime
+                            ]
                     , Grid.col []
                         [ if c.serviceType == "Техпомощь" then
                             div [] []
