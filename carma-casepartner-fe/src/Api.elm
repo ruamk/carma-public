@@ -12,6 +12,7 @@ module Api exposing
     , getLatenessReasons
     , getLatestClosingCases
     , getLatestCurrentCases
+    , getPhotos
     , getService
     , getServiceComments
     , getServices
@@ -20,11 +21,14 @@ module Api exposing
     , login
     , postPartnerDelay
     , postServiceComment
+    , savePhoto
+    , staticURL
     , statusInPlace
     , statusServicePerformed
     , updateDriver
     )
 
+import File
 import Http
 import HttpBuilder
 import ISO8601
@@ -48,6 +52,7 @@ import Json.Decode as D
         , succeed
         )
 import Json.Decode.Pipeline exposing (optional, required)
+import Maybe
 import Types
     exposing
         ( CaseComment
@@ -58,6 +63,7 @@ import Types
         , Driver
         , Location
         , Payment
+        , Photo
         , ServiceDescription
         , ServiceInfo
         )
@@ -77,6 +83,11 @@ type alias Session =
 prefix : String
 prefix =
     ""
+
+
+staticURL : String -> String
+staticURL url =
+    prefix ++ url
 
 
 apiLogin : String
@@ -186,6 +197,27 @@ apiCloseService serviceId =
         ++ "/api/v1/service/"
         ++ String.fromInt serviceId
         ++ "/closed"
+
+
+apiGetPhotos : Int -> String
+apiGetPhotos serviceId =
+    prefix
+        ++ "/api/v1/service/"
+        ++ String.fromInt serviceId
+        ++ "/photo"
+
+
+apiSavePhoto : Int -> String
+apiSavePhoto serviceId =
+    prefix
+        ++ "/api/v1/service/"
+        ++ String.fromInt serviceId
+        ++ "/photo"
+
+
+apiGetDriverImage : String -> String
+apiGetDriverImage imageUrl =
+    prefix ++ imageUrl
 
 
 clientMapURL : Int -> String
@@ -927,3 +959,75 @@ cancelServiceToDriver serviceId driverId message =
     HttpBuilder.get (apiCancelServiceToDriver serviceId driverId)
         |> HttpBuilder.withExpect (Http.expectJson message queueIdDecoder)
         |> HttpBuilder.request
+
+
+getPhotos : Int -> (Result Http.Error (Result String (List Photo)) -> msg) -> Cmd msg
+getPhotos serviceId message =
+    let
+        photoDecoder =
+            succeed Photo
+                |> required "serviceId" int
+                |> required "image" (D.map apiGetDriverImage string)
+                |> required "latitude" float
+                |> required "longitude" float
+                |> required "created" string
+                |> required "type" string
+
+        decoder =
+            let
+                handleStatus status =
+                    case status of
+                        "ok" ->
+                            D.map Ok <| field "message" (list photoDecoder)
+
+                        err ->
+                            D.map Err <| succeed err
+            in
+            field "status" string
+                |> D.andThen handleStatus
+    in
+    HttpBuilder.get (apiGetPhotos serviceId)
+        |> HttpBuilder.withExpect (Http.expectJson message decoder)
+        |> HttpBuilder.request
+
+
+savePhoto : Int -> File.File -> String -> (Result Http.Error (Result String Int) -> msg) -> Cmd msg
+savePhoto serviceId photo photoType message =
+    let
+        decoder =
+            let
+                handle status msg =
+                    case status of
+                        "ok" ->
+                            case String.toInt msg of
+                                Just n ->
+                                    Ok n
+
+                                Nothing ->
+                                    Err "Decoding error: `message` must be an integer"
+
+                        "error" ->
+                            Err msg
+
+                        _ ->
+                            Err "unexpected status"
+            in
+            D.map2
+                handle
+                (field "status" string)
+                (field "message" string)
+
+        body =
+            [ Http.filePart "image" photo
+            , Http.stringPart "serviceId" (String.fromInt serviceId)
+            , Http.stringPart "latitude" (String.fromFloat 0)
+            , Http.stringPart "longitude" (String.fromFloat 0)
+            , Http.stringPart "created" (File.lastModified photo |> ISO8601.fromPosix |> ISO8601.toString)
+            , Http.stringPart "type" photoType
+            ]
+    in
+    Http.post
+        { url = apiSavePhoto serviceId
+        , body = Http.multipartBody body
+        , expect = Http.expectJson message decoder
+        }
