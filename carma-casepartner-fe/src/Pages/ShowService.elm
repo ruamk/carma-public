@@ -1408,9 +1408,9 @@ viewCasePanel model serviceId =
         field : String -> Html Msg -> Html Msg
         field n v =
             Grid.row [ Row.attrs [ Spacing.p1 ] ]
-                [ Grid.col [ Col.sm5 ]
+                [ Grid.col [ Col.sm6 ]
                     [ name <| n ++ ": " ]
-                , Grid.col [ Col.sm7 ]
+                , Grid.col [ Col.sm5 ]
                     [ value v ]
                 ]
 
@@ -1567,7 +1567,7 @@ viewCasePanel model serviceId =
                         , SvgAttributes.height "16"
                         , SvgAttributes.fill "currentColor"
                         , SvgAttributes.class "bi bi-caret-right-fill"
-                        , SvgAttributes.viewBox "0 0 16 16"
+                        , SvgAttributes.viewBox "0 1 16 16"
                         ]
                         [ Svg.path
                             [ SvgAttributes.d "M12.14 8.753l-5.482 4.796c-.646.566-1.658.106-1.658-.753V3.204a1 1 0 0 1 1.659-.753l5.48 4.796a1 1 0 0 1 0 1.506z"
@@ -1581,7 +1581,7 @@ viewCasePanel model serviceId =
                         , SvgAttributes.height "16"
                         , SvgAttributes.fill "currentColor"
                         , SvgAttributes.class "bi bi-caret-down-fill"
-                        , SvgAttributes.viewBox "0 0 16 16"
+                        , SvgAttributes.viewBox "0 1 16 16"
                         ]
                         [ Svg.path
                             [ SvgAttributes.d "M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"
@@ -1591,19 +1591,21 @@ viewCasePanel model serviceId =
 
                 showButton =
                     Grid.row [ Row.attrs [ Spacing.p1, onClick message ] ]
-                        [ Grid.col [ Col.sm5 ]
+                        [ Grid.col [ Col.sm6 ]
                             [ name <| "Желаемая дата оказания услуг" ++ ": "
                             ]
-                        , Grid.col [ Col.sm7 ]
-                            [ value <|
-                                div []
-                                    [ text (formatTime_ c.expectedServiceStart)
-                                    , if model.isTimeVisible then
-                                        caretDownFill
+                        , Grid.col [ Col.sm5 ]
+                            [ div
+                                [ class "value", style "display" "inline" ]
+                                [ text (formatTime_ c.expectedServiceStart) ]
+                            , div 
+                                [ style "margin-left" "5px", style "display" "inline" ]
+                                [ if model.isTimeVisible then
+                                    caretDownFill
 
-                                      else
-                                        caretRightFill
-                                    ]
+                                  else
+                                    caretRightFill
+                                ]
                             ]
                         ]
             in
