@@ -2,6 +2,9 @@ module Service.Util
     ( carmaPostComment
     , carmaPostPartnerDelay
     , caseForService
+    , getPhotoTypeParam
+    , savePhoto
+    , sendPhoto
     , serviceActionNotFound
     , serviceAlreadyPerformed
     , servicePerformed
@@ -13,16 +16,31 @@ module Service.Util
     ) where
 
 
+import           Control.Exception                (bracket)
 import           Control.Monad                    (void, when)
 import           Control.Monad.IO.Class           (liftIO)
+import           Data.ByteString.Char8            (ByteString)
 import qualified Data.ByteString.Char8            as BS
 import           Data.Configurator                (lookupDefault)
+import qualified Data.Configurator                as Config
+import           Data.List                        (find)
 import qualified Data.Map                         as M
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
+import           Data.Time.Calendar               (toGregorian)
+import           Data.Time.Clock                  (utctDay)
 import           Database.PostgreSQL.Simple.SqlQQ
 import           Snap
 import           Snap.Snaplet.PostgresqlSimple    (Only (..), query)
+import           Snap.Util.FileUploads            (defaultUploadPolicy,
+                                                   handleMultipart,
+                                                   partContentType,
+                                                   partFieldName, partFileName)
+import           System.Directory                 (createDirectoryIfMissing)
+import           System.FilePath                  ((</>))
+import           System.IO                        (hClose)
+import qualified System.IO.Streams                as Streams
+import           System.IO.Temp                   (openBinaryTempFile)
 
 import           Application
 import           Carma.Model
@@ -30,8 +48,14 @@ import           Carma.Model.Action               as Action
 import qualified Carma.Model.ActionType           as ActionType
 import           Carma.Model.Service              as Service
 import qualified Carma.Model.ServiceStatus        as ServiceStatus
+import           Carma.Utils.Snap                 (getDateTimeParam,
+                                                   getIntParam,
+                                                   getLatitudeParam,
+                                                   getLongitudeParam)
 import qualified CarmaApi
 import qualified Data.Model.Patch                 as Patch
+import           Types                            (DriverPhotoType (..))
+import           Util                             (errorResponse, okResponse)
 
 
 withCookie
@@ -212,3 +236,109 @@ isServiceAssignedToOperator serviceId = do
       AND type = ?
   |] (serviceId, ActionType.checkStatus)
   return $ count > 0
+
+
+getPhotoTypeParam :: ByteString -> Handler a b (Either Text DriverPhotoType)
+getPhotoTypeParam name =
+  getParam name >>= \v ->
+      return $ case v of
+                 Just "after"     -> Right DriverPhotoAfter
+                 Just "before"    -> Right DriverPhotoBefore
+                 Just "difficult" -> Right DriverPhotoDifficult
+                 Just "order"     -> Right DriverPhotoOrder
+                 Just iv          -> Left $ T.concat [ "invalid value '"
+                                                    , T.pack $ BS.unpack iv
+                                                    , "' for parameter "
+                                                    , T.pack $ BS.unpack name
+                                                    ]
+                 Nothing          -> Left $ T.concat [ T.pack $ BS.unpack name
+                                                    , " not specified"
+                                                    ]
+
+
+savePhoto :: Maybe Int -> AppHandler ()
+savePhoto driverId  = do
+  parts <- handleMultipart defaultUploadPolicy partHandler
+
+  let image = case find (\(name, _, _, _) -> "image" == name) parts of
+                Nothing -> Left $ T.pack "image is not specified"
+
+                Just (_, _, "image/jpeg", rawData) ->
+                    if BS.null rawData
+                    then Left $ T.pack "image is empty"
+                    else Right rawData
+
+                Just _ -> Left $ T.pack "image Content-Type is not image/jpeg"
+
+  serviceId   <- getIntParam "serviceId"
+  latitude    <- getLatitudeParam "latitude"
+  longitude   <- getLongitudeParam "longitude"
+  created     <- getDateTimeParam "created"
+  photoType   <- getPhotoTypeParam "type"
+
+  case (image, serviceId, latitude, longitude, created, photoType) of
+    (Left err, _, _, _, _, _) -> errorResponse err
+
+    (_, Nothing, _, _, _, _)  ->
+        errorResponse "serviceId is not specified or contains invalid value"
+
+    (_, _, Left err, _, _, _) ->  errorResponse err
+
+    (_, _, _, Left err, _, _) ->  errorResponse err
+
+    (_, _, _, _, Nothing, _) ->
+        errorResponse "created is not specified or contains invalid value"
+
+    (_, _, _, _, _, Left err) ->  errorResponse err
+
+    ( Right rawPhoto, Just serviceId'
+     , Right lat, Right lon, Just created', Right photoType') -> do
+          filename <- savePhotoFile rawPhoto serviceId' photoType' created'
+          photoId  <- savePhotoInfo serviceId' lat lon created'
+                                   photoType' filename
+          okResponse $ T.pack $ show photoId
+
+  where
+    partHandler pInfo stream = do
+      let fieldname   = BS.unpack $ partFieldName pInfo
+          filename    = partFileName pInfo
+          contentType = BS.unpack $ partContentType pInfo
+      body <- BS.concat <$> Streams.toList stream
+      return (fieldname, filename, contentType, body)
+
+
+    savePhotoInfo serviceId lat lon created photoType filename = do
+      [Only photoId] :: [Only Int] <- query [sql|
+        INSERT INTO driversPhotos
+                    (driverId, serviceId, coord, created, photoType, filename)
+             VALUES (?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?, ?)
+          RETURNING id
+      |] (driverId, serviceId, lon, lat, created, photoType, filename)
+      return photoId
+
+
+    savePhotoFile rawPhoto serviceId photoType created = do
+      cfg <- getSnapletUserConfig
+      dirPrefix <- liftIO $ Config.require cfg "photo.directory"
+
+      let (year, m, _) = toGregorian $ utctDay created
+          month = (if m < 10 then "0" else "") ++ show m
+          dirname = dirPrefix </> show photoType </> show year </> month
+          filenameTemplate = show serviceId ++ "_.jpg"
+
+      liftIO $ createDirectoryIfMissing True dirname
+      f <- liftIO $ bracket (openBinaryTempFile dirname filenameTemplate)
+                           (\(_, h) -> hClose h)
+                           (\(filePath, h) ->
+                                BS.hPut h rawPhoto >>
+                                  return (drop (length dirPrefix) filePath)
+                           )
+      return f
+
+
+sendPhoto :: String -> AppHandler ()
+sendPhoto filename = do
+  cfg <- getSnapletUserConfig
+  dirPrefix <- liftIO $ Config.require cfg "photo.directory"
+  modifyResponse $ setContentType "image/jpeg"
+  sendFile $ dirPrefix </> filename
