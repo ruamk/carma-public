@@ -5,15 +5,17 @@ module Types exposing
     , CurrentCaseInfo
     , Dictionary
     , Driver
+    , Location
     , Payment
     , PaymentType(..)
+    , Photo
     , ServiceDescription
     , ServiceInfo
     , emptyServiceDescription
-    , Location
     )
 
 import Dict
+import File exposing (File)
 import ISO8601 exposing (Time)
 
 
@@ -198,4 +200,14 @@ type alias Driver =
     , plateNum : Maybe String
     , isActive : Bool
     , serviceId : Maybe Int
+    }
+
+
+type alias Photo =
+    { serviceId : Int
+    , image : String
+    , latitude : Float
+    , longitude : Float
+    , created : String
+    , photoType : String
     }

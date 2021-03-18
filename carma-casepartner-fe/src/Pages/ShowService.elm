@@ -1,16 +1,17 @@
 module Pages.ShowService exposing (Flags, Model, Msg, page)
 
 import Api
+import Bootstrap.Accordion as Accordion
 import Bootstrap.Alert as Alert
 import Bootstrap.Button as Button
 import Bootstrap.Card as Card
-import Bootstrap.Card.Block exposing (titleH3)
+import Bootstrap.Card.Block as CardBlock exposing (custom, titleH3)
 import Bootstrap.Dropdown as Dropdown
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
 import Bootstrap.Form.Select as Select
 import Bootstrap.Form.Textarea as Textarea
-import Bootstrap.Grid as Grid
+import Bootstrap.Grid as Grid exposing (Column)
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Grid.Row as Row
 import Bootstrap.ListGroup as ListGroup
@@ -22,6 +23,8 @@ import Bootstrap.Utilities.Spacing as Spacing
 import Chat
 import Const
 import Dict
+import File exposing (File)
+import File.Select as FileSelect
 import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import Generated.Route as Route
@@ -32,10 +35,13 @@ import Html
         , a
         , b
         , br
+        , button
         , div
         , h2
         , h3
+        , h4
         , hr
+        , img
         , li
         , p
         , s
@@ -52,8 +58,9 @@ import Html.Attributes as A
         , value
         )
 import Html.Events exposing (onClick, onInput, onSubmit)
-import Http
+import Http exposing (Response(..))
 import ISO8601
+import Json.Decode as D
 import List
 import Maybe exposing (withDefault)
 import MessageToast exposing (MessageToast)
@@ -69,11 +76,13 @@ import Types as Types
         , Driver
         , Location
         , Payment
+        , Photo
         , ServiceDescription
         , emptyServiceDescription
         )
 import Ui
 import Utils exposing (formatTime)
+import Html exposing (img)
 
 
 type alias Flags =
@@ -170,6 +179,10 @@ type alias Model =
     , currentCases : List CurrentCaseInfo
     , typeOfServiceSynonym : Dictionary
     , closingServiceForm : Maybe ClosingServiceForm
+    , isTimeVisible : Bool
+    , photos : List Photo
+    , photosAccordion : Accordion.State
+    , uploadDropdown : Dropdown.State
     }
 
 
@@ -220,6 +233,14 @@ type Msg
     | UpdateClosingServiceForm ClosingServiceForm
     | CloseService
     | ServiceClosed (Result Http.Error Bool)
+    | TimeVisibility Bool
+    | GotPhotosToShow (Result Http.Error (Result String (List Photo)))
+    | UploadPhotosClick String
+    | GotPhotosToUpload String File (List File)
+    | PhotosUploadResponse (Result Http.Error (Result String Int))
+    | PhotosAccordionMsg Accordion.State
+    | UploadDropdown Dropdown.State
+
 
 
 driverSpinnerSize : String
@@ -304,6 +325,10 @@ init global flags =
       , currentCases = []
       , typeOfServiceSynonym = Dict.empty
       , closingServiceForm = Nothing
+      , isTimeVisible = False
+      , photos = []
+      , photosAccordion = Accordion.initialState
+      , uploadDropdown = Dropdown.initialState
       }
     , navbarCmd
     , Cmd.none
@@ -348,6 +373,7 @@ update global msg model =
                 , Api.getDrivers DriversDownloaded
                 , Api.getTypeOfServiceSynonym TypeOfServiceSynonymDownloaded
                 , Api.getLatestCurrentCases GetCurrentCases
+                , Api.getPhotos global.serviceId GotPhotosToShow
                 ]
             , Cmd.none
             )
@@ -1179,6 +1205,114 @@ update global msg model =
                             )
 
 
+        TimeVisibility status ->
+            ( { model
+                | isTimeVisible = status
+              }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        GotPhotosToShow res ->
+            case res of
+                Err _ ->
+                    ( { model
+                        | messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "http error: couldnt get photos"
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Ok resultPhotos ->
+                    case resultPhotos of
+                        Ok photos ->
+                            ( { model
+                                | photos = photos
+                              }
+                            , Cmd.none
+                            , Cmd.none
+                            )
+
+                        Err error ->
+                            ( { model
+                                | messageToast =
+                                    model.messageToast
+                                        |> MessageToast.danger
+                                        |> MessageToast.withMessage error
+                              }
+                            , Cmd.none
+                            , Cmd.none
+                            )
+
+        GotPhotosToUpload photoType onePhoto otherPhotos ->
+            let
+                savePhoto photo =
+                    Api.savePhoto global.serviceId photo photoType PhotosUploadResponse
+            in
+            ( model
+            , Cmd.batch <| List.map savePhoto (onePhoto :: otherPhotos)
+            , Cmd.none
+            )
+
+        PhotosUploadResponse httpResponse ->
+            case httpResponse of
+                Ok uploadResponse ->
+                    case uploadResponse of
+                        Ok _ ->
+                            ( { model
+                                | messageToast =
+                                    model.messageToast
+                                        |> MessageToast.success
+                                        |> MessageToast.withMessage "Фотография успешно загружена."
+                              }
+                            , Api.getPhotos global.serviceId GotPhotosToShow
+                            , Cmd.none
+                            )
+
+                        Err uploadError ->
+                            ( { model
+                                | messageToast =
+                                    model.messageToast
+                                        |> MessageToast.danger
+                                        |> MessageToast.withMessage uploadError
+                              }
+                            , Cmd.none
+                            , Cmd.none
+                            )
+
+                Err _ ->
+                    ( { model
+                        | messageToast =
+                            model.messageToast
+                                |> MessageToast.danger
+                                |> MessageToast.withMessage "http error: couldnt upload photos"
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+        UploadPhotosClick photoType ->
+            ( model
+            , FileSelect.files [] (GotPhotosToUpload photoType)
+            , Cmd.none
+            )
+
+        PhotosAccordionMsg state ->
+            ( { model | photosAccordion = state }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        UploadDropdown state ->
+            ( { model | uploadDropdown = state }
+            , Cmd.none
+            , Cmd.none
+            )
+
+
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
     Sub.batch
@@ -1186,6 +1320,8 @@ subscriptions global model =
         , Chat.caseReceiver Chat
         , Time.every (commentsUpdateTime * 1000) Tick
         , Time.every (servicesListUpdateSeconds * 1000) UpdateServicesListTick
+        , Accordion.subscriptions model.photosAccordion PhotosAccordionMsg
+        , Dropdown.subscriptions model.uploadDropdown UploadDropdown
         ]
 
 
@@ -1395,9 +1531,9 @@ viewCasePanel model serviceId =
         field : String -> Html Msg -> Html Msg
         field n v =
             Grid.row [ Row.attrs [ Spacing.p1 ] ]
-                [ Grid.col [ Col.sm5 ]
+                [ Grid.col [ Col.sm6 ]
                     [ name <| n ++ ": " ]
-                , Grid.col [ Col.sm7 ]
+                , Grid.col [ Col.sm5 ]
                     [ value v ]
                 ]
 
@@ -1541,6 +1677,49 @@ viewCasePanel model serviceId =
 
                 _ ->
                     "неизвестен"
+
+        viewTime : List (Html Msg)
+        viewTime =
+            let
+                message =
+                    TimeVisibility <| not model.isTimeVisible
+
+                caretRightFill =
+                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] [] 
+
+                caretDownFill =
+                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] [] 
+
+                showButton =
+                    Grid.row [ Row.attrs [ Spacing.p1, onClick message ] ]
+                        [ Grid.col [ Col.sm6 ]
+                            [ name <| "Желаемая дата оказания услуг" ++ ": "
+                            ]
+                        , Grid.col [ Col.sm5 ]
+                            [ div
+                                [ class "value", style "display" "inline" ]
+                                [ text (formatTime_ c.expectedServiceStart) ]
+                            , div 
+                                [ style "margin-left" "5px", style "display" "inline" ]
+                                [ if model.isTimeVisible then
+                                    caretDownFill
+
+                                  else
+                                    caretRightFill
+                                ]
+                            ]
+                        ]
+            in
+            [ showButton
+            , if model.isTimeVisible then
+                div []
+                    [ field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
+                    , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
+                    ]
+
+              else
+                div [] []
+            ]
     in
     Grid.row [ Row.attrs [ Spacing.p1 ] ]
         (if model.service.caseId == 0 then
@@ -1584,12 +1763,13 @@ viewCasePanel model serviceId =
                         , field "VIN" <| text <| String.toUpper vin
                         ]
                     , Grid.colBreak []
-                    , Grid.col []
-                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress
-                        , field "Желаемая дата оказания услуг" <| text (formatTime_ c.expectedServiceStart)
-                        , field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
-                        , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
-                        ]
+                    , Grid.col [] <|
+                        List.concat
+                            [ viewAddress c.firstLocation c.firstAddress
+                                |> field "Адрес начала работы"
+                                |> List.singleton
+                            , viewTime
+                            ]
                     , Grid.col []
                         [ if c.serviceType == "Техпомощь" then
                             div [] []
@@ -1666,7 +1846,8 @@ viewCasePanel model serviceId =
                 , hr [] []
                 , Grid.row []
                     [ Grid.col [ Col.attrs [ Spacing.p3 ] ]
-                        [ Form.form [ action "#", onSubmit AddComment ]
+                        [ viewPhotosAccordion model
+                        , Form.form [ action "#", onSubmit AddComment ]
                             [ Form.group []
                                 [ Textarea.textarea
                                     [ Textarea.id "comment"
@@ -2466,3 +2647,146 @@ setPriceRefund n form =
 
         _ ->
             form
+
+
+viewPhotos : List Photo -> List (Column Msg)
+viewPhotos photos =
+    let
+        colOptions =
+            [ Col.sm3
+            , Col.attrs
+                [ style "display" "flex"
+                , style "align-items" "center"
+                ]
+            ]
+
+        viewPhoto photo =
+            Grid.col colOptions
+                [ a [ A.href photo.image, A.target "_blank" ]
+                    [ img
+                        [ A.src photo.image
+                        , style "width" "100%"
+                        , style "height" "100%"
+                        , style "max-height" "150px"
+                        , class "rounded"
+                        , class "border"
+                        , class "img-fluid"
+                        , class "img-thumbnail"
+                        , style "object-fit" "cover"
+                        ]
+                        []
+                    ]
+                ]
+    in
+    List.map viewPhoto photos
+
+
+viewPhotosAccordion : Model -> Html Msg
+viewPhotosAccordion model =
+    let
+        headerStyles =
+            [ style "padding" "0"
+            ]
+
+        toggleStyles =
+            [ style "height" "100%"
+            , style "width" "100%"
+            , style "margin-top" "4px"
+            , style "margin-bottom" "4px"
+            , style "text-align" "left"
+            ]
+
+        filterByPhotoType : String -> List Photo -> List Photo
+        filterByPhotoType photoType =
+            List.filter (\photo -> photo.photoType == photoType)
+
+        viewAddPhoto =
+            img [ A.src (Api.staticURL "/plus-square.svg") ] []
+
+        viewBefore : List Photo -> Html Msg
+        viewBefore photos =
+            let
+                photoType =
+                    "before"
+            in
+            div []
+                [ h4
+                    [ onClick (UploadPhotosClick photoType) ]
+                    [ text "Фото до начала заявки", viewAddPhoto ]
+                , Grid.row []
+                    (viewPhotos <| filterByPhotoType photoType photos)
+                ]
+
+        viewAfter : List Photo -> Html Msg
+        viewAfter photos =
+            let
+                photoType =
+                    "after"
+            in
+            div []
+                [ h4
+                    [ onClick (UploadPhotosClick photoType) ]
+                    [ text "Фото после выполнения заявки", viewAddPhoto ]
+                , Grid.row []
+                    (viewPhotos <| filterByPhotoType photoType photos)
+                ]
+
+        viewDifficult : List Photo -> Html Msg
+        viewDifficult photos =
+            let
+                photoType =
+                    "difficult"
+            in
+            div []
+                [ h4
+                    [ onClick (UploadPhotosClick photoType) ]
+                    [ text "Фото сложностей", viewAddPhoto ]
+                , Grid.row []
+                    (viewPhotos <| filterByPhotoType photoType photos)
+                ]
+
+        viewOrder : List Photo -> Html Msg
+        viewOrder photos =
+            let
+                photoType =
+                    "order"
+            in
+            div []
+                [ h4
+                    [ onClick (UploadPhotosClick photoType) ]
+                    [ text "Заказ-наряд", viewAddPhoto ]
+                , Grid.row []
+                    (viewPhotos <| filterByPhotoType photoType photos)
+                ]
+    in
+    Accordion.config PhotosAccordionMsg
+        |> Accordion.withAnimation
+        |> Accordion.cards
+            [ Accordion.card
+                { id = "card1"
+                , options = []
+                , header =
+                    Accordion.toggle toggleStyles [ text "Вложенные фотографии" ]
+                        |> Accordion.headerH4 headerStyles
+                , blocks =
+                    [ Accordion.block
+                        [ if model.photos == [] then
+                            CardBlock.attrs [ class "sm-4" ]
+
+                          else
+                            CardBlock.attrs []
+
+                        -- nothing
+                        ]
+                        [ custom <|
+                            div []
+                                [ viewBefore model.photos
+                                , viewAfter model.photos
+                                , viewDifficult model.photos
+                                , viewOrder model.photos
+                                ]
+                        ]
+                    ]
+                }
+            ]
+        |> Accordion.view model.photosAccordion
