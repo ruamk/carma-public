@@ -20,6 +20,7 @@ module Api exposing
     , login
     , postPartnerDelay
     , postServiceComment
+    , staticURL
     , statusInPlace
     , statusServicePerformed
     , updateDriver
@@ -76,7 +77,12 @@ type alias Session =
 
 prefix : String
 prefix =
-    ""
+    "/elm-live"
+
+
+staticURL : String -> String
+staticURL url =
+    prefix ++ url
 
 
 apiLogin : String
