@@ -1209,6 +1209,9 @@ update global msg model =
             ( { model
                 | isTimeVisible = status
               }
+            , Cmd.none
+            , Cmd.none
+            )
 
         GotPhotosToShow res ->
             case res of
