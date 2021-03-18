@@ -48,7 +48,6 @@ sortServices cs =
         ( inProgress, others ) =
             List.partition (\c -> c.cuAccordTime == "В работе") cs
         
-        -- it's reversed, newest first
         sortByCallDate : List CurrentCaseInfo -> List CurrentCaseInfo
         sortByCallDate xs =
             let
@@ -74,7 +73,7 @@ sortServices cs =
                         (ISO8601.toTime <| time b)
                         
             in
-            List.reverse <| List.sortWith rule xs
+            List.sortWith rule xs
     in
     List.append
         (sortByCallDate others)

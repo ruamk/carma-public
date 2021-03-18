@@ -1,14 +1,17 @@
 module AppHandlers.Service
-    ( handleApiGetService
+    ( getPhoto
+    , getPhotos
+    , handleApiGetService
     , postComment
     , postPartnerDelay
+    , savePhoto
     , serviceComments
     , serviceLocation
-    , servicePerformed
     , statusInPlace
     , statusServiceClosed
     , statusServicePerformed
     ) where
+
 
 import           Control.Monad                        (void, when)
 import           Data.Aeson                           (ToJSON, Value (..),
@@ -42,10 +45,12 @@ import qualified Carma.Model.ServiceType              as ServiceType
 import qualified Carma.Model.Usermeta                 as Usermeta
 import           Carma.Utils.Snap
 import qualified Data.Model.Patch                     as Patch
-import           Service.Util
+import qualified Service.Util                         as SUtil
 import           Snaplet.Auth.PGUsers
-import           Types                                (Location (..),
+import           Types                                (Location (..), PhotoInfo,
                                                        coords2Location)
+import           Util                                 (customOkResponse,
+                                                       errorResponse)
 
 
 type LoadingDifficulties = M.Map String (Maybe Bool)
@@ -136,8 +141,10 @@ handleApiGetService = checkAuthCasePartner $ do
     WHERE id = ?;
   |] (caseId, serviceId)
 
-  let [tech, towage, bikeTowage] =
-          map (\(Ident i) -> i) [ServiceType.tech, ServiceType.towage, ServiceType.bikeTowage]
+  let [tech, towage, bikeTowage] = map (\(Ident i) -> i) [ ServiceType.tech
+                                                        , ServiceType.towage
+                                                        , ServiceType.bikeTowage
+                                                        ]
 
   [(expectedServiceStart, factServiceStart, factServiceEnd, serviceType
    , status, statusLabel, payType, partnerCost, partnerCostTranscript
@@ -176,7 +183,7 @@ handleApiGetService = checkAuthCasePartner $ do
     WHERE servicetbl.id = ?
     ORDER by servicetbl.id DESC
     LIMIT 1
-  |] $ (tech, towage, bikeTowage, serviceId)
+  |] (tech, towage, bikeTowage, serviceId)
 
   let firstLocation = coords2Location firstLonLat
 
@@ -217,7 +224,7 @@ serviceComments = checkAuthCasePartner $ do
   Just user <- currentUserMeta
   let Just (Ident uid) = Patch.get user Usermeta.ident
   serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
-  Just caseId <- caseForService serviceId
+  Just caseId <- SUtil.caseForService serviceId
 
   limit <- fromMaybe 100 <$> getIntParam "limit"
   rows <- query [sql|
@@ -242,7 +249,7 @@ postComment = checkAuthCasePartner $ do
 
   when (T.null comment) (error "empty comment")
 
-  commentId <- carmaPostComment caseId $ T.unpack comment
+  commentId <- SUtil.carmaPostComment caseId $ T.unpack comment
   writeJSON [commentId]
 
 
@@ -306,7 +313,7 @@ postPartnerDelay = checkAuthCasePartner $ do
             )
             <$> getParam "comment"
 
-  partnerDelayId <- setStatusPartnerDelay serviceId uid minutes reason comment
+  partnerDelayId <- SUtil.setStatusPartnerDelay serviceId uid minutes reason comment
   writeJSON [partnerDelayId]
 
 
@@ -316,7 +323,7 @@ postPartnerDelay = checkAuthCasePartner $ do
 statusInPlace :: AppHandler ()
 statusInPlace = checkAuthCasePartner $ do
   serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
-  setStatusInPlace serviceId >>= writeJSON
+  SUtil.setStatusInPlace serviceId >>= writeJSON
 
 
 statusServicePerformed :: AppHandler ()
@@ -326,7 +333,7 @@ statusServicePerformed = checkAuthCasePartner $ do
 
   when (T.null comment) $ error "empty comment"
 
-  setStatusPerformed serviceId (T.unpack comment) >>= writeJSON
+  SUtil.setStatusPerformed serviceId (T.unpack comment) >>= writeJSON
 
 
 statusServiceClosed :: AppHandler ()
@@ -389,7 +396,7 @@ statusServiceClosed = checkAuthCasePartner $ do
                             , payment_partnerCostTranscript = ?
                         WHERE id = ?
                      |] (partnerCost, partnerCostTranscript, serviceId)
-                     setStatusClosed (Ident serviceId) closeActionId
+                     SUtil.setStatusClosed (Ident serviceId) closeActionId
                    Nothing -> error "partner not specified"
 
             | payType == PaymentType.client ||
@@ -402,7 +409,7 @@ statusServiceClosed = checkAuthCasePartner $ do
                           SET payment_paidByClient = ?
                         WHERE id = ?
                      |] (clientCost, serviceId)
-                     setStatusClosed (Ident serviceId) closeActionId
+                     SUtil.setStatusClosed (Ident serviceId) closeActionId
                    Nothing -> error "client not specified"
 
             | payType == PaymentType.mixed  -> do
@@ -422,10 +429,71 @@ statusServiceClosed = checkAuthCasePartner $ do
                               , clientCost
                               , serviceId
                               )
-                           setStatusClosed (Ident serviceId) closeActionId
+                           SUtil.setStatusClosed (Ident serviceId) closeActionId
                    (Nothing, _) -> error "partner not specified"
                    (_, Nothing) -> error "client not specified"
 
             | otherwise -> error $ "unknown payType" ++ show payType
 
       writeJSON message
+
+
+getPhoto :: AppHandler ()
+getPhoto = checkAuthCasePartner $ do
+  Just user <- currentUserMeta
+  let Just partner = Patch.get user Usermeta.ident
+
+  Just serviceId <- getIntParam "serviceId"
+  hasPhoto <- getIntParam "photoId"
+
+  case hasPhoto of
+    Nothing -> errorResponse "photo id is not specified"
+
+    Just photoId -> do
+      [Only filename] :: [Only (Maybe String)] <- query [sql|
+        SELECT filename
+          FROM driversPhotos
+         WHERE id = ?
+           AND serviceId = ?
+           AND (driverId IN (SELECT id FROM "CasePartnerDrivers" WHERE partner = ?)
+                OR driverId IS NULL)
+      |] (photoId, serviceId, partner)
+
+      case filename of
+        Nothing -> errorResponse "invalid photo file name"
+        Just "" -> errorResponse "empty photo file name"
+        Just f  -> SUtil.sendPhoto f
+
+
+getPhotos :: AppHandler ()
+getPhotos = checkAuthCasePartner $ do
+  Just user <- currentUserMeta
+  let Just partner = Patch.get user Usermeta.ident
+
+  hasService <- getIntParam "serviceId"
+
+  case hasService of
+    Nothing -> errorResponse "serviceId is not specified"
+
+    Just serviceId -> do
+      r <- getRequest
+      photosInfo :: [PhotoInfo] <- query [sql|
+        SELECT driverId
+             , serviceId
+             , ST_X(coord)
+             , ST_Y(coord)
+             , created
+             , photoType
+             , ? || '/' || id::text
+          FROM driversPhotos
+         WHERE serviceId = ?
+           AND (driverId IN (SELECT id FROM "CasePartnerDrivers" WHERE partner = ?)
+                OR driverId IS NULL)
+
+      |] (rqURI r, serviceId, partner)
+
+      customOkResponse $ toJSON photosInfo
+
+
+savePhoto :: AppHandler ()
+savePhoto = checkAuthCasePartner $ SUtil.savePhoto Nothing

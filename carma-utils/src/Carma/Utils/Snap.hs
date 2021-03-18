@@ -18,10 +18,10 @@ import qualified Data.Text                        as T
 import qualified Data.Text.Encoding               as T
 import qualified Data.Text.Read                   as T
 import           Data.Time                        (Day)
+import           Data.Time.Clock                  (UTCTime)
 import           Data.Time.Format                 (defaultTimeLocale,
                                                    parseTimeM)
 import           Data.Time.Format.ISO8601         (formatParseM, iso8601Format)
-import           Data.Time.LocalTime              (ZonedTime)
 import           Data.Typeable
 
 import           Snap
@@ -156,7 +156,7 @@ getDateParam name =
                  _      -> Nothing
 
 
-getDateTimeParam :: ByteString -> Handler a b (Maybe ZonedTime)
+getDateTimeParam :: ByteString -> Handler a b (Maybe UTCTime)
 getDateTimeParam name =
   getParam name >>= \v ->
       return $ case v of
