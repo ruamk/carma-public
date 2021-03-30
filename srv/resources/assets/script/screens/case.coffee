@@ -262,8 +262,12 @@ setupHistory = (kvm) ->
 
 
 setupElmPhotos = (kvm) ->
-  Elm.ElmPhotos.init( { node: document.getElementById('elm-photos') })
+  init = 
+    { node: document.getElementById('elm-photos') 
+    , flags: kvm.filesText()
+    }
 
+  Elm.ElmPhotos.init(init)
 
 # Case comments/chat
 setupCommentsHandler = (kvm) ->
