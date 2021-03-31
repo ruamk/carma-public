@@ -30,12 +30,14 @@ import qualified Data.Text                        as T
 import           Data.Time.Calendar               (toGregorian)
 import           Data.Time.Clock                  (utctDay)
 import           Database.PostgreSQL.Simple.SqlQQ
+import           GHC.Int                          (Int64)
 import           Snap
 import           Snap.Snaplet.PostgresqlSimple    (Only (..), query)
 import           Snap.Util.FileUploads            (defaultUploadPolicy,
                                                    handleMultipart,
                                                    partContentType,
-                                                   partFieldName, partFileName)
+                                                   partFieldName, partFileName,
+                                                   setMaximumFormInputSize)
 import           System.Directory                 (createDirectoryIfMissing)
 import           System.FilePath                  ((</>))
 import           System.IO                        (hClose)
@@ -56,6 +58,11 @@ import qualified CarmaApi
 import qualified Data.Model.Patch                 as Patch
 import           Types                            (DriverPhotoType (..))
 import           Util                             (errorResponse, okResponse)
+
+
+-- | Default maximim photo size in megabytes
+maxPhotoSizeMb :: Int64
+maxPhotoSizeMb = 8
 
 
 withCookie
@@ -258,7 +265,13 @@ getPhotoTypeParam name =
 
 savePhoto :: Maybe Int -> AppHandler ()
 savePhoto driverId  = do
-  parts <- handleMultipart defaultUploadPolicy partHandler
+  cfg <- getSnapletUserConfig
+  maxPhotoSize <- do
+    mb <- liftIO $ Config.lookupDefault maxPhotoSizeMb cfg "photo.max-size-mb"
+    return $ mb * 1024 * 1024
+  let photoUploadPolicy = setMaximumFormInputSize maxPhotoSize defaultUploadPolicy
+
+  parts <- handleMultipart photoUploadPolicy partHandler
 
   let image = case find (\(name, _, _, _) -> "image" == name) parts of
                 Nothing -> Left $ T.pack "image is not specified"
