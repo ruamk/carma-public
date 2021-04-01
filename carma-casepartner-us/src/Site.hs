@@ -111,6 +111,9 @@ apiDriverPhotosByService = "/api/v1/driver/photo/:serviceId"
 apiDriverPhotoImage :: ByteString
 apiDriverPhotoImage = "/api/v1/driver/photo/:serviceId/:photoId"
 
+apiDriverNotify :: ByteString
+apiDriverNotify = "/api/v1/driver/notify"
+
 apiGetDrivers :: ByteString
 apiGetDrivers = "/api/v1/settings/drivers" -- GET
 
@@ -184,6 +187,7 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiDriverPhoto,            method POST MobileAPI.savePhoto)
          , (apiDriverPhotosByService,  method GET  MobileAPI.getPhotos)
          , (apiDriverPhotoImage,       method GET  MobileAPI.getPhoto)
+         , (apiDriverNotify,           method POST MobileAPI.changeNotification)
 
          , (apiGetDrivers,             method GET    Drivers.getDrivers)
          , (apiCreateDriver,           method POST   Drivers.createDriver)

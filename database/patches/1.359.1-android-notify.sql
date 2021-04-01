@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE "CasePartnerDrivers" ADD COLUMN IF NOT EXISTS androidNotify TEXT;
+
+COMMIT;

@@ -2,6 +2,7 @@
 
 module AppHandlers.MobileAPI
     ( androidVersionAndURL
+    , changeNotification
     , delayReason
     , getPhoto
     , getPhotos
@@ -18,7 +19,7 @@ import           Control.Exception                (SomeException, handle)
 import           Control.Monad                    (void)
 import           Control.Monad.IO.Class           (liftIO)
 import           Data.Aeson                       (FromJSON (..), ToJSON (..),
-                                                   Value (..), eitherDecode,
+                                                   Value (..), eitherDecode',
                                                    genericToJSON, object,
                                                    withObject, (.:))
 import           Data.Aeson.Types                 (defaultOptions,
@@ -124,6 +125,12 @@ emptyService = Service 0 Nothing 0
                   Nothing Nothing Nothing
                   Nothing Nothing Nothing
 
+
+data NotifyRequest = NotifyRequest
+    { token :: Maybe String
+    } deriving (FromJSON, Generic, Show)
+
+
 requestSize :: Word64
 requestSize = 4096
 
@@ -182,7 +189,7 @@ getCurrentService driverId = do
 login :: AppHandler ()
 login = do
   body <- readRequestBody requestSize
-  let isLogin = eitherDecode body :: Either String LoginForm
+  let isLogin = eitherDecode' body :: Either String LoginForm
 
   case isLogin of
     Left e -> errorResponse $ T.pack e
@@ -331,7 +338,7 @@ invalidLongitude = "Значение параметра longitude должно �
 location :: AppHandler ()
 location = checkDriver $ \driverId -> do
   body <- readRequestBody requestSize
-  let isLocation = eitherDecode body :: Either String Location
+  let isLocation = eitherDecode' body :: Either String Location
   case isLocation of
     Left e -> errorResponse $ T.pack e
     Right form -> do
@@ -395,7 +402,7 @@ location = checkDriver $ \driverId -> do
 status :: AppHandler ()
 status = checkDriver $ \driverId -> do
   body <- readRequestBody requestSize
-  let isServiceStatus = eitherDecode body :: Either String ServiceStatus
+  let isServiceStatus = eitherDecode' body :: Either String ServiceStatus
 
   case isServiceStatus of
     Left e -> errorResponse $ T.pack $ "Неправильные параметры запроса: " ++ e
@@ -545,3 +552,26 @@ getPhoto = checkDriver $ \driverId -> do
         Nothing -> errorResponse "invalid photo file name"
         Just "" -> errorResponse "empty photo file name"
         Just f  -> ServUtil.sendPhoto f
+
+
+-- | Изменение настроек уведомления для мобильного приложения.
+-- | В настоящий момент уведомления работают только для Android приложений.
+changeNotification :: AppHandler ()
+changeNotification = checkDriver $ \driverId -> do
+  body <- readRequestBody requestSize
+
+  case eitherDecode' body :: Either String NotifyRequest of
+    Left e -> errorResponse $ T.pack e
+
+    Right notifyRequest -> do
+      let (response, tokenValue) = case token notifyRequest of
+                                     Nothing -> ("off", Nothing)
+                                     Just "" -> ("off", Nothing)
+                                     Just t  -> ("on", Just t)
+      void $ execute [sql|
+        UPDATE "CasePartnerDrivers"
+           SET androidNotify = ?
+         WHERE id = ?
+      |] (tokenValue, driverId)
+
+      okResponse response
