@@ -221,6 +221,7 @@ type Msg
     | ServiceWasAssignedToDriver (Result Http.Error Int)
     | ServiceWasCancelledToDriver (Result Http.Error Int)
     | Settings
+    | Instruction
     | Tick Time.Posix
     | UpdateComments (Result Http.Error Int) -- Услуга оказана (ответ)
     | UpdateCustomMessageToast (MessageToast Msg)
@@ -1006,6 +1007,12 @@ update global msg model =
             , Cmd.none
             , Global.settings
             )
+        
+        Instruction ->
+            ( model
+            , Cmd.none
+            , Global.instruction
+            )
 
         ModalAlreadyOkClose ->
             ( { model | modalAlertVisibility = Modal.hidden }
@@ -1357,6 +1364,7 @@ view global model =
                 [ ( False, Cases, "Текущие заявки" )
                 , ( False, SearchCases, "Поиск заявок" )
                 , ( False, Settings, "Настройки" )
+                , ( False, Instruction, "Инструкция" )
                 ]
             }
           <|
