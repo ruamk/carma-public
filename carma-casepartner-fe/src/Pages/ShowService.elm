@@ -82,7 +82,6 @@ import Types as Types
         )
 import Ui
 import Utils exposing (formatTime)
-import Html exposing (img)
 
 
 type alias Flags =
@@ -240,7 +239,6 @@ type Msg
     | PhotosUploadResponse (Result Http.Error (Result String Int))
     | PhotosAccordionMsg Accordion.State
     | UploadDropdown Dropdown.State
-
 
 
 driverSpinnerSize : String
@@ -1204,7 +1202,6 @@ update global msg model =
                             , Cmd.none
                             )
 
-
         TimeVisibility status ->
             ( { model
                 | isTimeVisible = status
@@ -1685,10 +1682,10 @@ viewCasePanel model serviceId =
                     TimeVisibility <| not model.isTimeVisible
 
                 caretRightFill =
-                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] []
 
                 caretDownFill =
-                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] []
 
                 showButton =
                     Grid.row [ Row.attrs [ Spacing.p1, onClick message ] ]
@@ -1699,7 +1696,7 @@ viewCasePanel model serviceId =
                             [ div
                                 [ class "value", style "display" "inline" ]
                                 [ text (formatTime_ c.expectedServiceStart) ]
-                            , div 
+                            , div
                                 [ style "margin-left" "5px", style "display" "inline" ]
                                 [ if model.isTimeVisible then
                                     caretDownFill
@@ -1744,16 +1741,7 @@ viewCasePanel model serviceId =
                     ]
                 , Grid.row []
                     [ Grid.col []
-                        [ let
-                            shortcutted =
-                                case Dict.get c.serviceType model.typeOfServiceSynonym of
-                                    Just v ->
-                                        v
-
-                                    Nothing ->
-                                        c.serviceType
-                          in
-                          field "Вид помощи" <| text shortcutted
+                        [ field "Вид помощи" <| text c.serviceType
                         , field "Клиент" <| text c.client
                         , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
                         ]
@@ -2116,17 +2104,7 @@ viewCard : Model -> CurrentCaseInfo -> ListGroup.CustomItem Msg
 viewCard model cci =
     let
         serviceType c =
-            case c.cuTypeOfService of
-                Just tos ->
-                    case Dict.get tos model.typeOfServiceSynonym of
-                        Just v ->
-                            v
-
-                        Nothing ->
-                            tos
-
-                Nothing ->
-                    ""
+            Maybe.withDefault "" c.cuTypeOfService
 
         address c =
             Ui.addressCell c.cuBreakdownPlace
@@ -2758,6 +2736,11 @@ viewPhotosAccordion model =
                 , Grid.row []
                     (viewPhotos <| filterByPhotoType photoType photos)
                 ]
+
+        header =
+            "Вложенные фотографии ("
+                ++ String.fromInt (List.length model.photos)
+                ++ ")"
     in
     Accordion.config PhotosAccordionMsg
         |> Accordion.withAnimation
@@ -2766,7 +2749,7 @@ viewPhotosAccordion model =
                 { id = "card1"
                 , options = []
                 , header =
-                    Accordion.toggle toggleStyles [ text "Вложенные фотографии" ]
+                    Accordion.toggle toggleStyles [ text header ]
                         |> Accordion.headerH4 headerStyles
                 , blocks =
                     [ Accordion.block
