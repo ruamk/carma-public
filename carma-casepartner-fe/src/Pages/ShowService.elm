@@ -2739,6 +2739,11 @@ viewPhotosAccordion model =
                 , Grid.row []
                     (viewPhotos <| filterByPhotoType photoType photos)
                 ]
+        
+        header = 
+            "Вложенные фотографии ("
+                ++ String.fromInt (List.length model.photos)
+                ++ ")"
     in
     Accordion.config PhotosAccordionMsg
         |> Accordion.withAnimation
@@ -2747,7 +2752,7 @@ viewPhotosAccordion model =
                 { id = "card1"
                 , options = []
                 , header =
-                    Accordion.toggle toggleStyles [ text "Вложенные фотографии" ]
+                    Accordion.toggle toggleStyles [ text header ]
                         |> Accordion.headerH4 headerStyles
                 , blocks =
                     [ Accordion.block
