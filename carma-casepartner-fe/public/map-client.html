@@ -41,8 +41,11 @@
     <title>Driver</title>
   </head>
   <body>
-    <div id="error" class="error" style="display: none;">
-      <p>Координаты пользователя <span id="driver"></span> не определены.</p>
+    <div id="driver-error" class="error" style="display: none;">
+      <p>Координаты водителя <span id="driver"></span> не определены.</p>
+    </div>
+    <div id="client-error" class="error" style="display: none;">
+      <p>Координаты клиента <span id="client"></span> не определены.</p>
     </div>
     <div id="map" class="map"></div>
     <script type="text/javascript">
@@ -147,13 +150,14 @@
              });
              map.getView().fit(ext, {size: map.getSize(), padding: [100,100,100,100]});
            } else {
-             const driverLabel = document.getElementById("driver");
-             const error = document.getElementById("error");
-             error.style.display = "flex";
-             driverLabel.innerText = driver.name + " (" + driver.phone + ")" +
-                                                     ( driver.plateNum !== null && driver.plateNum !== ""
-                                                     ? '"' + driver.plateNum + '"' : ""
-                                                     );
+             if (driver.latitude === null && driver.longitude === null) {
+               const error = document.getElementById("driver-error");
+               error.style.display = "flex";
+             }
+             if (client.latitude === null && client.longitude === null) {
+               const error = document.getElementById("client-error");
+               error.style.display = "flex";
+             }
            }
          }
        }
