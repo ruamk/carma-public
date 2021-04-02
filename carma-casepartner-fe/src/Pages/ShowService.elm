@@ -1744,16 +1744,7 @@ viewCasePanel model serviceId =
                     ]
                 , Grid.row []
                     [ Grid.col []
-                        [ let
-                            shortcutted =
-                                case Dict.get c.serviceType model.typeOfServiceSynonym of
-                                    Just v ->
-                                        v
-
-                                    Nothing ->
-                                        c.serviceType
-                          in
-                          field "Вид помощи" <| text shortcutted
+                        [ field "Вид помощи" <| text c.serviceType
                         , field "Клиент" <| text c.client
                         , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
                         ]
@@ -2115,18 +2106,8 @@ viewServicesList model ccs =
 viewCard : Model -> CurrentCaseInfo -> ListGroup.CustomItem Msg
 viewCard model cci =
     let
-        serviceType c =
-            case c.cuTypeOfService of
-                Just tos ->
-                    case Dict.get tos model.typeOfServiceSynonym of
-                        Just v ->
-                            v
-
-                        Nothing ->
-                            tos
-
-                Nothing ->
-                    ""
+        serviceType c = 
+            Maybe.withDefault "" c.cuTypeOfService
 
         address c =
             Ui.addressCell c.cuBreakdownPlace
