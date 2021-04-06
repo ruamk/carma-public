@@ -1,9 +1,7 @@
 site_name: Инструкция
 
 theme:
-  name: readthedocs
-
-plugins: []
+  name: gitbook
 
 nav:
   - 'Вход в систему и экран работы с заявками': index.md
