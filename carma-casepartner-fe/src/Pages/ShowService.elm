@@ -1065,9 +1065,7 @@ update global msg model =
             )
 
         UpdateServicesListTick _ ->
-            ( { model
-                | currentCases = []
-              }
+            ( model
             , Api.getLatestCurrentCases GetCurrentCases
             , Cmd.none
             )
@@ -1685,10 +1683,10 @@ viewCasePanel model serviceId =
                     TimeVisibility <| not model.isTimeVisible
 
                 caretRightFill =
-                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] []
 
                 caretDownFill =
-                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] []
 
                 showButton =
                     Grid.row [ Row.attrs [ Spacing.p1, onClick message ] ]
@@ -1699,7 +1697,7 @@ viewCasePanel model serviceId =
                             [ div
                                 [ class "value", style "display" "inline" ]
                                 [ text (formatTime_ c.expectedServiceStart) ]
-                            , div 
+                            , div
                                 [ style "margin-left" "5px", style "display" "inline" ]
                                 [ if model.isTimeVisible then
                                     caretDownFill
