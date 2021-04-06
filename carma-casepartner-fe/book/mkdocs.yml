@@ -1,7 +1,12 @@
 site_name: Инструкция
 
 theme:
-  name: gitbook
+  name: readthedocs
+  language: ru
+
+use_directory_urls: false
+
+plugins: []
 
 nav:
   - 'Вход в систему и экран работы с заявками': index.md

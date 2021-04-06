@@ -11,7 +11,6 @@ import Page exposing (Document, Page)
 import Ui
 
 
-
 type alias Flags =
     ()
 
@@ -65,7 +64,7 @@ init _ _ =
 
 update : Global.Model -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
 update global msg model =
-    case msg of 
+    case msg of
         GoToCases ->
             ( model
             , Cmd.none
@@ -107,12 +106,13 @@ update global msg model =
             , Cmd.none
             , Global.instruction
             )
-        
+
         UpdateCustomMessageToast updatedMessageToast ->
             ( { model | messageToast = updatedMessageToast }
             , Cmd.none
             , Cmd.none
             )
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -139,17 +139,16 @@ view global model =
                 ]
             }
           <|
-            Html.iframe 
+            Html.iframe
                 [ A.src "/book/index.html"
-                , A.attribute "frameborder" "0" 
-                , A.attribute "marginheight" "0" 
-                , A.attribute "marginwidth" "0" 
-                , A.attribute "width" "100%" 
-                , A.attribute "height" "100%" 
+                , A.attribute "frameborder" "0"
+                , A.attribute "marginheight" "0"
+                , A.attribute "marginwidth" "0"
+                , A.attribute "width" "100%"
+                , A.attribute "height" "100%"
                 , A.attribute "scrolling" "auto"
                 , A.style "position" "fixed"
-                ] 
+                ]
                 []
         ]
     }
-

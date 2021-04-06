@@ -3,12 +3,12 @@ module Global exposing
     , Model
     , Msg
     , init
+    , instruction
     , logout
     , navigate
     , saveUsername
     , serviceId
     , settings
-    , instruction
     , subscriptions
     , update
     , view
@@ -116,7 +116,7 @@ update msg model =
             ( model
             , navigate Route.Settings
             )
-        
+
         Instruction ->
             ( model
             , navigate Route.Instruction
@@ -181,8 +181,9 @@ settings : Cmd Msg
 settings =
     send Settings
 
+
 instruction : Cmd Msg
-instruction = 
+instruction =
     send Instruction
 
 

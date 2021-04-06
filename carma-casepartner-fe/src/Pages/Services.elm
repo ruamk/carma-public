@@ -335,7 +335,7 @@ update _ msg model =
             , Cmd.none
             , Global.settings
             )
-        
+
         Instruction ->
             ( model
             , Cmd.none

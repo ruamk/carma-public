@@ -82,7 +82,6 @@ import Types as Types
         )
 import Ui
 import Utils exposing (formatTime)
-import Html exposing (img)
 
 
 type alias Flags =
@@ -241,7 +240,6 @@ type Msg
     | PhotosUploadResponse (Result Http.Error (Result String Int))
     | PhotosAccordionMsg Accordion.State
     | UploadDropdown Dropdown.State
-
 
 
 driverSpinnerSize : String
@@ -1007,7 +1005,7 @@ update global msg model =
             , Cmd.none
             , Global.settings
             )
-        
+
         Instruction ->
             ( model
             , Cmd.none
@@ -1210,7 +1208,6 @@ update global msg model =
                             , Cmd.none
                             , Cmd.none
                             )
-
 
         TimeVisibility status ->
             ( { model
@@ -1693,10 +1690,10 @@ viewCasePanel model serviceId =
                     TimeVisibility <| not model.isTimeVisible
 
                 caretRightFill =
-                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] []
 
                 caretDownFill =
-                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] []
 
                 showButton =
                     Grid.row [ Row.attrs [ Spacing.p1, onClick message ] ]
@@ -1707,7 +1704,7 @@ viewCasePanel model serviceId =
                             [ div
                                 [ class "value", style "display" "inline" ]
                                 [ text (formatTime_ c.expectedServiceStart) ]
-                            , div 
+                            , div
                                 [ style "margin-left" "5px", style "display" "inline" ]
                                 [ if model.isTimeVisible then
                                     caretDownFill

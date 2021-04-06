@@ -539,7 +539,7 @@ update global msg model =
             , Cmd.none
             , Global.settings
             )
-        
+
         Instruction ->
             ( model
             , Cmd.none
