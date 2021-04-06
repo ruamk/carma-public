@@ -240,6 +240,7 @@ type Msg
     | PhotosUploadResponse (Result Http.Error (Result String Int))
     | PhotosAccordionMsg Accordion.State
     | UploadDropdown Dropdown.State
+    | UpdateServiceTick Time.Posix
 
 
 
@@ -264,6 +265,11 @@ commentsUpdateTime =
 
 servicesListUpdateSeconds : Float
 servicesListUpdateSeconds =
+    60
+
+
+serviceInfoUpdateSeconds : Float
+serviceInfoUpdateSeconds =
     60
 
 
@@ -1312,6 +1318,13 @@ update global msg model =
             , Cmd.none
             )
 
+        UpdateServiceTick _ ->
+            ( model
+            , Api.getService global.serviceId ServiceDownloaded
+            , Cmd.none
+            )
+
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -1320,6 +1333,7 @@ subscriptions global model =
         , Chat.caseReceiver Chat
         , Time.every (commentsUpdateTime * 1000) Tick
         , Time.every (servicesListUpdateSeconds * 1000) UpdateServicesListTick
+        , Time.every (serviceInfoUpdateSeconds * 1000) UpdateServiceTick
         , Accordion.subscriptions model.photosAccordion PhotosAccordionMsg
         , Dropdown.subscriptions model.uploadDropdown UploadDropdown
         ]
@@ -1685,10 +1699,10 @@ viewCasePanel model serviceId =
                     TimeVisibility <| not model.isTimeVisible
 
                 caretRightFill =
-                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] []
 
                 caretDownFill =
-                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] []
 
                 showButton =
                     Grid.row [ Row.attrs [ Spacing.p1, onClick message ] ]
@@ -1699,7 +1713,7 @@ viewCasePanel model serviceId =
                             [ div
                                 [ class "value", style "display" "inline" ]
                                 [ text (formatTime_ c.expectedServiceStart) ]
-                            , div 
+                            , div
                                 [ style "margin-left" "5px", style "display" "inline" ]
                                 [ if model.isTimeVisible then
                                     caretDownFill
