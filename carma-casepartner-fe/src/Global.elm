@@ -119,7 +119,7 @@ update msg model =
         
         Instruction ->
             ( model
-            , Nav.load "/book/index.html"
+            , navigate Route.Instruction
             )
 
         Logout ->

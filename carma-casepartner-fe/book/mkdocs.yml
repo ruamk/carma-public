@@ -1,0 +1,12 @@
+site_name: Инструкция
+
+theme:
+  name: readthedocs
+
+plugins: []
+
+nav:
+  - 'Вход в систему и экран работы с заявками': index.md
+  - 'Экран "Текущие заявки"': current_cases.md
+  - 'Работа с заявкой': working_with_case.md
+  - 'Поиск заявок': searching_for_cases.md
