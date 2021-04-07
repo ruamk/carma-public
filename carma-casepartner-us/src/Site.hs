@@ -57,6 +57,14 @@ apiGetServiceLocation = "/api/v1/service/:serviceId/location"
 apiPostServiceComment :: ByteString
 apiPostServiceComment = "/api/v1/case/:caseId/comment"
 
+-- photos by case
+apiPhotosByCase :: ByteString
+apiPhotosByCase = "/api/v1/case/:caseId/photo"
+
+apiPhotoImageByCase :: ByteString
+apiPhotoImageByCase = "/api/v1/case/:caseId/photo/:photoId"
+
+
 apiStatusInPlace :: ByteString
 apiStatusInPlace = "/api/v1/service/:serviceId/inplace"
 
@@ -69,12 +77,12 @@ apiPostPartnerDelay = "/api/v1/service/:serviceId/partnerdelay"
 apiPostServiceClosed :: ByteString
 apiPostServiceClosed = "/api/v1/service/:serviceId/closed"
 
--- Photos
+-- photos by service
 apiPhotosByService :: ByteString
 apiPhotosByService = "/api/v1/service/:serviceId/photo"
 
-apiPhotoImage :: ByteString
-apiPhotoImage = "/api/v1/service/:serviceId/photo/:photoId"
+apiPhotoImageByService :: ByteString
+apiPhotoImageByService = "/api/v1/service/:serviceId/photo/:photoId"
 
 -- Dictionaries
 apiDictPartnerDelayReason :: ByteString
@@ -172,8 +180,11 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiMapTypeOfService,       D.typeOfService)
 
          , (apiPhotosByService,        method POST S.savePhoto)
-         , (apiPhotoImage,             method GET  S.getPhoto)
-         , (apiPhotosByService,        method GET  S.getPhotos)
+         , (apiPhotoImageByService,    method GET  S.getPhotoImageByService)
+         , (apiPhotosByService,        method GET  S.getPhotosByService)
+
+         , (apiPhotosByCase,           method GET  S.getPhotosByCase)
+         , (apiPhotoImageByCase,       method GET  S.getPhotoImageByCase)
 
          , (apiDriverLogin,            method POST MobileAPI.login)
          , (apiDriverStatus,           method POST MobileAPI.status)
