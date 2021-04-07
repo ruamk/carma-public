@@ -2,7 +2,7 @@ import {h, FunctionalComponent} from "preact"
 import {useState} from "preact/hooks"
 import cls from "classnames"
 
-import {Spinner} from "./Spinner"
+import {Spinner} from "../lib/Spinner"
 
 type F<T> = FunctionalComponent<T>;
 

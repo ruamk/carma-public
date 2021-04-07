@@ -5,7 +5,7 @@ import moment from "moment"
 import {CaseFeedback} from "./CaseFeedback"
 import {ServiceFeedback} from "./ServiceFeedback"
 import {ModalWrapper} from "./Modal"
-import {Spinner} from "./Spinner"
+import {Spinner} from "../lib/Spinner"
 
 
 const GENERIC_ERROR = new Error("Что-то пошло не так");
@@ -54,15 +54,16 @@ export async function show(
   const fb = await loadFeedback(caseId, serviceId);
   // FIXME: catch err and show it
 
+  // FIXME: merge values and comments instead of fb[0][0]
   const dialog = serviceId
     ? <ServiceFeedback
         readonly={readonly}
-        data={fb.length > 0 ? fb[0] : null}
+        data={fb.length > 0 ? fb[0][0] : null}
         onClose={destroy}
         onSave={mkFeedbackSaver(caseId, serviceId)}/>
     : <CaseFeedback
         readonly={readonly}
-        data={fb.length > 0 ? fb[0] : null}
+        data={fb.length > 0 ? fb[0][0] : null}
         onClose={destroy}
         onSave={mkFeedbackSaver(caseId, serviceId)}/>;
 

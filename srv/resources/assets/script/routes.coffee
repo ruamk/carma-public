@@ -189,3 +189,11 @@ addRoute "diag/show/:caseId", (args) ->
     views:
       "diagTreeShow-view": scr
   r.renderScreen scr, args
+
+addRoute "quality-control", (args) ->
+  scr = require "carma/screens/qualityControl"
+  scr.screen =
+    name: "qualityControl"
+    views:
+      "qualityControl-view": scr
+  r.renderScreen scr, args

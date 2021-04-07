@@ -6,9 +6,7 @@ import {Modal} from "./Modal"
 
 
 interface Feedback {
-  response: {
-    comment: string | null,
-  },
+  comment: string | null,
   ctime: string | null,
   realName: string | null,
   login: string | null,
@@ -24,7 +22,7 @@ interface Props {
 
 export const CaseFeedback: FunctionalComponent<Props> = (props) => {
   const {data} = props;
-  const [comment, setComment] = useState(data?.response.comment || "");
+  const [comment, setComment] = useState(data?.comment || "");
   const [readonly, setReadonly] = useState(false);
 
   const onSave = async () => {

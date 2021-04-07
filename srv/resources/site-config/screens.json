@@ -141,5 +141,10 @@
       "type"  : "li",
       "nameAliases": ["diagTreeEditor"],
       "permissions": ["lovAdmin"]
+    },
+    { "name"  :"quality-control",
+      "label" : "Контроль качества",
+      "type"  : "li",
+      "permissions": ["bo_qa"]
     }
 ]

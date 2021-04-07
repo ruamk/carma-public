@@ -7,11 +7,9 @@ import {Modal} from "./Modal"
 
 
 interface Feedback {
-  response: {
-    operValue: number | null,
-    techValue: number | null,
-    comment: string | null,
-  },
+  operValue: number | null,
+  techValue: number | null,
+  comment: string | null,
   ctime: string | null,
   realName: string | null,
   login: string | null,
@@ -27,9 +25,9 @@ interface Props {
 
 export const ServiceFeedback: FunctionalComponent<Props> = (props) => {
   const {data} = props;
-  const [operValue, setOperValue] = useState(data?.response.operValue);
-  const [techValue, setTechValue] = useState(data?.response.techValue);
-  const [comment, setComment] = useState(data?.response.comment || "");
+  const [operValue, setOperValue] = useState(data?.operValue);
+  const [techValue, setTechValue] = useState(data?.techValue);
+  const [comment, setComment] = useState(data?.comment || "");
   const [readonly, setReadonly] = useState(!!data);
 
   const onSave = async () => {
