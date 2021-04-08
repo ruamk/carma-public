@@ -110,9 +110,7 @@ proxyInit auth db = makeSnaplet "proxy" "for reverse proxy requests" Nothing $ d
 
       cleanupPath :: ByteString -> String
       cleanupPath =
-          T.unpack .
-          T.intercalate "/" .
+          BS.unpack .
+          BS.intercalate "/" .
           filter (`notElem` ["", ".", ".."]) .
-          T.split (=='/') .
-          T.pack .
-          BS.unpack
+          BS.splitWith (== '/')
