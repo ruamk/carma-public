@@ -15,23 +15,13 @@ import Html.Attributes as A
         )
 import Http
 import Parser exposing ((|.), (|=))
-import Types exposing (Attachment, AttachmentId)
+import Types exposing (Attachment, AttachmentId, Photo)
 
 
 type alias Model =
     { photos : List Photo
     , photosAccordion : Accordion.State
     , attachments : List Attachment
-    }
-
-
-type alias Photo =
-    { serviceId : Int
-    , image : String
-    , latitude : Float
-    , longitude : Float
-    , created : String
-    , photoType : String
     }
 
 
