@@ -16,51 +16,76 @@ import Html.Attributes as A
 import Http
 import Parser exposing ((|.), (|=))
 import Types exposing (Attachment, AttachmentId, Photo)
-
+import Json.Decode as Decode
+import Json.Decode.Pipeline as JsonPipeline
 
 type alias Model =
     { photos : List Photo
     , photosAccordion : Accordion.State
     , attachments : List Attachment
+    , serviceId : Int
+    }
+
+
+type alias Flags =
+    { attachments : String
+    , serviceid : Int
     }
 
 
 type Message
-    = PhotosAccordionMsg Accordion.State
-    | GotAttachment (Result Http.Error Attachment)
+    = GotAttachment (Result Http.Error Attachment)
+    | GotPhotos (Result Http.Error (Result String (List Photo)))
 
 
-init : String -> ( Model, Cmd.Cmd Message )
-init attachments =
+init : Decode.Value -> ( Model, Cmd.Cmd Message )
+init flags =
+    let
+        attachmentsIds =
+            flags
+                |> Decode.decodeValue (Decode.field "attachments" Decode.string)
+                |> Result.withDefault ""
+                |> parseAttachments
+
+        serviceId =
+            flags
+                |> Decode.decodeValue (Decode.field "serviceId" Decode.string)
+                |> Result.withDefault ""
+                |> String.toInt
+                |> Maybe.withDefault 0
+
+        getAttachments =
+            attachmentsIds
+                |> List.map (\a -> Api.getAttachment a GotAttachment)
+                |> Cmd.batch
+    in
     ( { photos =
-            [ { serviceId = 0
+            [ {-{ serviceId = 0
               , image = "https://sun9-4.userapi.com/impf/c847221/v847221903/1953e7/qqtZDMZjldI.jpg?size=1000x717&quality=96&sign=a028d78653068cd80e8daef52108cb96&type=album"
               , latitude = 0
               , longitude = 0
               , created = ""
               , photoType = "order"
-              }
+              }-}
             ]
       , photosAccordion = Accordion.initialState
       , attachments = []
+      , serviceId = serviceId
       }
-    , Cmd.batch (List.map fetchAttachment <| parseAttachments attachments)
+    , Cmd.batch
+          [ getAttachments
+          , Api.getPhotos serviceId GotPhotos
+          ]
     )
 
 
 subscriptions : Model -> Sub Message
 subscriptions model =
-    Accordion.subscriptions model.photosAccordion PhotosAccordionMsg
-
+    Sub.none
 
 update : Message -> Model -> ( Model, Cmd Message )
 update msg model =
     case msg of
-        PhotosAccordionMsg newState ->
-            ( { model | photosAccordion = newState }
-            , Cmd.none
-            )
-
         GotAttachment result ->
             case result of
                 Ok attachment ->
@@ -75,10 +100,29 @@ update msg model =
                     , Cmd.none
                     )
 
+        GotPhotos result ->
+            case result of
+                Ok result2 ->
+                    case result2 of
+                        Ok photos ->
+                            ( { model
+                                  | photos = photos
+                              }
+                            , Cmd.none
+                            )
+
+                        Err error ->
+                            ( model
+                            , Cmd.none
+                            )
+                Err error ->
+                    ( model
+                    , Cmd.none
+                    )
 
 view : Model -> Html Message
 view model =
-    viewPhotosAccordionNEW model
+    viewPhotosAccordion model
 
 
 main =
@@ -150,103 +194,9 @@ viewPhotos photos =
     List.map viewPhoto photos
 
 
+
 viewPhotosAccordion : Model -> Html Message
 viewPhotosAccordion model =
-    let
-        headerStyles =
-            [ style "padding" "0"
-            ]
-
-        toggleStyles =
-            [ style "height" "100%"
-            , style "width" "100%"
-            , style "margin-top" "4px"
-            , style "margin-bottom" "4px"
-            , style "text-align" "left"
-            ]
-
-        filterByPhotoType : String -> List Photo -> List Photo
-        filterByPhotoType photoType =
-            List.filter (\photo -> photo.photoType == photoType)
-
-        viewBefore : List Photo -> Html Message
-        viewBefore photos =
-            div []
-                [ h4 [] [ text "Фото до начала заявки" ]
-                , Grid.row []
-                    (viewPhotos <| filterByPhotoType "before" photos)
-                ]
-
-        viewAfter : List Photo -> Html Message
-        viewAfter photos =
-            div []
-                [ h4 [] [ text "Фото после выполнения заявки" ]
-                , Grid.row []
-                    (viewPhotos <| filterByPhotoType "after" photos)
-                ]
-
-        viewDifficult : List Photo -> Html Message
-        viewDifficult photos =
-            div []
-                [ h4 [] [ text "Фото сложностей" ]
-                , Grid.row []
-                    (viewPhotos <| filterByPhotoType "difficult" photos)
-                ]
-
-        viewOrder : List Photo -> Html Message
-        viewOrder photos =
-            div []
-                [ h4 [] [ text "Заказ-наряд" ]
-                , Grid.row []
-                    (viewPhotos <| filterByPhotoType "order" photos)
-                ]
-
-        viewAttachments_ : List Attachment -> Html Message
-        viewAttachments_ attachments =
-            div []
-                [ h4 [] [ text "Вложения РАМК" ]
-                , viewAttachments attachments
-                ]
-
-        header =
-            "Прикрепленные файлы ("
-                ++ String.fromInt (countAttachmentsAndPhotos model.attachments model.photos)
-                ++ ")"
-    in
-    Accordion.config PhotosAccordionMsg
-        |> Accordion.withAnimation
-        |> Accordion.cards
-            [ Accordion.card
-                { id = "card1"
-                , options = []
-                , header =
-                    Accordion.toggle toggleStyles [ text header ]
-                        |> Accordion.headerH4 headerStyles
-                , blocks =
-                    [ Accordion.block
-                        [ if model.photos == [] then
-                            CardBlock.attrs [ class "sm-4" ]
-
-                          else
-                            CardBlock.attrs []
-                        ]
-                        [ CardBlock.custom <|
-                            div []
-                                [ viewAttachments_ model.attachments
-                                , viewBefore model.photos
-                                , viewAfter model.photos
-                                , viewDifficult model.photos
-                                , viewOrder model.photos
-                                ]
-                        ]
-                    ]
-                }
-            ]
-        |> Accordion.view model.photosAccordion
-
-
-viewPhotosAccordionNEW : Model -> Html Message
-viewPhotosAccordionNEW model =
     let
         filterByPhotoType : String -> List Photo -> List Photo
         filterByPhotoType photoType =
