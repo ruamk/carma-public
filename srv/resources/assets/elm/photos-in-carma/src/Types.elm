@@ -1,19 +1,21 @@
-module Types 
-    exposing 
-        ( Attachment
-        , AttachmentId
-        , Photo
-        )
+module Types exposing
+    ( Attachment
+    , AttachmentId
+    , Photo
+    )
 
 
-type alias Attachment = 
+type alias Attachment =
     { hash : String
     , ctime : String
     , id : AttachmentId
     , filename : String
     }
 
-type alias AttachmentId = Int
+
+type alias AttachmentId =
+    Int
+
 
 type alias Photo =
     { serviceId : Int

@@ -1,15 +1,17 @@
 module Api exposing (..)
 
-import HttpBuilder
 import Http
-import Types
+import HttpBuilder
 import Json.Decode as Decode
 import Json.Decode.Pipeline as JsonPipeline
+import Types
+
 
 apiGetAttachment : Int -> String
-apiGetAttachment n = 
+apiGetAttachment n =
     "/_/Attachment/"
         ++ String.fromInt n
+
 
 apiGetPhotos : Int -> String
 apiGetPhotos serviceId =
@@ -17,12 +19,13 @@ apiGetPhotos serviceId =
         ++ String.fromInt serviceId
         ++ "/photo"
 
+
 getAttachment : Int -> (Result Http.Error Types.Attachment -> msg) -> Cmd msg
 getAttachment attachmentId message =
     let
-        attachmentDecoder = 
+        attachmentDecoder =
             Decode.succeed Types.Attachment
-                |> JsonPipeline.required "hash" Decode.string 
+                |> JsonPipeline.required "hash" Decode.string
                 |> JsonPipeline.required "ctime" Decode.string
                 |> JsonPipeline.required "id" Decode.int
                 |> JsonPipeline.required "filename" Decode.string
@@ -30,6 +33,7 @@ getAttachment attachmentId message =
     HttpBuilder.get (apiGetAttachment attachmentId)
         |> HttpBuilder.withExpect (Http.expectJson message attachmentDecoder)
         |> HttpBuilder.request
+
 
 getPhotos : Int -> (Result Http.Error (Result String (List Types.Photo)) -> msg) -> Cmd msg
 getPhotos serviceId message =

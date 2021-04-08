@@ -14,10 +14,11 @@ import Html.Attributes as A
         , style
         )
 import Http
-import Parser exposing ((|.), (|=))
-import Types exposing (Attachment, AttachmentId, Photo)
 import Json.Decode as Decode
 import Json.Decode.Pipeline as JsonPipeline
+import Parser exposing ((|.), (|=))
+import Types exposing (Attachment, AttachmentId, Photo)
+
 
 type alias Model =
     { photos : List Photo
@@ -60,28 +61,30 @@ init flags =
                 |> Cmd.batch
     in
     ( { photos =
-            [ {-{ serviceId = 0
-              , image = "https://sun9-4.userapi.com/impf/c847221/v847221903/1953e7/qqtZDMZjldI.jpg?size=1000x717&quality=96&sign=a028d78653068cd80e8daef52108cb96&type=album"
-              , latitude = 0
-              , longitude = 0
-              , created = ""
-              , photoType = "order"
-              }-}
+            [{- { serviceId = 0
+                , image = "https://sun9-4.userapi.com/impf/c847221/v847221903/1953e7/qqtZDMZjldI.jpg?size=1000x717&quality=96&sign=a028d78653068cd80e8daef52108cb96&type=album"
+                , latitude = 0
+                , longitude = 0
+                , created = ""
+                , photoType = "order"
+                }
+             -}
             ]
       , photosAccordion = Accordion.initialState
       , attachments = []
       , serviceId = serviceId
       }
     , Cmd.batch
-          [ getAttachments
-          , Api.getPhotos serviceId GotPhotos
-          ]
+        [ getAttachments
+        , Api.getPhotos serviceId GotPhotos
+        ]
     )
 
 
 subscriptions : Model -> Sub Message
 subscriptions model =
     Sub.none
+
 
 update : Message -> Model -> ( Model, Cmd Message )
 update msg model =
@@ -106,7 +109,7 @@ update msg model =
                     case result2 of
                         Ok photos ->
                             ( { model
-                                  | photos = photos
+                                | photos = photos
                               }
                             , Cmd.none
                             )
@@ -115,10 +118,12 @@ update msg model =
                             ( model
                             , Cmd.none
                             )
+
                 Err error ->
                     ( model
                     , Cmd.none
                     )
+
 
 view : Model -> Html Message
 view model =
@@ -192,7 +197,6 @@ viewPhotos photos =
                 ]
     in
     List.map viewPhoto photos
-
 
 
 viewPhotosAccordion : Model -> Html Message
