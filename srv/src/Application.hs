@@ -1,43 +1,43 @@
-{-# LANGUAGE TemplateHaskell, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Application
-
-where
+    where
 
 import           Control.Concurrent.STM
 import           Control.Lens
 import           Control.Monad.Reader
 import           Control.Monad.State.Class
 
-import           Data.Text (Text)
-import           Data.Map as Map
+import           Data.Map                      as Map
+import           Data.Text                     (Text)
 
 import           Snap
-import           Snap.Snaplet.Heist
 import           Snap.Snaplet.Auth
+import           Snap.Snaplet.Heist
 import           Snap.Snaplet.Persistent
 import           Snap.Snaplet.PostgresqlSimple
 import           Snap.Snaplet.Session
 
-import           Carma.Model (IdentI)
-import           Carma.Model.Usermeta (Usermeta)
+import           Carma.Model                   (IdentI)
+import           Carma.Model.Usermeta          (Usermeta)
 
 import           DMCC
 
-import qualified WeatherApi as W
+import qualified WeatherApi                    as W
 
 import           Snaplet.Auth.Class
 import           Snaplet.Autoteka
 import           Snaplet.ChatManager
+import           Snaplet.FileUpload
+import           Snaplet.Geo
+import           Snaplet.Messenger
+import           Snaplet.Messenger.Class
+import           Snaplet.Proxy
+import           Snaplet.Search
 import           Snaplet.SiteConfig
 import           Snaplet.SiteConfig.Class
 import           Snaplet.TaskManager
-import           Snaplet.FileUpload
-import           Snaplet.Geo
-import           Snaplet.Search
-import           Snaplet.Messenger
-import           Snaplet.Messenger.Class
-
 
 
 -- | Global application options.
@@ -48,8 +48,8 @@ data AppOptions = AppOptions
     , searchMinLength :: Int
       -- ^ Minimal query length for database-heavy searches
       -- (@search-min-length@).
-    , dmccWsHost :: Text
-    , dmccWsPort :: Int
+    , dmccWsHost      :: Text
+    , dmccWsPort      :: Int
     }
 
 
@@ -72,6 +72,7 @@ data App = App
     , weatherCfg  :: W.Config
     , extMap      :: TVar (Map.Map Extension (IdentI Usermeta))
       -- ^ AVAYA extensions map
+    , _proxy      :: Snaplet (Proxy App)
     }
 
 
