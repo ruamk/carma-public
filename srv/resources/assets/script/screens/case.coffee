@@ -264,7 +264,10 @@ setupHistory = (kvm) ->
 setupElmPhotos = (kvm) ->
   init = 
     { node: document.getElementById('elm-photos') 
-    , flags: kvm.filesText()
+    , flags:
+        { attachments: kvm.filesText()
+        , serviceId: kvm.id()
+        }
     }
 
   Elm.ElmPhotos.init(init)
