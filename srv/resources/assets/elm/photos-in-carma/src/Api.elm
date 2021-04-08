@@ -8,7 +8,21 @@ import Json.Decode.Pipeline as JsonPipeline
 
 apiGetAttachment : Int -> String
 apiGetAttachment n = 
-    "/_/Attachment/" ++ String.fromInt n
+    "/_/Attachment/"
+        ++ String.fromInt n
+
+apiGetPhotos : Int -> String
+apiGetPhotos serviceId =
+    "/proxy/casepartner/case/"
+        ++ String.fromInt serviceId
+        ++ "/photo"
+
+apiGetDriverImage : Int -> String -> String
+apiGetDriverImage serviceId photoId =
+    "/proxy/casepartner/case/"
+        ++ String.fromInt serviceId
+        ++ "/photo/"
+        ++ photoId
 
 getAttachment : Int -> (Result Http.Error Types.Attachment -> msg) -> Cmd msg
 getAttachment attachmentId message =
@@ -22,4 +36,33 @@ getAttachment attachmentId message =
     in
     HttpBuilder.get (apiGetAttachment attachmentId)
         |> HttpBuilder.withExpect (Http.expectJson message attachmentDecoder)
+        |> HttpBuilder.request
+
+getPhotos : Int -> (Result Http.Error (Result String (List Types.Photo)) -> msg) -> Cmd msg
+getPhotos serviceId message =
+    let
+        photoDecoder =
+            Decode.succeed Types.Photo
+                |> JsonPipeline.required "serviceId" Decode.int
+                |> JsonPipeline.required "image" (Decode.map (apiGetDriverImage serviceId) Decode.string)
+                |> JsonPipeline.required "latitude" Decode.float
+                |> JsonPipeline.required "longitude" Decode.float
+                |> JsonPipeline.required "created" Decode.string
+                |> JsonPipeline.required "type" Decode.string
+
+        decoder =
+            let
+                handleStatus status =
+                    case status of
+                        "ok" ->
+                            Decode.map Ok <| Decode.field "message" (Decode.list photoDecoder)
+
+                        err ->
+                            Decode.map Err <| Decode.succeed err
+            in
+            Decode.field "status" Decode.string
+                |> Decode.andThen handleStatus
+    in
+    HttpBuilder.get (apiGetPhotos serviceId)
+        |> HttpBuilder.withExpect (Http.expectJson message decoder)
         |> HttpBuilder.request
