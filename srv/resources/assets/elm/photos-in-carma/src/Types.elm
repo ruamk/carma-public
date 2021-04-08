@@ -2,6 +2,7 @@ module Types
     exposing 
         ( Attachment
         , AttachmentId
+        , Photo
         )
 
 
@@ -13,3 +14,12 @@ type alias Attachment =
     }
 
 type alias AttachmentId = Int
+
+type alias Photo =
+    { serviceId : Int
+    , image : String
+    , latitude : Float
+    , longitude : Float
+    , created : String
+    , photoType : String
+    }
