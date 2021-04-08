@@ -239,6 +239,7 @@ type Msg
     | PhotosUploadResponse (Result Http.Error (Result String Int))
     | PhotosAccordionMsg Accordion.State
     | UploadDropdown Dropdown.State
+    | UpdateServiceTick Time.Posix
 
 
 driverSpinnerSize : String
@@ -262,6 +263,11 @@ commentsUpdateTime =
 
 servicesListUpdateSeconds : Float
 servicesListUpdateSeconds =
+    60
+
+
+serviceInfoUpdateSeconds : Float
+serviceInfoUpdateSeconds =
     60
 
 
@@ -1309,6 +1315,13 @@ update global msg model =
             , Cmd.none
             )
 
+        UpdateServiceTick _ ->
+            ( model
+            , Api.getService global.serviceId ServiceDownloaded
+            , Cmd.none
+            )
+
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -1317,6 +1330,7 @@ subscriptions global model =
         , Chat.caseReceiver Chat
         , Time.every (commentsUpdateTime * 1000) Tick
         , Time.every (servicesListUpdateSeconds * 1000) UpdateServicesListTick
+        , Time.every (serviceInfoUpdateSeconds * 1000) UpdateServiceTick
         , Accordion.subscriptions model.photosAccordion PhotosAccordionMsg
         , Dropdown.subscriptions model.uploadDropdown UploadDropdown
         ]
