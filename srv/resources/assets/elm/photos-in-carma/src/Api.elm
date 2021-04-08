@@ -17,13 +17,6 @@ apiGetPhotos serviceId =
         ++ String.fromInt serviceId
         ++ "/photo"
 
-apiGetDriverImage : Int -> String -> String
-apiGetDriverImage serviceId photoId =
-    "/proxy/casepartner/case/"
-        ++ String.fromInt serviceId
-        ++ "/photo/"
-        ++ photoId
-
 getAttachment : Int -> (Result Http.Error Types.Attachment -> msg) -> Cmd msg
 getAttachment attachmentId message =
     let
@@ -44,7 +37,7 @@ getPhotos serviceId message =
         photoDecoder =
             Decode.succeed Types.Photo
                 |> JsonPipeline.required "serviceId" Decode.int
-                |> JsonPipeline.required "image" (Decode.map (apiGetDriverImage serviceId) Decode.string)
+                |> JsonPipeline.required "image" Decode.string
                 |> JsonPipeline.required "latitude" Decode.float
                 |> JsonPipeline.required "longitude" Decode.float
                 |> JsonPipeline.required "created" Decode.string
