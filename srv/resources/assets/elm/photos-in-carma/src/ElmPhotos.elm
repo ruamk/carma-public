@@ -60,16 +60,7 @@ init flags =
                 |> List.map (\a -> Api.getAttachment a GotAttachment)
                 |> Cmd.batch
     in
-    ( { photos =
-            [{- { serviceId = 0
-                , image = "https://sun9-4.userapi.com/impf/c847221/v847221903/1953e7/qqtZDMZjldI.jpg?size=1000x717&quality=96&sign=a028d78653068cd80e8daef52108cb96&type=album"
-                , latitude = 0
-                , longitude = 0
-                , created = ""
-                , photoType = "order"
-                }
-             -}
-            ]
+    ( { photos = []
       , photosAccordion = Accordion.initialState
       , attachments = []
       , serviceId = serviceId
@@ -183,13 +174,10 @@ viewPhotos photos =
                 [ a [ A.href photo.image, A.target "_blank" ]
                     [ img
                         [ A.src photo.image
+                        , class "rounded border img-fluid img-thumbnail"
                         , style "width" "100%"
                         , style "height" "100%"
                         , style "max-height" "150px"
-                        , class "rounded"
-                        , class "border"
-                        , class "img-fluid"
-                        , class "img-thumbnail"
                         , style "object-fit" "cover"
                         ]
                         []
@@ -306,13 +294,6 @@ viewAttachments attachments =
 
 
 
-{-
-   ul.unstyled(data-bind="foreach: safelyGet(\'filesReference\')")
-   li
-     span.glyphicon.glyphicon-folder-open
-     | &nbsp;
-     a.file-name(data-bind="attr: { href: filenameUrl }, text: filename")
--}
 -- HELPERS
 
 
