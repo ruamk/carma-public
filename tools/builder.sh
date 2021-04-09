@@ -446,12 +446,12 @@ frontend_elm_task() {
           'Running "npm run build" script…' \
           "$dir" \
           "npm run build"
-    # photos from partnercabinet in carma case view
 
+    # photos from partnercabinet in carma case view
     utask "$task_name" \
         'Building photos view for carma case page' \
         "srv/resources/assets/elm/photos-in-carma" \
-        "elm make src/ElmPhotos.elm --output=../../../static/build/frontend/carmaelmphotos.js"
+        "npm i && npm run build"
 
     task_log "$task_name" done
 
