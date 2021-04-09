@@ -3,6 +3,7 @@ module Global exposing
     , Model
     , Msg
     , init
+    , instruction
     , logout
     , navigate
     , saveUsername
@@ -74,6 +75,7 @@ type Msg
     | Username String
     | ServiceId Int
     | Settings
+    | Instruction
     | Logout
 
 
@@ -113,6 +115,11 @@ update msg model =
         Settings ->
             ( model
             , navigate Route.Settings
+            )
+
+        Instruction ->
+            ( model
+            , navigate Route.Instruction
             )
 
         Logout ->
@@ -173,6 +180,11 @@ serviceId id =
 settings : Cmd Msg
 settings =
     send Settings
+
+
+instruction : Cmd Msg
+instruction =
+    send Instruction
 
 
 logout : Cmd Msg

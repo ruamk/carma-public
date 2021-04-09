@@ -99,7 +99,7 @@ page { navbarMsg, logoutMsg, settingsMsg, usermenuMsg, navbarState, usermenuStat
                 , username = username
                 , buttons = buttons
                 }
-            , div [ Spacing.p1 ] [ content ]
+            , div [] [ content ]
             ]
         ]
 

@@ -220,6 +220,7 @@ type Msg
     | ServiceWasAssignedToDriver (Result Http.Error Int)
     | ServiceWasCancelledToDriver (Result Http.Error Int)
     | Settings
+    | Instruction
     | Tick Time.Posix
     | UpdateComments (Result Http.Error Int) -- Услуга оказана (ответ)
     | UpdateCustomMessageToast (MessageToast Msg)
@@ -240,7 +241,6 @@ type Msg
     | PhotosAccordionMsg Accordion.State
     | UploadDropdown Dropdown.State
     | UpdateServiceTick Time.Posix
-
 
 driverSpinnerSize : String
 driverSpinnerSize =
@@ -1011,6 +1011,12 @@ update global msg model =
             , Global.settings
             )
 
+        Instruction ->
+            ( model
+            , Cmd.none
+            , Global.instruction
+            )
+
         ModalAlreadyOkClose ->
             ( { model | modalAlertVisibility = Modal.hidden }
             , Cmd.none
@@ -1368,6 +1374,7 @@ view global model =
                 [ ( False, Cases, "Текущие заявки" )
                 , ( False, SearchCases, "Поиск заявок" )
                 , ( False, Settings, "Настройки" )
+                , ( False, Instruction, "Инструкция" )
                 ]
             }
           <|

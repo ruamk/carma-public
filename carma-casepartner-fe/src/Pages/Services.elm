@@ -93,6 +93,7 @@ type Msg
     | NowTime Time.Posix
     | SearchCases
     | Settings
+    | Instruction
     | Tick Time.Posix
     | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
     | UpdateCustomMessageToast (MessageToast Msg)
@@ -335,6 +336,12 @@ update _ msg model =
             , Global.settings
             )
 
+        Instruction ->
+            ( model
+            , Cmd.none
+            , Global.instruction
+            )
+
         Tick _ ->
             ( model
             , Api.getLatestCurrentCases GetCurrentCases
@@ -388,6 +395,7 @@ view global model =
                 [ ( True, NavbarMsg model.navbarState, "Текущие заявки" )
                 , ( False, SearchCases, "Поиск заявок" )
                 , ( False, Settings, "Настройки" )
+                , ( False, Instruction, "Инструкция" )
                 ]
             }
           <|

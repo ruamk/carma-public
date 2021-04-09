@@ -101,6 +101,7 @@ type Msg
     | ServicesPrevPage
     | ServicesNextPage
     | Settings
+    | Instruction
     | TypeOfServiceSynonymDownloaded (Result Http.Error Dictionary)
     | UpdateCustomMessageToast (MessageToast Msg)
     | UsermenuMsg Dropdown.State
@@ -303,6 +304,12 @@ update _ msg model =
             , Global.settings
             )
 
+        Instruction ->
+            ( model
+            , Cmd.none
+            , Global.instruction
+            )
+
         TypeOfServiceSynonymDownloaded result ->
             case result of
                 Err _ ->
@@ -402,6 +409,7 @@ view global model =
                 [ ( False, Services, "Текущие заявки" )
                 , ( True, NavbarMsg model.navbarState, "Поиск заявок" )
                 , ( False, Settings, "Настройки" )
+                , ( False, Instruction, "Инструкция" )
                 ]
             }
           <|
