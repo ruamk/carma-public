@@ -1,59 +1,61 @@
-module ApplicationInit (appInit) where
+module ApplicationInit
+    ( appInit
+    ) where
 
 import           Control.Concurrent.STM
-import           Control.Exception.Lifted hiding (Handler)
-import           Control.Monad (when)
+import           Control.Exception.Lifted                    hiding (Handler)
+import           Control.Monad                               (when)
 import           Control.Monad.IO.Class
 
-import           Data.ByteString (ByteString)
-import           Data.Configurator as Cfg
-import qualified Data.Map as Map
-import qualified Data.Text.Encoding as T
-import qualified Data.Time.Clock as Clock
+import           Data.ByteString                             (ByteString)
+import           Data.Configurator                           as Cfg
+import qualified Data.Map                                    as Map
+import qualified Data.Text.Encoding                          as T
+import qualified Data.Time.Clock                             as Clock
 
 import           Snap.Core
 import           Snap.Snaplet
-import           Snap.Snaplet.Auth hiding (session)
+import           Snap.Snaplet.Auth                           hiding (session)
 import           Snap.Snaplet.Auth.Backends.PostgresqlSimple
 import           Snap.Snaplet.Heist
 import           Snap.Snaplet.Persistent
-import           Snap.Snaplet.PostgresqlSimple (pgsInit)
+import           Snap.Snaplet.PostgresqlSimple               (pgsInit)
 import           Snap.Snaplet.Session.Backends.CookieSession
-import           Snap.Util.FileServe ( DirectoryConfig (..)
-                                     , serveDirectoryWith
-                                     , serveFile
-                                     , simpleDirectoryConfig
-                                     )
+import           Snap.Util.FileServe                         (DirectoryConfig (..),
+                                                              serveDirectoryWith,
+                                                              serveFile,
+                                                              simpleDirectoryConfig)
 
 import qualified PgNotify
-import qualified WeatherApi.OpenWeatherMap as Weather
+import qualified WeatherApi.OpenWeatherMap                   as Weather
 
 ------------------------------------------------------------------------------
-import           Snaplet.Autoteka    (autotekaInit)
-import           Snaplet.ChatManager (chatInit)
-import           Snaplet.FileUpload  (fileUploadInit)
-import           Snaplet.Geo         (geoInit)
-import           Snaplet.Messenger   (newMessenger, messengerInit)
-import           Snaplet.Search      (searchInit)
-import           Snaplet.SiteConfig  (initSiteConfig)
-import           Snaplet.TaskManager (taskManagerInit)
+import           Snaplet.Autoteka                            (autotekaInit)
+import           Snaplet.ChatManager                         (chatInit)
+import           Snaplet.FileUpload                          (fileUploadInit)
+import           Snaplet.Geo                                 (geoInit)
+import           Snaplet.Messenger                           (messengerInit,
+                                                              newMessenger)
+import           Snaplet.Proxy                               (proxyInit)
+import           Snaplet.Search                              (searchInit)
+import           Snaplet.SiteConfig                          (initSiteConfig)
+import           Snaplet.TaskManager                         (taskManagerInit)
 ------------------------------------------------------------------------------
 import           AppHandlers.ActionAssignment
 import           AppHandlers.Avaya
-import           Application
-import           ApplicationHandlers
---import           AppHandlers.ARC
 import           AppHandlers.Backoffice
 import           AppHandlers.Bulk
 import           AppHandlers.ContractGenerator
 import           AppHandlers.CustomSearches
 import           AppHandlers.DiagTree
 import           AppHandlers.KPI
-import           AppHandlers.LocationSharing (requestLocation)
+import           AppHandlers.LocationSharing                 (requestLocation)
 import           AppHandlers.PSA
 import           AppHandlers.RKC
 import           AppHandlers.Screens
 import           AppHandlers.Users
+import           Application
+import           ApplicationHandlers
 import           Util
 
 ------------------------------------------------------------------------------
@@ -230,3 +232,4 @@ appInit = makeSnaplet "app" "Forms application" Nothing $ do
     <*> nestSnaplet "wsmessenger" messenger (messengerInit msgChan)
     <*> pure (Weather.initApi wkey)
     <*> liftIO (newTVarIO Map.empty)
+    <*> nestSnaplet "proxy" proxy (proxyInit auth db)

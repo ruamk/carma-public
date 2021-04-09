@@ -1,0 +1,17 @@
+{
+  "name": "carma-driver-photos",
+  "version": "1.0.0",
+  "description": "Show carse partner driver photos in CaRMa",
+  "main": "../../../static/build/frontend/carmaelmphotos.js",
+  "scripts": {
+    "build": "elm make src/ElmPhotos.elm --optimize --output ../../../static/build/frontend/carmaelmphotos.js"
+  },
+  "keywords": [
+    "elm"
+  ],
+  "author": "Sergey Timoshenko",
+  "license": "ISC",
+  "devDependencies": {
+    "elm": "0.19.1-3"
+  }
+}
