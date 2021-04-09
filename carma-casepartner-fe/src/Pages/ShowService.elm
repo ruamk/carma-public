@@ -1075,9 +1075,7 @@ update global msg model =
             )
 
         UpdateServicesListTick _ ->
-            ( { model
-                | currentCases = []
-              }
+            ( model
             , Api.getLatestCurrentCases GetCurrentCases
             , Cmd.none
             )
