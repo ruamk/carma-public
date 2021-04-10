@@ -447,15 +447,18 @@ frontend_elm_task() {
           "$dir" \
           "npm run build"
 
+    dir='srv/resources/assets/elm/photos-in-carma'
     # photos from partnercabinet in carma case view
     utask "$task_name" \
-        'Building photos view for carma case page' \
-        "srv/resources/assets/elm/photos-in-carma" \
-        "npm i && npm run build"
+          'Installing Elm dependencies…' \
+          "$dir" \
+          "npm i"
+    utask "$task_name" \
+          'Building and install photos view for carma case page' \
+          "$dir" \
+          "npm run build"
 
     task_log "$task_name" done
-
-
 }
 
 # "frontend-pure" task

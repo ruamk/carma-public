@@ -2,7 +2,7 @@
   "name": "carma-driver-photos",
   "version": "1.0.0",
   "description": "Show carse partner driver photos in CaRMa",
-  "main": "../../../static/build/frontend/carmaelmphotos.js",
+  "main": "src/ElmPhotos.elm",
   "scripts": {
     "build": "elm make src/ElmPhotos.elm --optimize --output ../../../static/build/frontend/carmaelmphotos.js"
   },
