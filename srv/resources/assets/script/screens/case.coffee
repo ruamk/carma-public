@@ -262,17 +262,23 @@ setupHistory = (kvm) ->
 
 
 setupElmPhotos = (kvm) ->
+  $("#elm-photos").append("<script src=\"/s/frontend/carmaelmphotos.js\"></script>")
+
   attachments =
     kvm.servicesReference()
       .map((service) -> service.filesText())
       .concat(kvm.filesText())
       .filter((x) -> x != "")
-      .reduce(((a, b) -> a + "," + b), "")
 
   init =
     { node: document.getElementById('elm-photos') 
     , flags:
-        { attachments: attachments
+        { attachments:
+            if (attachments.length == 0)
+              ""
+            else
+              attachments.reduce(((a, b) -> a + "," + b))
+
         , serviceId: kvm.id()
         }
     }
