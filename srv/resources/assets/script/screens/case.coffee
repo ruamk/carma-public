@@ -267,7 +267,7 @@ setupElmPhotos = (kvm) ->
       .map((service) -> service.filesText())
       .concat(kvm.filesText())
       .filter((x) -> x != "")
-      .reduce((a, b) -> a + "," + b)
+      .reduce(((a, b) -> a + "," + b), "")
 
   init =
     { node: document.getElementById('elm-photos') 
