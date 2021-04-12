@@ -46,6 +46,9 @@ setupCaseModel = (viewName, args) ->
   ctx = fields: (f for f in kvm._meta.model.fields when f.meta?.required)
   setupCommentsHandler kvm
   setupLocationSharing kvm
+  
+  setupElmPhotos kvm
+
 
   Contract.setup "contract", kvm
 
@@ -256,6 +259,25 @@ setupHistory = (kvm) ->
 
   kvm['refreshHistory'] = refreshHistory
   kvm['contact_phone1']?.subscribe refreshHistory
+
+
+setupElmPhotos = (kvm) ->
+  attachments =
+    kvm.servicesReference()
+      .map((service) -> service.filesText())
+      .concat(kvm.filesText())
+      .filter((x) -> x != "")
+      .reduce((a, b) -> a + "," + b)
+
+  init =
+    { node: document.getElementById('elm-photos') 
+    , flags:
+        { attachments: attachments
+        , serviceId: kvm.id()
+        }
+    }
+
+  Elm.ElmPhotos.init(init)
 
 # Case comments/chat
 setupCommentsHandler = (kvm) ->

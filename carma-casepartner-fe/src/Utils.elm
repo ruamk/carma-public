@@ -7,8 +7,9 @@ module Utils exposing
 
 import Generated.Route as Route exposing (Route)
 import ISO8601 exposing (Time)
-import Url exposing (Url)
 import Types exposing (CurrentCaseInfo)
+import Url exposing (Url)
+
 
 fromUrl : Url -> Route
 fromUrl =
@@ -41,13 +42,16 @@ formatDate nt =
     String.join "." (f [ .day, .month, .year ])
 
 
+
 -- drop down the services with status `in progress`
+
+
 sortServices : List CurrentCaseInfo -> List CurrentCaseInfo
 sortServices cs =
     let
         ( inProgress, others ) =
             List.partition (\c -> c.cuAccordTime == "В работе") cs
-        
+
         sortByCallDate : List CurrentCaseInfo -> List CurrentCaseInfo
         sortByCallDate xs =
             let
@@ -71,7 +75,6 @@ sortServices cs =
                     compare
                         (ISO8601.toTime <| time a)
                         (ISO8601.toTime <| time b)
-                        
             in
             List.sortWith rule xs
     in

@@ -765,17 +765,9 @@ mixin caseFilesList
         | :&nbsp;
       span#city-towage-average-time
     #contract
-    .program
-      #case-files(data-bind=`visible: hasFiles`)
-        h4 Прикреплённые файлы
-        +caseFilesList
-        dl(data-bind=`foreach: servicesReference`)
-          dt(data-bind=`
-            visible : safelyGet('filesReference').length,
-            text    : _meta.model.title,
-          `)
-            dd
-              +caseFilesList
+    .program      
+      div(id="elm-photos")
+      script(src="/s/frontend/carmaelmphotos.js")
 
       #case-comments
         h4 Комментарий
