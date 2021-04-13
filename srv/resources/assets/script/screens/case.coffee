@@ -264,8 +264,6 @@ setupHistory = (kvm) ->
 
 
 setupElmPhotos = (kvm) ->
-  #$("#elm-photos").append("<script src=\"/s/frontend/carmaelmphotos.js\"></script>")
-  #console.log("elm photos loaded")
   attachments =
     kvm.servicesReference()
       .map((service) -> service.filesText())
