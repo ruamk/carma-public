@@ -13,6 +13,8 @@ Contract = require "carma/components/contract"
 template = require "carma-tpl/screens/case.pug"
 Flds     = require "carma-tpl/fields/form.pug"
 
+Elm      = require "elm/ElmPhotos.elm"
+
 ActionResult = idents.idents "ActionResult"
 
 flds = $('<div/>').append $(Flds)
@@ -262,8 +264,8 @@ setupHistory = (kvm) ->
 
 
 setupElmPhotos = (kvm) ->
-  $("#elm-photos").append("<script src=\"/s/frontend/carmaelmphotos.js\"></script>")
-
+  #$("#elm-photos").append("<script src=\"/s/frontend/carmaelmphotos.js\"></script>")
+  #console.log("elm photos loaded")
   attachments =
     kvm.servicesReference()
       .map((service) -> service.filesText())
@@ -271,19 +273,18 @@ setupElmPhotos = (kvm) ->
       .filter((x) -> x != "")
 
   init =
-    { node: document.getElementById('elm-photos') 
+    { node: document.getElementById('elm-photos')
     , flags:
-        { attachments:
-            if (attachments.length == 0)
-              ""
-            else
-              attachments.reduce(((a, b) -> a + "," + b))
-
-        , serviceId: kvm.id()
-        }
+      { attachments:
+          if (attachments.length == 0)
+            ""
+          else
+            attachments.reduce(((a, b) -> a + "," + b))
+      , serviceId: kvm.id()
+      }
     }
 
-  Elm.ElmPhotos.init(init)
+  Elm.Elm.ElmPhotos.init(init)
 
 # Case comments/chat
 setupCommentsHandler = (kvm) ->
