@@ -82,7 +82,6 @@ import Types as Types
         )
 import Ui
 import Utils exposing (formatTime)
-import Html exposing (img)
 
 
 type alias Flags =
@@ -221,6 +220,7 @@ type Msg
     | ServiceWasAssignedToDriver (Result Http.Error Int)
     | ServiceWasCancelledToDriver (Result Http.Error Int)
     | Settings
+    | Instruction
     | Tick Time.Posix
     | UpdateComments (Result Http.Error Int) -- Услуга оказана (ответ)
     | UpdateCustomMessageToast (MessageToast Msg)
@@ -240,8 +240,7 @@ type Msg
     | PhotosUploadResponse (Result Http.Error (Result String Int))
     | PhotosAccordionMsg Accordion.State
     | UploadDropdown Dropdown.State
-
-
+    | UpdateServiceTick Time.Posix
 
 driverSpinnerSize : String
 driverSpinnerSize =
@@ -264,6 +263,11 @@ commentsUpdateTime =
 
 servicesListUpdateSeconds : Float
 servicesListUpdateSeconds =
+    60
+
+
+serviceInfoUpdateSeconds : Float
+serviceInfoUpdateSeconds =
     60
 
 
@@ -1007,6 +1011,12 @@ update global msg model =
             , Global.settings
             )
 
+        Instruction ->
+            ( model
+            , Cmd.none
+            , Global.instruction
+            )
+
         ModalAlreadyOkClose ->
             ( { model | modalAlertVisibility = Modal.hidden }
             , Cmd.none
@@ -1065,9 +1075,7 @@ update global msg model =
             )
 
         UpdateServicesListTick _ ->
-            ( { model
-                | currentCases = []
-              }
+            ( model
             , Api.getLatestCurrentCases GetCurrentCases
             , Cmd.none
             )
@@ -1204,7 +1212,6 @@ update global msg model =
                             , Cmd.none
                             )
 
-
         TimeVisibility status ->
             ( { model
                 | isTimeVisible = status
@@ -1312,6 +1319,13 @@ update global msg model =
             , Cmd.none
             )
 
+        UpdateServiceTick _ ->
+            ( model
+            , Api.getService global.serviceId ServiceDownloaded
+            , Cmd.none
+            )
+
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -1320,6 +1334,7 @@ subscriptions global model =
         , Chat.caseReceiver Chat
         , Time.every (commentsUpdateTime * 1000) Tick
         , Time.every (servicesListUpdateSeconds * 1000) UpdateServicesListTick
+        , Time.every (serviceInfoUpdateSeconds * 1000) UpdateServiceTick
         , Accordion.subscriptions model.photosAccordion PhotosAccordionMsg
         , Dropdown.subscriptions model.uploadDropdown UploadDropdown
         ]
@@ -1357,6 +1372,7 @@ view global model =
                 [ ( False, Cases, "Текущие заявки" )
                 , ( False, SearchCases, "Поиск заявок" )
                 , ( False, Settings, "Настройки" )
+                , ( False, Instruction, "Инструкция" )
                 ]
             }
           <|
@@ -1685,10 +1701,10 @@ viewCasePanel model serviceId =
                     TimeVisibility <| not model.isTimeVisible
 
                 caretRightFill =
-                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-right-fill.svg") ] []
 
                 caretDownFill =
-                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] [] 
+                    img [ A.src (Api.staticURL "/caret-down-fill.svg") ] []
 
                 showButton =
                     Grid.row [ Row.attrs [ Spacing.p1, onClick message ] ]
@@ -1699,7 +1715,7 @@ viewCasePanel model serviceId =
                             [ div
                                 [ class "value", style "display" "inline" ]
                                 [ text (formatTime_ c.expectedServiceStart) ]
-                            , div 
+                            , div
                                 [ style "margin-left" "5px", style "display" "inline" ]
                                 [ if model.isTimeVisible then
                                     caretDownFill
@@ -1744,16 +1760,7 @@ viewCasePanel model serviceId =
                     ]
                 , Grid.row []
                     [ Grid.col []
-                        [ let
-                            shortcutted =
-                                case Dict.get c.serviceType model.typeOfServiceSynonym of
-                                    Just v ->
-                                        v
-
-                                    Nothing ->
-                                        c.serviceType
-                          in
-                          field "Вид помощи" <| text shortcutted
+                        [ field "Вид помощи" <| text c.serviceType
                         , field "Клиент" <| text c.client
                         , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
                         ]
@@ -2116,17 +2123,7 @@ viewCard : Model -> CurrentCaseInfo -> ListGroup.CustomItem Msg
 viewCard model cci =
     let
         serviceType c =
-            case c.cuTypeOfService of
-                Just tos ->
-                    case Dict.get tos model.typeOfServiceSynonym of
-                        Just v ->
-                            v
-
-                        Nothing ->
-                            tos
-
-                Nothing ->
-                    ""
+            Maybe.withDefault "" c.cuTypeOfService
 
         address c =
             Ui.addressCell c.cuBreakdownPlace
@@ -2758,6 +2755,11 @@ viewPhotosAccordion model =
                 , Grid.row []
                     (viewPhotos <| filterByPhotoType photoType photos)
                 ]
+
+        header =
+            "Вложенные фотографии ("
+                ++ String.fromInt (List.length model.photos)
+                ++ ")"
     in
     Accordion.config PhotosAccordionMsg
         |> Accordion.withAnimation
@@ -2766,7 +2768,7 @@ viewPhotosAccordion model =
                 { id = "card1"
                 , options = []
                 , header =
-                    Accordion.toggle toggleStyles [ text "Вложенные фотографии" ]
+                    Accordion.toggle toggleStyles [ text header ]
                         |> Accordion.headerH4 headerStyles
                 , blocks =
                     [ Accordion.block

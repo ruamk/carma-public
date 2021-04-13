@@ -115,6 +115,7 @@ type Msg
     | UpdateCustomMessageToast (MessageToast Msg)
     | UsermenuMsg Dropdown.State
     | Settings
+    | Instruction
 
 
 page : Page Flags Model Msg
@@ -539,6 +540,12 @@ update global msg model =
             , Global.settings
             )
 
+        Instruction ->
+            ( model
+            , Cmd.none
+            , Global.instruction
+            )
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -561,6 +568,7 @@ view global model =
                 [ ( False, GoToCases, "Текущие заявки" )
                 , ( False, GoToSearchCases, "Поиск заявок" )
                 , ( True, Settings, "Настройки" )
+                , ( False, Instruction, "Инструкция" )
                 ]
             }
           <|

@@ -7,12 +7,13 @@
     "start": "npm install && npm run build && npm run dev",
     "build": "npm run debug:off && npm run build:elm-spa && npm run build:elm",
     "build:elm-spa": "elm-spa build .",
-    "build:elm": "elm make src/Main.elm --optimize --output public/dist/elm.js",
+    "build:elm": "npm run book && elm make src/Main.elm --optimize --output public/dist/elm.js",
     "dev": "npm run debug:on && concurrently --raw --kill-others \"npm run dev:elm-spa\" \"npm run dev:elm\"",
     "dev:elm-spa": "chokidar src/Pages -c \"npm run build:elm-spa\"",
-    "dev:elm": "elm-live src/Main.elm -u -d public --host 0.0.0.0 --port $(cat .port-live) -x /elm-live -y http://localhost:$(cat .port-back) -- --debug --output public/dist/elm.js",
+    "dev:elm": "npm run book && elm-live src/Main.elm -u -d public --host 0.0.0.0 --port $(cat .port-live) -x /elm-live -y http://localhost:$(cat .port-back) -- --debug --output public/dist/elm.js",
     "debug:on": "sed -z -i -E 's#prefix(\\s*)=(\\s*)\"[^\"]*\"#prefix\\1=\\2\"/elm-live\"#' src/Api.elm",
-    "debug:off": "sed -z -i -E 's#prefix(\\s*)=(\\s*)\"[^\"]*\"#prefix\\1=\\2\"\"#' src/Api.elm"
+    "debug:off": "sed -z -i -E 's#prefix(\\s*)=(\\s*)\"[^\"]*\"#prefix\\1=\\2\"\"#' src/Api.elm",
+    "book": "cd book && mkdocs build -d ../public/book/ && cd .."
   },
   "keywords": [
     "elm",
