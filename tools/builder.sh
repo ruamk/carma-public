@@ -456,17 +456,6 @@ frontend_elm_task() {
               "rm -rf node_modules elm-stuff"
     fi
 
-    # photos from partnercabinet in carma case view
-    utask "$task_name" \
-          'Installing Elm dependencies…' \
-          "$dir" \
-          "npm i"
-
-    utask "$task_name" \
-          'Building and install photos view for carma case page' \
-          "$dir" \
-          "npm run build"
-
     task_log "$task_name" done
 }
 

@@ -4,7 +4,6 @@ webpack                 = require "webpack"
 UglifyJSPlugin          = require "uglifyjs-webpack-plugin"
 ExtractTextPlugin       = require "extract-text-webpack-plugin"
 OptimizeCssAssetsPlugin = require "optimize-css-assets-webpack-plugin"
-
 {vendorNames} = require "./frontend.data.json"
 
 RES_DIR = path.join __dirname, "resources"
@@ -42,6 +41,7 @@ module.exports =
       "carma-tpl":   path.join RES_DIR, "assets", "template"
       "./carma-tpl": path.join RES_DIR, "assets", "template" # pug includes
       "carma-css":   path.join RES_DIR, "assets", "style", "style.less"
+      elm:           path.join RES_DIR, "assets", "elm", "photos-in-carma", "src"
 
       oldLegacy3p:   "carma/oldLegacy3p"
 
@@ -192,6 +192,16 @@ module.exports =
       }
 
       { test: /\.(eot|svg|ttf|woff|woff2)$/, use: "file-loader" }
+
+      {
+        test: /\.elm$/
+        exclude: [/elm-stuff/, /node_modules/]
+        use:
+          loader: 'elm-webpack-loader'
+          options:
+            cwd: RES_DIR + '/assets/elm/photos-in-carma'
+            pathToElm: __dirname + '/node_modules/.bin/elm'
+      }
     ]
 
   plugins: do ->
