@@ -154,16 +154,16 @@ handleApiGetService = checkAuthCasePartner $ do
         servicetbl.times_expectedservicestart
       , servicetbl.times_factservicestart
       , servicetbl.times_factserviceend
-      , CASE
+      , coalesce(CASE
           WHEN servicetbl.type = ?
-               THEN st.label || ' - ' || tt.label
+               THEN st.label || ' - ' || coalesce(tt.label, ''::text)
           WHEN servicetbl.type = ?
-               THEN st.label || ' - ' || ts.label
+               THEN st.label || ' - ' || coalesce(ts.label, ''::text)
           WHEN servicetbl.type = ?
-               THEN st.label || ' - ' || btt.label
+               THEN st.label || ' - ' || coalesce(btt.label, ''::text)
           ELSE
                st.label
-        END AS typeofservice
+        END, ''::text) AS typeofservice
       , servicetbl.status
       , ss.label
       , servicetbl.payType
