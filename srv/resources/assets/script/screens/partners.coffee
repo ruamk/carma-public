@@ -20,8 +20,13 @@ objsToRows = (objs) ->
   rows = for obj in objs then [
     (if obj.isActive then "yes" else "no")
     (if obj.isDealer
-        "dealer"
-      else if obj.isMobile then "mobile" else "partner"
+       "dealer"
+     else if obj.isMobile
+       "mobile"
+     else if obj.isPartner
+       "partner"
+     else
+       "all"
     )
     obj.id
     obj.name                or ''
