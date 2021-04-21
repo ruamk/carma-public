@@ -21,6 +21,7 @@
             "lattyware/elm-fontawesome": "4.0.0",
             "lukewestby/elm-http-builder": "7.0.1",
             "mercurymedia/elm-message-toast": "2.0.0",
+            "rsignavong/elm-leaflet-map": "4.1.0",
             "rundis/elm-bootstrap": "5.2.0",
             "ryannhg/elm-spa": "4.1.0"
         },
