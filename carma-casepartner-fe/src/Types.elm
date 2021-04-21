@@ -11,6 +11,8 @@ module Types exposing
     , Photo
     , ServiceDescription
     , ServiceInfo
+    , CarInfo
+    , DriverLocation
     , emptyServiceDescription
     )
 
@@ -210,4 +212,19 @@ type alias Photo =
     , longitude : Float
     , created : String
     , photoType : String
+    }
+
+type alias DriverLocation =
+    { id : Int
+    , name : String
+    , phone : String
+    , plateNum : String
+    , latitude : Float
+    , longitude : Float
+    , carInfo : Maybe CarInfo
+    }
+
+type alias CarInfo =
+    { color : String
+    , model : String
     }

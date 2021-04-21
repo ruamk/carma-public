@@ -26,6 +26,7 @@ module Api exposing
     , statusInPlace
     , statusServicePerformed
     , updateDriver
+    , getDriverLocations
     )
 
 import File
@@ -82,7 +83,7 @@ type alias Session =
 
 prefix : String
 prefix =
-    ""
+    "/elm-live"
 
 
 staticURL : String -> String
@@ -223,6 +224,11 @@ apiGetDriverImage imageUrl =
 clientMapURL : Int -> String
 clientMapURL serviceId =
     prefix ++ "/map-client.html?serviceId=" ++ String.fromInt serviceId
+
+
+apiDriverLocations : String
+apiDriverLocations =
+    prefix ++ "/api/v1/locations"
 
 
 decodeSession : String -> Session
@@ -1031,3 +1037,25 @@ savePhoto serviceId photo photoType message =
         , body = Http.multipartBody body
         , expect = Http.expectJson message decoder
         }
+
+getDriverLocations : (Result Http.Error (List Types.DriverLocation) -> msg) -> Cmd msg
+getDriverLocations message =
+    let
+        driverLocationDecoder =
+            succeed Types.DriverLocation
+                |> required "id" int
+                |> required "name" string
+                |> required "phone" string
+                |> required "plateNum" string
+                |> required "latitude" float
+                |> required "longitude" float
+                |> required "carInfo" (nullable carInfoDecoder)
+
+        carInfoDecoder =
+            succeed Types.CarInfo
+                |> optional "color" string ""
+                |> optional "model" string ""
+    in
+    HttpBuilder.get apiDriverLocations
+        |> HttpBuilder.withExpect (Http.expectJson message (D.list driverLocationDecoder))
+        |> HttpBuilder.request
