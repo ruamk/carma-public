@@ -95,6 +95,7 @@ type Msg
     | Logout
     | Search
     | Services
+    | DriversMap
     | Service Int
     | ServicesDownloaded (Result Http.Error (List ServiceInfo))
     | ServicesFirstPage
@@ -303,6 +304,12 @@ update _ msg model =
             , Global.settings
             )
 
+        DriversMap ->
+            ( model
+            , Cmd.none
+            , Global.driversMap
+            )
+
         TypeOfServiceSynonymDownloaded result ->
             case result of
                 Err _ ->
@@ -402,6 +409,7 @@ view global model =
                 [ ( False, Services, "Текущие заявки" )
                 , ( True, NavbarMsg model.navbarState, "Поиск заявок" )
                 , ( False, Settings, "Настройки" )
+                , ( False, DriversMap, "Карта водителей" )
                 ]
             }
           <|

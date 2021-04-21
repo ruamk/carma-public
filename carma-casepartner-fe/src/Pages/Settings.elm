@@ -115,6 +115,7 @@ type Msg
     | UpdateCustomMessageToast (MessageToast Msg)
     | UsermenuMsg Dropdown.State
     | Settings
+    | DriversMap
 
 
 page : Page Flags Model Msg
@@ -539,6 +540,13 @@ update global msg model =
             , Global.settings
             )
 
+        DriversMap ->
+            ( model
+            , Cmd.none
+            , Global.driversMap
+            )
+
+
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
@@ -561,6 +569,7 @@ view global model =
                 [ ( False, GoToCases, "Текущие заявки" )
                 , ( False, GoToSearchCases, "Поиск заявок" )
                 , ( True, Settings, "Настройки" )
+                , ( False, DriversMap, "Карта водителей" )
                 ]
             }
           <|

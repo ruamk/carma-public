@@ -8,6 +8,7 @@ module Global exposing
     , saveUsername
     , serviceId
     , settings
+    , driversMap
     , subscriptions
     , update
     , view
@@ -74,6 +75,7 @@ type Msg
     | Username String
     | ServiceId Int
     | Settings
+    | DriversMap
     | Logout
 
 
@@ -113,6 +115,11 @@ update msg model =
         Settings ->
             ( model
             , navigate Route.Settings
+            )
+
+        DriversMap ->
+            ( model
+            , navigate Route.Map
             )
 
         Logout ->
@@ -173,6 +180,11 @@ serviceId id =
 settings : Cmd Msg
 settings =
     send Settings
+
+
+driversMap : Cmd Msg
+driversMap =
+    send DriversMap
 
 
 logout : Cmd Msg
