@@ -23,6 +23,12 @@ import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
 import Types
 import Ui
+import Time
+
+
+updateLocationsRateSec : Float
+updateLocationsRateSec = 
+    60
 
 
 
@@ -49,6 +55,7 @@ type Msg
     | UsermenuMsg Dropdown.State
     | PanelButton Bool
     | GotDriverLocations (Result Http.Error (List Types.DriverLocation))
+    | UpdateLocationsTick Time.Posix
 
 
 page : Page Flags Model Msg
@@ -150,12 +157,19 @@ update _ msg model =
                     , Cmd.none
                     , Cmd.none
                     )
+        
+        UpdateLocationsTick _ -> 
+            ( model
+            , Api.getDriverLocations GotDriverLocations
+            , Cmd.none
+            )
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions _ model =
     Sub.batch
         [ Dropdown.subscriptions model.usermenuState UsermenuMsg
+        , Time.every (1000 * updateLocationsRateSec) UpdateLocationsTick
         ]
 
 
