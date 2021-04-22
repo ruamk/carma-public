@@ -501,6 +501,19 @@ hideMobile =
 viewCurrentCases : Model -> Html Msg
 viewCurrentCases model =
     let
+        serviceType c =
+            case c.cuTypeOfService of
+                Just tos ->
+                    case Dict.get tos model.typeOfServiceSynonym of
+                        Just v ->
+                            v
+
+                        Nothing ->
+                            tos
+
+                Nothing ->
+                    ""
+
         formatAccordTime : String -> String
         formatAccordTime t =
             let
@@ -531,6 +544,21 @@ viewCurrentCases model =
 
                 Nothing ->
                     t
+
+        normalizeSafeStoring : CurrentCaseInfo -> CurrentCaseInfo
+        normalizeSafeStoring service =
+            if serviceType service == "Ответственное хранение"
+            then 
+                { service | cuAccordTime = "На хранении" }
+                
+            else 
+                service
+        
+        accordTime_ c = 
+            c
+                |> normalizeSafeStoring
+                |> .cuAccordTime
+                |> formatAccordTime 
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )
@@ -636,10 +664,11 @@ viewCurrentCases model =
                                             ]
                                         , Table.td [ hideMobile, hC, vC, thW 5 ] [ Ui.cell theCase.cuStatus ]
                                         , Table.td
-                                            (colorOfTimer theCase.cuAccordTime
+                                            (colorOfTimer (accordTime_ theCase) 
                                                 ++ [ hC, vC, thW 5 ]
                                             )
-                                            [ Ui.cell <| formatAccordTime theCase.cuAccordTime ]
+                                            [ Ui.cell <| accordTime_ theCase 
+                                            ]
                                         , Table.td [ hideMobile, hC, vC, thW 10 ] [ Ui.cell theCase.cuMakeModel ]
                                         , Table.td [ hideMobile, vC ] [ Ui.addressCell theCase.cuBreakdownPlace ]
                                         , Table.td

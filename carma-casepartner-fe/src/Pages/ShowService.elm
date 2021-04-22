@@ -2130,9 +2130,22 @@ viewCard model cci =
             Ui.addressCell c.cuBreakdownPlace
 
         accordTime =
-            cci.cuAccordTime
+            cci
+                |> normalizeSafeStoring
+                |> .cuAccordTime
                 |> formatAccordTime
                 |> highlightAccordTime
+
+        normalizeSafeStoring : CurrentCaseInfo -> CurrentCaseInfo
+        normalizeSafeStoring service =
+            if serviceType service == "Ответственное хранение"
+            then 
+                { service | cuAccordTime = "На хранении" }
+                
+            else 
+                service 
+                    
+
 
         formatAccordTime : String -> String
         formatAccordTime t =
