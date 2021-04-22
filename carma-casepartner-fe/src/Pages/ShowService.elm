@@ -1709,6 +1709,7 @@ viewCasePanel model serviceId =
                                 ]
                             ]
                         ]
+
             in
             [ showButton
             , if model.isTimeVisible then
@@ -1720,6 +1721,69 @@ viewCasePanel model serviceId =
               else
                 div [] []
             ]
+
+        accordTime = 
+            case Dict.get c.serviceType model.typeOfServiceSynonym of
+                Just v ->
+                    v
+            
+                Nothing ->
+                    c.serviceType
+        
+        viewChangeStatusForm = 
+            Grid.col [ Col.attrs [ class "text-center" ] ]
+                [ div [] [ text "Изменить статус" ]
+                , let
+                            width : Html.Attribute Msg
+                            width =
+                                style "width" "150px"
+                          in
+                          div []
+                            [ Button.button
+                                [ Button.primary
+                                , Button.disabled model.statusButton1.disabled
+                                , Button.attrs
+                                    (Spacing.m3
+                                        :: width
+                                        :: (case model.statusButton1.message of
+                                                Just m ->
+                                                    [ onClick m ]
+
+                                                _ ->
+                                                    []
+                                           )
+                                    )
+                                ]
+                                [ text "Опоздание" ]
+                            , viewModalLatenessAsk model
+                            , Button.button
+                                [ Button.primary
+                                , Button.disabled model.statusButton2.disabled
+                                , Button.attrs
+                                    (Spacing.m3
+                                        :: width
+                                        :: (case model.statusButton2.message of
+                                                Just m ->
+                                                    [ onClick m ]
+
+                                                _ ->
+                                                    []
+                                           )
+                                    )
+                                ]
+                                [ text <|
+                                    model.statusButton2.label
+                                        ++ (if model.statusButton2.disabledTime > 0 then
+                                                " (" ++ String.fromInt model.statusButton2.disabledTime ++ ")"
+
+                                            else
+                                                ""
+                                           )
+                                ]
+                            , viewModalAlreadyOk model
+                            ]
+                        ]
+                    
     in
     Grid.row [ Row.attrs [] ]
         (if model.service.caseId == 0 then
@@ -1784,60 +1848,16 @@ viewCasePanel model serviceId =
                                     ++ "("
                                     ++ String.fromInt c.status
                                     ++ ")"
-                        , driverField
+                        , if (accordTime == "Ответственное хранение")
+                            then 
+                                text ""
+                            
+                            else 
+                                driverField
                         ]
-                    , Grid.col [ Col.attrs [ class "text-center" ] ]
-                        [ div [] [ text "Изменить статус" ]
-                        , let
-                            width : Html.Attribute Msg
-                            width =
-                                style "width" "150px"
-                          in
-                          div []
-                            [ Button.button
-                                [ Button.primary
-                                , Button.disabled model.statusButton1.disabled
-                                , Button.attrs
-                                    (Spacing.m3
-                                        :: width
-                                        :: (case model.statusButton1.message of
-                                                Just m ->
-                                                    [ onClick m ]
-
-                                                _ ->
-                                                    []
-                                           )
-                                    )
-                                ]
-                                [ text "Опоздание" ]
-                            , viewModalLatenessAsk model
-                            , Button.button
-                                [ Button.primary
-                                , Button.disabled model.statusButton2.disabled
-                                , Button.attrs
-                                    (Spacing.m3
-                                        :: width
-                                        :: (case model.statusButton2.message of
-                                                Just m ->
-                                                    [ onClick m ]
-
-                                                _ ->
-                                                    []
-                                           )
-                                    )
-                                ]
-                                [ text <|
-                                    model.statusButton2.label
-                                        ++ (if model.statusButton2.disabledTime > 0 then
-                                                " (" ++ String.fromInt model.statusButton2.disabledTime ++ ")"
-
-                                            else
-                                                ""
-                                           )
-                                ]
-                            , viewModalAlreadyOk model
-                            ]
-                        ]
+                    , if (accordTime == "Ответственное хранение")
+                        then Grid.col [] []
+                        else viewChangeStatusForm
                     ]
                 , hr [] []
                 , Grid.row []
