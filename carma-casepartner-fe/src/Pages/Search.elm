@@ -405,10 +405,10 @@ view global model =
                 ]
             }
           <|
-            div []
+            div [ class "container-fluid h-100" ]
                 [ Grid.row []
-                    [ Grid.col [ Col.sm2 ] [ viewSearchPanel model ]
-                    , Grid.col [ Col.sm10 ] [ viewServices model ]
+                    [ Grid.col [ Col.lg2 ] [ viewSearchPanel model ]
+                    , Grid.col [ Col.lg10 ] [ viewServices model ]
                     ]
                 , br [] []
                 , div []
@@ -543,7 +543,7 @@ viewServices model =
                         [ th "Заявка"
                         , th "Дата подачи"
                         , th "Услуга"
-                        , th "Статус"
+                        , Table.th (hideMobile :: ha) [ text "Статус" ]
                         , th "Марка/Модель"
                         , Table.th (hideMobile :: ha) [ text "Адрес места поломки" ]
                         , th "Тип оплаты"
