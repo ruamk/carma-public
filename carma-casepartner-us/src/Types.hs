@@ -1,7 +1,9 @@
 module Types
     ( DriverPhotoType (..)
     , LatestServices (..)
+    , Latitude
     , Location (..)
+    , Longitude
     , PhotoInfo (..)
     , coords2Location
     ) where
@@ -32,9 +34,12 @@ data LatestServices = All
                     | Current
 
 
+type Latitude = Double
+type Longitude = Double
+
 data Location = Location
-    { latitude  :: Double
-    , longitude :: Double
+    { latitude  :: Latitude
+    , longitude :: Longitude
     } deriving (FromJSON, ToJSON, Generic, Show)
 
 

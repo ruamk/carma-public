@@ -5,12 +5,12 @@ module AppHandlers.MobileAPI
     , delayReason
     , getPhoto
     , getPhotos
-    , location
     , login
     , order
     , savePhoto
     , settings
     , status
+    , updateLocation
     ) where
 
 
@@ -45,8 +45,8 @@ import           Carma.Model
 import qualified Carma.Model.Usermeta             as Usermeta
 import           Carma.Utils.Snap                 (getIntParam, writeJSON)
 import qualified Service.Util                     as ServUtil
-import           Types                            (Location (..),
-                                                   PhotoInfo (..),
+import           Types                            (Latitude, Location (..),
+                                                   Longitude, PhotoInfo (..),
                                                    coords2Location)
 import           Util                             (customOkResponse,
                                                    errorResponse, okResponse)
@@ -328,8 +328,8 @@ invalidLongitude = "Значение параметра longitude должно �
 
 
 -- | Обновление местоположения
-location :: AppHandler ()
-location = checkDriver $ \driverId -> do
+updateLocation :: AppHandler ()
+updateLocation = checkDriver $ \driverId -> do
   body <- readRequestBody requestSize
   let isLocation = eitherDecode body :: Either String Location
   case isLocation of
@@ -340,14 +340,15 @@ location = checkDriver $ \driverId -> do
       then errorResponse invalidLatitude
       else if lon < -180.0 || lon > 180.0
            then errorResponse invalidLongitude
-           else do updateLocation driverId lat lon
+           else do updateServiceLocation driverId lat lon
+                   updateTrack driverId lat lon
                    -- тут добавить комментарий, Водитель приступил к оказанию услуги
                    -- вы можете посмотреть его местопопложение на карте
                    okResponse ""
 
   -- todo: проверять isActive
-  where updateLocation :: Int -> Double -> Double -> AppHandler ()
-        updateLocation driverId lat lon = do
+  where updateServiceLocation :: Int -> Latitude -> Longitude -> AppHandler ()
+        updateServiceLocation driverId lat lon = do
           r :: [Only (Maybe Int)] <- query [sql|
             SELECT currentServiceId
               FROM "CasePartnerDrivers"
@@ -389,6 +390,11 @@ location = checkDriver $ \driverId -> do
                      )
 
             _ -> return ()
+
+
+        updateTrack :: Int -> Latitude -> Longitude -> AppHandler ()
+        updateTrack driverId lat lon = void $
+          execute "SELECT save_drivers_track(?, ?, ?)" (driverId, lat, lon)
 
 
 -- | Смена статуса: "на месте", "оказана" или "задержка"
@@ -449,16 +455,33 @@ status = checkDriver $ \driverId -> do
 
 -- | Возвращает настройки для мобильного приложения
 settings :: AppHandler ()
-settings = checkDriver $ \_ -> do
+settings = checkDriver $ \driverId -> do
   cfg <- getSnapletUserConfig
   updateInterval :: Int <- liftIO $ Config.lookupDefault 60 cfg
                               "android.location-update-interval"
+  trackLocationMin :: Int <- liftIO $ Config.lookupDefault 30 cfg
+                                "track-location.min"
+  trackLocationMax :: Int <- liftIO $ Config.lookupDefault 120 cfg
+                                "track-location.max"
 
   (version, url) <- androidVersionAndURL cfg
+
+  trackLocation :: Value <- do
+    [Only r] :: [Only (Maybe Int)] <- query [sql|
+      SELECT trackLocation
+        FROM "CasePartnerDrivers"
+       WHERE id = ?
+    |] $ Only driverId
+    return $ case r of
+               Nothing -> Null
+               Just v | v < trackLocationMin -> Number $ fromIntegral trackLocationMin
+                      | v > trackLocationMax -> Number $ fromIntegral trackLocationMax
+                      | otherwise            -> Number $ fromIntegral v
 
   writeJSON $ object [ ("version", String version)
                      , ("updateUrl", String url)
                      , ("locationUpdateInterval", Number $ fromIntegral updateInterval)
+                     , ("trackLocation", trackLocation)
                      ]
 
 

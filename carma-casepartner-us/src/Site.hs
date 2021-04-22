@@ -36,6 +36,9 @@ apiLogin  = "/api/v1/login"
 apiLogout = "/api/v1/logout"
 
 
+apiLocations :: ByteString
+apiLocations = "/api/v1/locations"
+
 apiGetServices :: ByteString
 apiGetServices = "/api/v1/services/all"
 
@@ -119,6 +122,12 @@ apiDriverPhotosByService = "/api/v1/driver/photo/:serviceId"
 apiDriverPhotoImage :: ByteString
 apiDriverPhotoImage = "/api/v1/driver/photo/:serviceId/:photoId"
 
+--apiGetLocationParams :: ByteString
+--apiGetLocationParams = "/api/v1/location/:driverId"
+
+apiGetSettingsParams :: ByteString
+apiGetSettingsParams = "/api/v1/settings"
+
 apiGetDrivers :: ByteString
 apiGetDrivers = "/api/v1/settings/drivers" -- GET
 
@@ -130,7 +139,6 @@ apiDriver = "/api/v1/settings/driver/:driverId" -- GET for location,
                                                 -- PUT for update,
                                                 -- DELETE for delete,
                                                 -- POST for send SMS to driver.
-
 
 apiAssignServiceToDriver :: ByteString
 apiAssignServiceToDriver = "/api/v1/assignservice/:serviceId/:driverId"
@@ -164,6 +172,7 @@ handleApiLogout = ifTop $ do
 routes :: [(ByteString, Handler App App ())]
 routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiLogout, method POST handleApiLogout)
+
          , (apiGetServices, method POST $ Ss.latestServices All)
          , (apiGetLatestCurrentServices, Ss.latestServices Current)
          , (apiGetLatestClosingServices, Ss.latestServices Closing)
@@ -172,7 +181,7 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiPostServiceComment, method POST S.postComment)
          , (apiGetServiceLocation, method GET S.serviceLocation)
 
-         , (apiStatusInPlace, method POST S.statusInPlace)
+         , (apiStatusInPlace,          method POST S.statusInPlace)
          , (apiStatusServicePerformed, method POST S.statusServicePerformed)
          , (apiPostServiceClosed,      method POST S.statusServiceClosed)
          , (apiPostPartnerDelay,       method POST S.postPartnerDelay)
@@ -189,13 +198,15 @@ routes = [ (apiLogin,  method POST handleApiLogin)
          , (apiDriverLogin,            method POST MobileAPI.login)
          , (apiDriverStatus,           method POST MobileAPI.status)
          , (apiDriverOrder,            method GET  MobileAPI.order)
-         , (apiDriverLocation,         method POST MobileAPI.location)
+         , (apiDriverLocation,         method POST MobileAPI.updateLocation)
          , (apiDriverDelayReason,      method GET  MobileAPI.delayReason)
          , (apiDriverSettings,         method GET  MobileAPI.settings)
          , (apiDriverPhoto,            method POST MobileAPI.savePhoto)
          , (apiDriverPhotosByService,  method GET  MobileAPI.getPhotos)
          , (apiDriverPhotoImage,       method GET  MobileAPI.getPhoto)
 
+         , (apiLocations,              method GET    Drivers.getLocations)
+         , (apiGetSettingsParams,      method GET    Drivers.getSettingsParams)
          , (apiGetDrivers,             method GET    Drivers.getDrivers)
          , (apiCreateDriver,           method POST   Drivers.createDriver)
          , (apiDriver,                 method GET    Drivers.showDriverLocation)
