@@ -1360,7 +1360,7 @@ view global model =
                 ]
             }
           <|
-            div []
+            div [ class "container-fluid h-100" ]
                 [ viewCasePanel model global.serviceId
                 , div []
                     [ model.messageToast
@@ -1533,7 +1533,7 @@ viewCasePanel model serviceId =
             Grid.row [ Row.attrs [ Spacing.p1 ] ]
                 [ Grid.col [ Col.sm6 ]
                     [ name <| n ++ ": " ]
-                , Grid.col [ Col.sm5 ]
+                , Grid.col [ Col.sm6 ]
                     [ value v ]
                 ]
 
@@ -1695,7 +1695,7 @@ viewCasePanel model serviceId =
                         [ Grid.col [ Col.sm6 ]
                             [ name <| "Желаемая дата оказания услуг" ++ ": "
                             ]
-                        , Grid.col [ Col.sm5 ]
+                        , Grid.col [ Col.sm6 ]
                             [ div
                                 [ class "value", style "display" "inline" ]
                                 [ text (formatTime_ c.expectedServiceStart) ]
@@ -1721,7 +1721,7 @@ viewCasePanel model serviceId =
                 div [] []
             ]
     in
-    Grid.row [ Row.attrs [ Spacing.p1 ] ]
+    Grid.row [ Row.attrs [] ]
         (if model.service.caseId == 0 then
             [ Grid.col [ Col.textAlign Text.alignXsCenter ]
                 [ Ui.viewSpinner "10rem"
@@ -1729,12 +1729,8 @@ viewCasePanel model serviceId =
             ]
 
          else
-            [ Grid.col [ Col.sm2 ]
-                [ viewServicesList
-                    model
-                    model.currentCases
-                ]
-            , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
+            [ viewServicesList model
+            , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.lg7, Col.md8, Col.sm12 ]
                 [ h3 [ class "text-center" ]
                     [ text <|
                         "Заявка: "
@@ -1895,7 +1891,7 @@ viewCasePanel model serviceId =
                     ]
                 , viewLog model
                 ]
-            , Grid.col [ Col.sm3, Col.attrs [ Spacing.m0 ] ]
+            , Grid.col [ Col.lg3, Col.md4, Col.sm12, Col.attrs [ Spacing.m0 ] ]
                 [ h2 [ class "text-center" ] [ text "Закрыть заявку:" ]
                 , Alert.simpleSuccess []
                     [ text "Закрытие заявки не гарантирует оплату в размере Закрытия. "
@@ -2092,8 +2088,8 @@ viewLog model =
             ]
 
 
-viewServicesList : Model -> List CurrentCaseInfo -> Html Msg
-viewServicesList model ccs =
+viewServicesList : Model -> Column Msg
+viewServicesList model =
     let
         header =
             h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
@@ -2102,12 +2098,14 @@ viewServicesList model ccs =
             class "d-none d-lg-block"
 
         cases =
-            List.map (viewCard model) (Utils.sortServices ccs)
+            List.map (viewCard model) (Utils.sortServices model.currentCases)
     in
-    div [ hideMobile ]
-        [ header
-        , Card.deck
-            [ Card.customListGroup cases (Card.config [])
+    Grid.col [ Col.lg2, Col.attrs [ hideMobile ] ]
+        [ div []
+            [ header
+            , Card.deck
+                [ Card.customListGroup cases (Card.config [])
+                ]
             ]
         ]
 
