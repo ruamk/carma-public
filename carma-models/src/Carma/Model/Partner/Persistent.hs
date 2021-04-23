@@ -46,6 +46,7 @@ Partner json sql=partnertbl
   taxScheme TaxSchemeId Maybe sql=taxscheme
   legalName Text Maybe sql=legalname
   inn Text Maybe sql=inn
+  code1c Text Maybe sql=code1c
   isKpiEnabled Bool sql=iskpienabled
   isPayBackConfirmed Bool sql=ispaybackconfirmed
   foreignIdent Text Maybe sql=foreignident
