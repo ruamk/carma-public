@@ -1,0 +1,26 @@
+{
+  "name": "custome-feedback",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "parcel src/index.html",
+    "build": "parcel build src/index.html"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.11.1",
+    "@babel/plugin-transform-runtime": "^7.11.0",
+    "@babel/runtime": "^7.11.2",
+    "@types/classnames": "^2.2.10",
+    "node-sass": "^4.14.1",
+    "parcel-bundler": "^1.12.4",
+    "typescript": "^3.9.7"
+  },
+  "dependencies": {
+    "bulma": "^0.9.1",
+    "classnames": "^2.2.6",
+    "immer": "^9.0.1",
+    "normalize.css": "^8.0.1",
+    "preact": "^10.4.7"
+  }
+}

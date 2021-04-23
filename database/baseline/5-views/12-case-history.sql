@@ -5,7 +5,10 @@ DROP VIEW IF EXISTS "CaseHistory";
 CREATE VIEW "CaseHistory" AS
   SELECT caseId
        , datetime
-       , usermetatbl.realName || ' (' || usermetatbl.login || ')' AS who
+       , coalesce(
+          usermetatbl.realName || ' (' || usermetatbl.login || ')',
+          '--'
+        ) AS who
        , ROW_TO_JSON AS json
 
   FROM (
@@ -326,14 +329,14 @@ CREATE VIEW "CaseHistory" AS
             cf.caseId,
             cf.ctime as datetime,
             cf.userId,
-            cf.response
+            cf.eventType as "eventType",
+            cf.data
         FROM "CustomerFeedback" cf
+        where eventType in ('FeedbackRequested', 'FeedbackReceived')
         ) row
 
-    ) AS united,
-    usermetatbl
-
-  WHERE usermetatbl.id = united.userId
+    ) AS united
+    left join usermetatbl on usermetatbl.id = united.userId
   ORDER BY datetime DESC;
 
 GRANT SELECT ON "CaseHistory" TO carma_db_sync;

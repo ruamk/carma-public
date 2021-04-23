@@ -17,6 +17,7 @@ packages:
 - carma-casepartner-us
 - location-sharing-svc
 - carma-proxies
+- customer-feedback-svc
 
 allow-newer: true
 

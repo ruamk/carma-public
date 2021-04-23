@@ -95,7 +95,8 @@ export interface LocationSharingRequest extends Item {
 
 export interface CustomerFeedback extends Item {
   type: 'customerFeedback'
-  response: {
+  eventType: 'FeedbackRequested' | 'FeedbackReceived'
+  data: {
     operValue?: number
     techValue?: number
     comment?: number

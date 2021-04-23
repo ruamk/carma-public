@@ -1,0 +1,51 @@
+@mixin star-no-shade {
+  text-shadow: 1px 1px #bbb;
+}
+@mixin star-shade {
+  text-shadow: 3px 3px gold;
+}
+
+.stars {
+  white-space: nowrap;
+  .star {
+    display: inline-block;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 60px;
+    line-height: 60px;
+    color: #d7d7d7;
+    @include star-no-shade;
+
+    &:before {
+      content: '\2605';
+    }
+
+    &.golden {
+      color: gold;
+    }
+
+    &:focus {
+      outline: none;
+      @include star-shade;
+    }
+  }
+
+  &:hover > .star:before {
+    @include star-shade;
+  }
+
+  & > .star:hover ~ .star:before {
+    @include star-no-shade;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .stars .star {
+    font-size: 45px;
+    line-height: 45px;
+  }
+  .star {
+    padding: 0 2px;
+  }
+}

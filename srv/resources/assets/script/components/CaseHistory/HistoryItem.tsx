@@ -47,17 +47,23 @@ const components: {[type: string]: any} = {
   call: ({calltype}: Type.Call) =>
     <NamedValue name='Звонок' value={calltype} icon='phone-alt'/>,
 
-  customerFeedback: ({response}: Type.CustomerFeedback) => {
+  customerFeedback: ({eventType, data}: Type.CustomerFeedback) => {
+    if (eventType == 'FeedbackRequested') {
+      return (
+        <NamedIcon  name='Отправлена ссылка на опрос' icon='star'/>);
+    }
+    else if (eventType == 'FeedbackReceived') {
       const stars = n =>
         n && new Array(n).fill(0).map(_ =>
           <i class={'text-warning glyphicon glyphicon-star'}/>);
-    return (
-      <Fragment>
-        <NamedIcon  name='Отзыв клиента' icon='star'/>
-        <NamedValue name='Оценка оператору' value={stars(response.operValue)}/>
-        <NamedValue name='Оценка механику' value={stars(response.techValue)}/>
-        <NamedValue name='Комментарий' value={response.comment}/>
-      </Fragment>);
+      return (
+        <Fragment>
+          <NamedIcon  name='Отзыв клиента' icon='star'/>
+          <NamedValue name='Оценка оператору' value={stars(data.operValue)}/>
+          <NamedValue name='Оценка механику' value={stars(data.techValue)}/>
+          <NamedValue name='Комментарий' value={data.comment}/>
+        </Fragment>);
+    }
   },
 
   locationSharingRequest: () =>

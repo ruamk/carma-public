@@ -1,0 +1,9 @@
+node_modules
+dist
+.stack-work
+.cache
+.idea
+yarn.lock
+yarn-error.log
+package-lock.json
+.gitattributes

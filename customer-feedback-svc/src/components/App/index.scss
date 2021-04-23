@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300&display=swap');
+
+.done-img {
+  background: url('./success.svg');
+  display: inline-block;
+  width: 100px;
+  height: 100px;
+  margin-bottom: 30px;
+}
+
+.hero {
+  position: relative;
+  height: 100vh;
+}
+
+.notification {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+}
+
+.textarea {
+  display: inline;
+  max-width: 30em;
+  min-width: 15em;
+  min-height: 6em;
+}
