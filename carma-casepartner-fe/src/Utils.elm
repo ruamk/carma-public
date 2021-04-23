@@ -7,8 +7,9 @@ module Utils exposing
 
 import Generated.Route as Route exposing (Route)
 import ISO8601 exposing (Time)
-import Url exposing (Url)
 import Types exposing (CurrentCaseInfo)
+import Url exposing (Url)
+
 
 fromUrl : Url -> Route
 fromUrl =
@@ -52,7 +53,6 @@ sortServices cs =
             in
             List.partition (\c -> List.member c.cuAccordTime bottomTypes) cs
 
-        
         sortByCallDate : List CurrentCaseInfo -> List CurrentCaseInfo
         sortByCallDate xs =
             let
@@ -76,10 +76,10 @@ sortServices cs =
                     compare
                         (ISO8601.toTime <| time a)
                         (ISO8601.toTime <| time b)
-                        
             in
             List.sortWith rule xs
     in
     List.append
         (sortByCallDate up)
         (sortByCallDate bottom)
+

@@ -1,6 +1,8 @@
 module AppHandlers.Service
-    ( getPhoto
-    , getPhotos
+    ( getPhotoImageByCase
+    , getPhotoImageByService
+    , getPhotosByCase
+    , getPhotosByService
     , handleApiGetService
     , postComment
     , postPartnerDelay
@@ -11,7 +13,6 @@ module AppHandlers.Service
     , statusServiceClosed
     , statusServicePerformed
     ) where
-
 
 import           Control.Monad                        (void, when)
 import           Data.Aeson                           (ToJSON, Value (..),
@@ -153,16 +154,16 @@ handleApiGetService = checkAuthCasePartner $ do
         servicetbl.times_expectedservicestart
       , servicetbl.times_factservicestart
       , servicetbl.times_factserviceend
-      , CASE
+      , coalesce(CASE
           WHEN servicetbl.type = ?
-               THEN st.label || ' - ' || tt.label
+               THEN st.label || ' - ' || coalesce(tt.label, ''::text)
           WHEN servicetbl.type = ?
-               THEN st.label || ' - ' || ts.label
+               THEN st.label || ' - ' || coalesce(ts.label, ''::text)
           WHEN servicetbl.type = ?
-               THEN st.label || ' - ' || btt.label
+               THEN st.label || ' - ' || coalesce(btt.label, ''::text)
           ELSE
                st.label
-        END AS typeofservice
+        END, ''::text) AS typeofservice
       , servicetbl.status
       , ss.label
       , servicetbl.payType
@@ -438,8 +439,8 @@ statusServiceClosed = checkAuthCasePartner $ do
       writeJSON message
 
 
-getPhoto :: AppHandler ()
-getPhoto = checkAuthCasePartner $ do
+getPhotoImageByService :: AppHandler ()
+getPhotoImageByService = checkAuthCasePartner $ do
   Just user <- currentUserMeta
   let Just partner = Patch.get user Usermeta.ident
 
@@ -465,8 +466,8 @@ getPhoto = checkAuthCasePartner $ do
         Just f  -> SUtil.sendPhoto f
 
 
-getPhotos :: AppHandler ()
-getPhotos = checkAuthCasePartner $ do
+getPhotosByService :: AppHandler ()
+getPhotosByService = checkAuthCasePartner $ do
   Just user <- currentUserMeta
   let Just partner = Patch.get user Usermeta.ident
 
@@ -497,3 +498,51 @@ getPhotos = checkAuthCasePartner $ do
 
 savePhoto :: AppHandler ()
 savePhoto = checkAuthCasePartner $ SUtil.savePhoto Nothing
+
+
+-- | Return list of photos by 'caseId'.
+-- Use HTTP header 'Image-Prefix' to create relative photo url.
+getPhotosByCase :: AppHandler ()
+getPhotosByCase =  chkAuth $ do
+  getIntParam "caseId" >>= \case
+    Nothing -> errorResponse "caseId is not specified"
+
+    Just caseId -> do
+      r <- getRequest
+
+      photosInfo :: [PhotoInfo] <- query [sql|
+        SELECT driverId
+             , serviceId
+             , ST_X(coord)
+             , ST_Y(coord)
+             , created
+             , photoType
+             , ? || '/' || id::text
+          FROM driversPhotos
+         WHERE serviceId IN (SELECT id FROM servicetbl WHERE parentId = ?)
+      |] ( fromMaybe "" $ getHeader "Image-Prefix" r
+         , caseId)
+
+      customOkResponse $ toJSON photosInfo
+
+
+getPhotoImageByCase :: AppHandler ()
+getPhotoImageByCase = chkAuth $ do
+  getIntParam "caseId" >>= \case
+    Nothing -> errorResponse "caseId is not specified"
+
+    Just caseId -> getIntParam "photoId" >>= \case
+      Nothing -> errorResponse "photoId is not specified"
+
+      Just photoId -> do
+        [Only filename] :: [Only (Maybe String)] <- query [sql|
+          SELECT filename
+            FROM driversPhotos
+           WHERE id = ?
+             AND serviceId IN (SELECT id FROM servicetbl WHERE parentId = ?)
+        |] (photoId, caseId)
+
+        case filename of
+          Nothing -> errorResponse "invalid photo file name"
+          Just "" -> errorResponse "empty photo file name"
+          Just f  -> SUtil.sendPhoto f

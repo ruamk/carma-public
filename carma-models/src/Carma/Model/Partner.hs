@@ -1,82 +1,103 @@
 {-# LANGUAGE ConstraintKinds #-}
 
 module Carma.Model.Partner
-    ( Partner(..)
+    ( Partner (..)
     , partnerKey
     ) where
 
-import Data.Aeson as A
-import Data.Text (Text)
-import Data.Typeable
-import Data.Vector
-import Data.Time.Clock (UTCTime)
+import           Data.Aeson            as A
+import           Data.Text             (Text)
+import           Data.Time.Clock       (UTCTime)
+import           Data.Typeable
+import           Data.Vector
 
-import Data.Model
-import Data.Model.View
-import Data.Model.Types
+import           Data.Model
+import           Data.Model.Types
+import           Data.Model.View
 
-import Carma.Model.Types (Coords)
-import Carma.Model.CarMake (CarMake)
-import Carma.Model.City (City)
-import Carma.Model.TaxScheme (TaxScheme)
+import           Carma.Model.CarMake   (CarMake)
+import           Carma.Model.City      (City)
+import           Carma.Model.TaxScheme (TaxScheme)
+import           Carma.Model.Types     (Coords)
 
 
 data Partner = Partner
-  { ident    :: PK Int Partner "Партнёр"
-  , isActive :: F Bool         "isActive" "Партнёр активен"
-  , isDealer :: F Bool         "isDealer" "Дилер"
-  , isMobile :: F Bool         "isMobile" "Мобильный партнёр"
-  , isFree   :: F Bool         "isFree"   "Свободен"
-  , name     :: F Text         "name"     "Название"
-
-  , synonyms :: F (Vector Text)
-                "synonyms"
-                "Синонимы"
-
-  , code     :: F (Maybe Text) "code"     "Код"
-
-  , city     :: F (Maybe (IdentI City))
-                "city"
-                "Город"
-
-  , makes    :: F (Vector (IdentI CarMake))
-                "makes"
-                "Обслуживаемые марки"
-
-  , services :: F A.Value      "services" "Услуги"
-
-  , phones   :: F A.Value      "phones"   "Телефоны"
-
-  , coords   :: F (Maybe Coords)
-                "coords"
-                "Координаты фактического адреса"
-
-  , addrs    :: F A.Value      "addrs"    "Адреса"
-  , emails   :: F A.Value      "emails"   "E-mail"
-
-  , personInCharge
-             :: F (Maybe Text) "personInCharge" "Ответственное лицо"
-
-  , taxScheme
-             :: F (Maybe (IdentI TaxScheme))
-                "taxScheme"
-                "Форма налогообложения"
-
-  , isKpiEnabled
-             :: F Bool
-                "isKpiEnabled"
-                "Работа по KPI"
-
-  , isPayBackConfirmed
-             :: F Bool
-                "isPayBackConfirmed"
-                "Соглашение о вознаграждении"
-
-  , foreignIdent
-             :: F (Maybe Text) "foreignIdent" "Внешний код партнёра"
-
-  , mtime    :: F UTCTime      "mtime"   ""
-  , comment  :: F Text         "comment" "Комментарий"
+  { ident              :: PK Int Partner "Партнёр"
+  , isActive           :: F Bool
+                         "isActive"
+                         "Партнёр активен"
+  , isDealer           :: F Bool
+                         "isDealer"
+                         "Дилер"
+  , isPartner          :: F Bool
+                         "isPartner"
+                         "Партнёр"
+  , isMobile           :: F Bool
+                         "isMobile"
+                         "Мобильный партнёр"
+  , isFree             :: F Bool
+                         "isFree"
+                         "Свободен"
+  , name               :: F Text
+                         "name"
+                         "Название"
+  , synonyms           :: F (Vector Text)
+                         "synonyms"
+                         "Синонимы"
+  , code               :: F (Maybe Text)
+                         "code"
+                         "Код"
+  , city               :: F (Maybe (IdentI City))
+                         "city"
+                         "Город"
+  , makes              :: F (Vector (IdentI CarMake))
+                         "makes"
+                         "Обслуживаемые марки"
+  , services           :: F A.Value
+                         "services"
+                         "Услуги"
+  , phones             :: F A.Value
+                         "phones"
+                         "Телефоны"
+  , coords             :: F (Maybe Coords)
+                         "coords"
+                         "Координаты фактического адреса"
+  , addrs              :: F A.Value
+                         "addrs"
+                         "Адреса"
+  , emails             :: F A.Value
+                         "emails"
+                         "E-mail"
+  , personInCharge     :: F (Maybe Text)
+                         "personInCharge"
+                         "Ответственное лицо"
+  , taxScheme          :: F (Maybe (IdentI TaxScheme))
+                         "taxScheme"
+                         "Форма налогообложения"
+  , legalName          :: F (Maybe Text)
+                         "legalName"
+                         "Юридическое название"
+  , inn                :: F (Maybe Text)
+                         "inn"
+                         "ИНН"
+  , code1c             :: F (Maybe Text)
+                         "code1c"
+                         "Код в 1С"
+  , isKpiEnabled       :: F Bool
+                         "isKpiEnabled"
+                         "Работа по KPI"
+  , isPayBackConfirmed :: F Bool
+                         "isPayBackConfirmed"
+                         "Соглашение о вознаграждении"
+  , foreignIdent       :: F (Maybe Text)
+                         "foreignIdent"
+                         "Внешний код партнёра"
+  , mtime              :: F UTCTime
+                         "mtime"
+                         ""
+  , comment            :: F Text
+                         "comment"
+                         "Комментарий"
   }
   deriving Typeable
 

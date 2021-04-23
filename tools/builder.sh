@@ -447,6 +447,15 @@ frontend_elm_task() {
           "$dir" \
           "npm run build"
 
+    dir='srv/resources/assets/elm/photos-in-carma'
+    # Full clean
+    if [[ $is_fully_clean_build == true ]]; then
+        utask "$task_name" \
+              "Removing \"$dir\"/{node_modules,elm-stuff} directories…" \
+              "$dir" \
+              "rm -rf node_modules elm-stuff"
+    fi
+
     task_log "$task_name" done
 }
 
@@ -689,13 +698,14 @@ frontend_task() {
         local pids=()
         frontend_pure_task & pids+=($!)
         frontend_task_parallel_legacy & pids+=($!)
+	frontend_elm_task & pids+=($!)
         for pid in "${pids[@]}"; do wait -- "$pid" || rv=$?; done
     else
-        frontend_elm_task
         frontend_pure_task
         frontend_legacy_pre
         frontend_legacy_task true
         frontend_backend_templates_task true
+        frontend_elm_task
     fi
     task_resolve "$task_name" "$rv"
 }
