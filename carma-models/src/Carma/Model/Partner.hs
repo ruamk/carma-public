@@ -80,6 +80,9 @@ data Partner = Partner
   , inn                :: F (Maybe Text)
                          "inn"
                          "ИНН"
+  , code1c             :: F (Maybe Text)
+                         "code1c"
+                         "Код в 1С"
   , isKpiEnabled       :: F Bool
                          "isKpiEnabled"
                          "Работа по KPI"
