@@ -60,7 +60,7 @@ begin
   insert into "Sms"(caseRef, msgtext, phone, status)
     select
       _caseId,
-      'Пожалуйста оцените нашу работу: https://qc.ruamc.ru#' || _urlKey,
+      'Пожалуйста оцените нашу работу: https://feedback.ruamc.ru#' || _urlKey,
       c.contact_phone1, 'please-send'
       from casetbl c
       where c.id = _caseId
