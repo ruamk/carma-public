@@ -1090,8 +1090,31 @@ update global msg model =
                     )
 
                 Ok currentCases ->
+                    let 
+                        serviceType c =
+                            case c.cuTypeOfService of
+                                Just tos ->
+                                    case Dict.get tos model.typeOfServiceSynonym of
+                                        Just v ->
+                                            v
+
+                                        Nothing ->
+                                            tos
+
+                                Nothing ->
+                                    ""
+                                    
+                        normalizeSafeStoring : CurrentCaseInfo -> CurrentCaseInfo
+                        normalizeSafeStoring service =
+                            if serviceType service == "Ответственное хранение"
+                            then 
+                                { service | cuAccordTime = "На хранении" }
+                                
+                            else 
+                                service
+                    in
                     ( { model
-                        | currentCases = currentCases
+                        | currentCases = List.map normalizeSafeStoring currentCases
                       }
                     , Cmd.none
                     , Cmd.none
@@ -2150,22 +2173,9 @@ viewCard model cci =
             Ui.addressCell c.cuBreakdownPlace
 
         accordTime =
-            cci
-                |> normalizeSafeStoring
-                |> .cuAccordTime
+            cci.cuAccordTime
                 |> formatAccordTime
-                |> highlightAccordTime
-
-        normalizeSafeStoring : CurrentCaseInfo -> CurrentCaseInfo
-        normalizeSafeStoring service =
-            if serviceType service == "Ответственное хранение"
-            then 
-                { service | cuAccordTime = "На хранении" }
-                
-            else 
-                service 
-                    
-
+                |> highlightAccordTime               
 
         formatAccordTime : String -> String
         formatAccordTime t =

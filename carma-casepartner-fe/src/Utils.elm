@@ -41,12 +41,17 @@ formatDate nt =
     String.join "." (f [ .day, .month, .year ])
 
 
--- drop down the services with status `in progress`
+-- drop down the services with status `in progress` and `safe storing`
 sortServices : List CurrentCaseInfo -> List CurrentCaseInfo
 sortServices cs =
     let
-        ( inProgress, others ) =
-            List.partition (\c -> c.cuAccordTime == "В работе") cs
+        (bottom, up) =  
+            let 
+                bottomTypes = 
+                    ["В работе", "На хранении"]
+            in
+            List.partition (\c -> List.member c.cuAccordTime bottomTypes) cs
+
         
         sortByCallDate : List CurrentCaseInfo -> List CurrentCaseInfo
         sortByCallDate xs =
@@ -76,5 +81,5 @@ sortServices cs =
             List.sortWith rule xs
     in
     List.append
-        (sortByCallDate others)
-        (sortByCallDate inProgress)
+        (sortByCallDate up)
+        (sortByCallDate bottom)

@@ -182,8 +182,31 @@ update _ msg model =
                     )
 
                 Ok currentCases ->
+                    let 
+                        serviceType c =
+                            case c.cuTypeOfService of
+                                Just tos ->
+                                    case Dict.get tos model.typeOfServiceSynonym of
+                                        Just v ->
+                                            v
+
+                                        Nothing ->
+                                            tos
+
+                                Nothing ->
+                                    ""
+                                    
+                        normalizeSafeStoring : CurrentCaseInfo -> CurrentCaseInfo
+                        normalizeSafeStoring service =
+                            if serviceType service == "Ответственное хранение"
+                            then 
+                                { service | cuAccordTime = "На хранении" }
+                                
+                            else 
+                                service
+                    in
                     ( { model
-                        | currentCases = currentCases
+                        | currentCases = List.map normalizeSafeStoring currentCases
                         , currentCasesPage = 1
                         , showCurrentSpinner = False
                       }
@@ -501,19 +524,6 @@ hideMobile =
 viewCurrentCases : Model -> Html Msg
 viewCurrentCases model =
     let
-        serviceType c =
-            case c.cuTypeOfService of
-                Just tos ->
-                    case Dict.get tos model.typeOfServiceSynonym of
-                        Just v ->
-                            v
-
-                        Nothing ->
-                            tos
-
-                Nothing ->
-                    ""
-
         formatAccordTime : String -> String
         formatAccordTime t =
             let
@@ -544,20 +554,9 @@ viewCurrentCases model =
 
                 Nothing ->
                     t
-
-        normalizeSafeStoring : CurrentCaseInfo -> CurrentCaseInfo
-        normalizeSafeStoring service =
-            if serviceType service == "Ответственное хранение"
-            then 
-                { service | cuAccordTime = "На хранении" }
-                
-            else 
-                service
         
         accordTime_ c = 
-            c
-                |> normalizeSafeStoring
-                |> .cuAccordTime
+            c.cuAccordTime
                 |> formatAccordTime 
 
         {- Returns: (Days, Hours, Minutes) -}
