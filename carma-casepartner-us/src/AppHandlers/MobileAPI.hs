@@ -98,6 +98,7 @@ data Service = Service
     , client               :: Maybe Text
     , clientPhone          :: Maybe Text
     , firstAddress         :: Maybe Text
+    , firstAddressComment  :: Maybe Text
     , lastAddress          :: Maybe Text
     , firstLocation        :: Maybe Location
     , _lastLocation        :: Maybe Location
@@ -118,8 +119,8 @@ instance ToJSON Service where
 
 emptyService :: Service
 emptyService = Service 0 Nothing 0
-                  Nothing Nothing Nothing Nothing
-                  Nothing Nothing
+                  Nothing Nothing Nothing Nothing Nothing
+                  Nothing Nothing 
                   Nothing Nothing Nothing
                   Nothing Nothing Nothing
                   Nothing Nothing Nothing
@@ -250,11 +251,12 @@ order = checkDriver $ \driverId -> do
 
       case hasService of
         Just serviceId -> do
-          [( client, clientPhone, firstAddress, firstLonLat, makeModel
+          [( client, clientPhone, firstAddress, firstAddressComment, firstLonLat, makeModel
            , plateNum, vin, caseId)] <- query [sql|
             SELECT contact_name
                  , contact_phone1
                  , caseAddress_address
+                 , caseAddress_comment
                  , coalesce(caseAddress_coords, ''::text)
                  , make.label || ' / ' ||
                    regexp_replace(model.label, '^([^/]*)/.*','\1')
@@ -307,6 +309,7 @@ order = checkDriver $ \driverId -> do
                                 , client = client
                                 , clientPhone = clientPhone
                                 , firstAddress = firstAddress
+                                , firstAddressComment = firstAddressComment
                                 , firstLocation = firstLocation
                                 , lastAddress = lastAddress
                                 , expectedServiceStart = expectedServiceStart
