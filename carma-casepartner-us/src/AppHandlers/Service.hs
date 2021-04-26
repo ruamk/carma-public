@@ -82,6 +82,7 @@ data ServiceDescription = ServiceDescription
     , _client               :: String
     , _clientPhone          :: String
     , _firstAddress         :: String
+    , _firstAddressComment  :: String
     , _lastAddress          :: String
     , _firstLocation        :: Maybe Location
     , _lastLocation         :: Maybe Location
@@ -114,13 +115,14 @@ instance ToJSON CaseComment where
 handleApiGetService :: AppHandler ()
 handleApiGetService = checkAuthCasePartner $ do
   serviceId <- fromMaybe (error "invalid service id") <$> getIntParam "serviceId"
-  [( caseId, client, clientPhone, firstAddress, firstLonLat, makeModel, plateNumber
+  [( caseId, client, clientPhone, firstAddress, firstAddressComment, firstLonLat, makeModel, plateNumber
    , vin)] <- query [sql|
     SELECT
         casetbl.id
       , contact_name
       , contact_phone1
       , caseaddress_address
+      , coalesce(caseaddress_comment, ''::text)
       , coalesce(caseAddress_coords, ''::text)
       , "CarMake".label || ' / ' ||
         regexp_replace("CarModel".label, '^([^/]*)/.*','\1')
@@ -154,16 +156,16 @@ handleApiGetService = checkAuthCasePartner $ do
         servicetbl.times_expectedservicestart
       , servicetbl.times_factservicestart
       , servicetbl.times_factserviceend
-      , CASE
+      , coalesce(CASE
           WHEN servicetbl.type = ?
-               THEN st.label || ' - ' || tt.label
+               THEN st.label || ' - ' || coalesce(tt.label, ''::text)
           WHEN servicetbl.type = ?
-               THEN st.label || ' - ' || ts.label
+               THEN st.label || ' - ' || coalesce(ts.label, ''::text)
           WHEN servicetbl.type = ?
-               THEN st.label || ' - ' || btt.label
+               THEN st.label || ' - ' || coalesce(btt.label, ''::text)
           ELSE
                st.label
-        END AS typeofservice
+        END, ''::text) AS typeofservice
       , servicetbl.status
       , ss.label
       , servicetbl.payType
@@ -213,7 +215,7 @@ handleApiGetService = checkAuthCasePartner $ do
                caseId serviceSerial serviceType
                status statusLabel
                client clientPhone
-               firstAddress lastAddress
+               firstAddress firstAddressComment lastAddress
                firstLocation Nothing
                expectedServiceStart factServiceStart factServiceEnd
                makeModel plateNumber

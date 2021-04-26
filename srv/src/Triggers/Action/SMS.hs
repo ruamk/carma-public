@@ -1,31 +1,34 @@
-module Triggers.Action.SMS (sendSMS) where
+module Triggers.Action.SMS
+    ( sendSMS
+    ) where
 
-import Control.Monad (void)
+import           Control.Monad                      (void)
 
-import Data.Map ((!))
-import qualified Data.Map as Map
-import qualified Data.Text as T
-import qualified Snap.Snaplet.PostgresqlSimple as SPG (query, execute)
-import Carma.Backoffice.DSL.Types (SendSmsTo (..))
+import           Carma.Backoffice.DSL.Types         (SendSmsTo (..))
+import           Data.Map                           ((!))
+import qualified Data.Map                           as Map
+import qualified Data.Text                          as T
+import qualified Snap.Snaplet.PostgresqlSimple      as SPG (execute, query)
 
-import qualified Data.Model                 as Model
-import qualified Carma.Model.Sms            as Sms
-import qualified Carma.Model.SmsTemplate    as SmsTemplate
-import qualified Carma.Model.SubProgram     as SubProgram
-import qualified Carma.Model.ServiceType    as ServiceType
-import qualified Carma.Model.Service        as Service
-import qualified Carma.Model.Service.Towage as Towage
-import qualified Carma.Model.Partner        as Partner
-import qualified Carma.Model.Case           as Case
-import qualified Carma.Model.City           as City
-import qualified Carma.Model.CarMake        as CarMake
-import qualified Carma.Model.CarModel       as CarModel
-import qualified Carma.Model.Usermeta       as Usermeta
+import qualified Carma.Model.CarMake                as CarMake
+import qualified Carma.Model.CarModel               as CarModel
+import qualified Carma.Model.Case                   as Case
+import qualified Carma.Model.City                   as City
+import qualified Carma.Model.Partner                as Partner
+import qualified Carma.Model.Service                as Service
+import qualified Carma.Model.Service.Towage         as Towage
+import qualified Carma.Model.ServiceType            as ServiceType
+import qualified Carma.Model.Sms                    as Sms
+import qualified Carma.Model.SmsTemplate            as SmsTemplate
+import qualified Carma.Model.SubProgram             as SubProgram
+import qualified Carma.Model.Usermeta               as Usermeta
+import qualified Data.Model                         as Model
 
-import Data.Model.Utils.PostgreSQL.MSqlQQ hiding (parseQuery)
-import Application (AppHandler)
-import Util (syslogJSON, render, Priority (Error), (.=))
-import Text.InterpolatedString.QM
+import           Application                        (AppHandler)
+import           Data.Model.Utils.PostgreSQL.MSqlQQ hiding (parseQuery)
+import           Text.InterpolatedString.QM
+import           Util                               (Priority (Error), render,
+                                                     syslogJSON, (.=))
 
 
 sendSMS
@@ -101,6 +104,8 @@ sendSMS tplId svcId sendBy sendTo =
 
       'case.breakage_address=' ||
         coalesce(cs.$(F|Case.caseAddress_address)$, ''),
+      'case.breakage_address_comment=' ||
+        coalesce(cs.$(F|Case.caseAddress_comment)$, ''),
 
       'service.type='          || svct.$(F|ServiceType.label)$,
       'program_info='          || sprog.$(F|SubProgram.smsProgram)$,

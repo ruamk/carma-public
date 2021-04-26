@@ -423,6 +423,7 @@ getService serviceId message =
                 |> optional "client" string ""
                 |> optional "clientPhone" string ""
                 |> optional "firstAddress" string ""
+                |> optional "firstAddressComment" string ""
                 |> optional "lastAddress" string ""
                 |> required "expectedServiceStart" (nullable ISO8601.decode)
                 |> required "factServiceStart" (nullable ISO8601.decode)

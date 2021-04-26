@@ -183,8 +183,31 @@ update _ msg model =
                     )
 
                 Ok currentCases ->
+                    let 
+                        serviceType c =
+                            case c.cuTypeOfService of
+                                Just tos ->
+                                    case Dict.get tos model.typeOfServiceSynonym of
+                                        Just v ->
+                                            v
+
+                                        Nothing ->
+                                            tos
+
+                                Nothing ->
+                                    ""
+                                    
+                        normalizeSafeStoring : CurrentCaseInfo -> CurrentCaseInfo
+                        normalizeSafeStoring service =
+                            if serviceType service == "Ответственное хранение"
+                            then 
+                                { service | cuAccordTime = "На хранении" }
+                                
+                            else 
+                                service
+                    in
                     ( { model
-                        | currentCases = currentCases
+                        | currentCases = List.map normalizeSafeStoring currentCases
                         , currentCasesPage = 1
                         , showCurrentSpinner = False
                       }
@@ -420,7 +443,7 @@ view global model =
 
 viewCasesTitle : String -> String -> CasesType -> Html Msg
 viewCasesTitle title pageNumber caseType =
-    Grid.row [ Row.attrs [ Spacing.p1, Flex.row ] ]
+    Grid.row [ Row.attrs [ Spacing.p1, Flex.row, class "no-gutters" ] ]
         [ Grid.col [ Col.md6, Col.orderMd1, Col.orderLg3, Col.attrs [ Flex.alignSelfCenter ] ]
             [ h3 [ style "margin" "0 0 0 0" ] [ text title ] ]
         , Grid.col [ Col.sm2, Col.attrs [ Spacing.p1, Spacing.pl3 ] ]
@@ -539,6 +562,10 @@ viewCurrentCases model =
 
                 Nothing ->
                     t
+        
+        accordTime_ c = 
+            c.cuAccordTime
+                |> formatAccordTime 
 
         {- Returns: (Days, Hours, Minutes) -}
         parseTime : String -> Maybe ( Int, Int, Int )
@@ -579,7 +606,7 @@ viewCurrentCases model =
                     Nothing ->
                         [ Table.cellInfo ]
     in
-    Grid.row [] <|
+    Grid.row [ Row.attrs [ class "no-gutters" ] ] <|
         if model.showCurrentSpinner then
             [ Grid.col [ Col.textAlign Text.alignXsCenter ]
                 [ Ui.viewSpinner spinnerSize ]
@@ -644,10 +671,11 @@ viewCurrentCases model =
                                             ]
                                         , Table.td [ hideMobile, hC, vC, thW 5 ] [ Ui.cell theCase.cuStatus ]
                                         , Table.td
-                                            (colorOfTimer theCase.cuAccordTime
+                                            (colorOfTimer (accordTime_ theCase) 
                                                 ++ [ hC, vC, thW 5 ]
                                             )
-                                            [ Ui.cell <| formatAccordTime theCase.cuAccordTime ]
+                                            [ Ui.cell <| accordTime_ theCase 
+                                            ]
                                         , Table.td [ hideMobile, hC, vC, thW 10 ] [ Ui.cell theCase.cuMakeModel ]
                                         , Table.td [ hideMobile, vC ] [ Ui.addressCell theCase.cuBreakdownPlace ]
                                         , Table.td
@@ -669,7 +697,7 @@ viewCurrentCases model =
 
 viewClosingCases : Model -> Html Msg
 viewClosingCases model =
-    Grid.row [] <|
+    Grid.row [ Row.attrs [ class "no-gutters" ] ] <|
         if model.showClosingSpinner then
             [ Grid.col [ Col.textAlign Text.alignXsCenter ] <|
                 [ Ui.viewSpinner spinnerSize ]
