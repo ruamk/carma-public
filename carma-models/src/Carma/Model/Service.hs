@@ -132,6 +132,8 @@ data Service = Service
                                  "Прикрепленные файлы"
   , rushJob                      :: F Bool "rushJob"
                                  "Аврал"
+  , partnerIsDone                :: F Bool "partnerIsDone"
+                                 "Партнёр сообщил о завершении услуги"
   }
   deriving Typeable
 

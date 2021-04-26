@@ -591,6 +591,21 @@ beforeUpdate = Map.unionsWith (++) $
   , trigOn Service.times_expectedServiceClosure $ const $
       modifyPatch (Patch.put Service.times_factServiceClosure Nothing)
 
+  , trigOn Service.partnerIsDone $ \case
+      True -> do
+        svc <- getIdent >>= dbRead
+        let serviceId = svc `get'` Service.ident
+        let caseId = svc `get'` Service.parentId
+        (_ :: [[Text]]) <- doApp $ liftPG' $ \pg -> uncurry (PG.query pg)
+          [sql|
+            select create_customer_feedback_request(
+              $(caseId)$,
+              $(serviceId)$,
+              null)
+            |]
+        return ()
+      _ -> return ()
+
   , trigOn Case.caseAddress_city $ \case
       Nothing -> return ()
       Just city -> do
