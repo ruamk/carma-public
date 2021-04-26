@@ -116,7 +116,7 @@ getIntParam name = do
 
 
 getDoubleParam :: ByteString -> Handler a b (Maybe Double)
-getDoubleParam name = parseMayParam Atto8.double name
+getDoubleParam = parseMayParam Atto8.double
 
 
 getDoubleInRange :: ByteString
@@ -130,7 +130,7 @@ getDoubleInRange name minValue maxValue = do
                                               , " is not specified"
                                               ]
                   Just val' -> if val' >= minValue && val' <= maxValue
-                              then Right $ val'
+                              then Right val'
                               else Left $ T.concat [ T.pack $ B.unpack name
                                                    , " is out of range "
                                                    , T.pack $ show minValue
