@@ -1,5 +1,27 @@
 module Carma.Utils.Snap
-    where
+    ( bToString
+    , getDateParam
+    , getDateTimeParam
+    , getDoubleParam
+    , getIntParam
+    , getJSONBody
+    , getLatitudeParam
+    , getLongitudeParam
+    , getParamT
+    , handleError
+    , mbreadDouble
+    , mbreadInt
+    , mkMap
+    , parseMayParam
+    , quote
+    , readDouble
+    , readJSON
+    , readJSONfromLBS
+    , stringToB
+    , withLens
+    , writeJSON
+    ) where
+
 
 import qualified Control.Exception                as Ex
 import           Control.Monad.State.Class
@@ -99,6 +121,15 @@ handleError err = do
 
 quote :: ByteString -> String
 quote x = "'" ++ (T.unpack $ T.replace "'" "''" $ T.decodeUtf8 x) ++ "'"
+
+
+-- | Convert UTF-8 encoded BS to Haskell string.
+bToString :: ByteString -> String
+bToString = T.unpack . T.decodeUtf8
+
+-- | Inverse of 'bToString'.
+stringToB :: String -> ByteString
+stringToB = T.encodeUtf8 . T.pack
 
 
 mkMap :: [Text] -> [[Maybe Text]] -> [Map Text Text]

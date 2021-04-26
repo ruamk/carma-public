@@ -1,31 +1,12 @@
 module Util
-    ( -- * Request processing
-      mbreadDouble
-    , mbreadInt
-    , readDouble
-    , readJSON
-    , readJSONfromLBS
-      -- * String helpers
-    , bToString
-    , render
-    , stringToB
+    ( -- * String helpers
+      render
     , upCaseName
       -- * Time and date
     , projNow
       -- * Postgres helpers
     , ToRowList (..)
-    , sqlFlagPair
     , (:*) (..)
-      -- * Logging
-    , Syslog.Priority (..)
-    , hushExceptions
-    , logExceptions
-    , syslogJSON
-    , syslogTxt
-      --    , (Aeson..=)
-      -- * Spam
-    , newHtmlMail
-    , newTextMail
       -- * JSON responses
     , customOkResponse
     , errorResponse
@@ -33,41 +14,22 @@ module Util
     ) where
 
 
-import           Control.Concurrent                   (myThreadId)
-import qualified Control.Exception                    as Ex
-import           Control.Exception.Lifted
-import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Control          (MonadBaseControl)
-import           Data.Aeson                           as Aeson
-import qualified Data.Aeson.Types                     as Aeson
-import           Data.Attoparsec.ByteString.Lazy      (Result (..))
-import qualified Data.Attoparsec.ByteString.Lazy      as Atto
-import           Data.ByteString.Char8                (ByteString)
-import qualified Data.ByteString.Char8                as B
-import qualified Data.ByteString.Lazy                 as L
-import qualified Data.ByteString.Lazy.Char8           as L8
-import           Data.Map                             (Map)
-import qualified Data.Map                             as Map
-import           Data.Maybe
-import           Data.Text                            (Text)
-import qualified Data.Text                            as T
-import qualified Data.Text.Encoding                   as T
-import qualified Data.Text.Read                       as T
+import qualified Control.Exception                  as Ex
+import           Data.Aeson                         as Aeson
+import           Data.Map                           (Map)
+import qualified Data.Map                           as Map
+import           Data.Text                          (Text)
+import qualified Data.Text                          as T
 import           Data.Time
 import           Data.Time.Clock.POSIX
 import           Data.Typeable
-import qualified Data.Vector                          as Vector
-import qualified Database.PostgreSQL.Simple           as PG
-import           Database.PostgreSQL.Simple.SqlQQ.Alt
 import           Database.PostgreSQL.Simple.ToField
 import           Database.PostgreSQL.Simple.ToRow
 import           Database.PostgreSQL.Simple.Types
-import           Foreign.C.Types                      (CInt)
-import qualified System.Posix.Syslog                  as Syslog
-import qualified System.Posix.Syslog.Functions        as Syslog
 
-import           Application                          (AppHandler)
-import           Carma.Utils.Snap                     (writeJSON)
+
+import           Application                        (AppHandler)
+import           Carma.Utils.Snap                   (writeJSON)
 
 
 data JSONParseException
@@ -78,41 +40,6 @@ data JSONParseException
 instance Ex.Exception JSONParseException
 
 
-readJSON :: FromJSON v => FilePath -> IO v
-readJSON f = readJSONfromLBS' f `fmap` L.readFile f
-
-readJSONfromLBS :: FromJSON v => L.ByteString -> v
-readJSONfromLBS = readJSONfromLBS' "LBS"
-
-readJSONfromLBS' :: FromJSON v => String -> L.ByteString -> v
-readJSONfromLBS' src s
-  = case Atto.parse Aeson.json' s of
-    Done _ jsn -> case Aeson.fromJSON jsn of
-      Success t -> t
-      Error err -> Ex.throw $ FromJSONError src err
-    err -> Ex.throw $ AttoparsecError src (show err)
-
-mbreadInt :: Text -> Maybe Int
-mbreadInt s = case T.decimal s of
-  Right (i, "") -> Just i
-  _             -> Nothing
-
-mbreadDouble :: Text -> Maybe Double
-mbreadDouble s =  case T.double s of
-  Right (i,"") -> Just i
-  _            -> Nothing
-
-readDouble :: Text -> Double
-readDouble = fromMaybe 0 . mbreadDouble
-
-
--- | Convert UTF-8 encoded BS to Haskell string.
-bToString :: ByteString -> String
-bToString = T.unpack . T.decodeUtf8
-
--- | Inverse of 'bToString'.
-stringToB :: String -> ByteString
-stringToB = T.encodeUtf8 . T.pack
 
 upCaseName :: Text -> Text
 upCaseName = T.unwords . map upCaseWord . T.words
@@ -165,97 +92,6 @@ newtype ToRowList a = ToRowList [a]
 instance (ToRow a) => ToRow (ToRowList a) where
     toRow (ToRowList l) = concatMap toRow l
 
-
--- | Apply a function to a 'Maybe' value, producing a pair with True
--- if Nothing is provided and False otherwise. Similar to 'maybe'.
---
--- This is handy when used with Postgres 'query' in order to support
--- optional select query conditions which are ignored when Nothing is
--- provided:
---
--- > mval <- getParam "someParam"
--- > query "SELECT * FROM foo WHERE (? AND ? = field);"
--- >       (sqlFlagPair (""::ByteString) id mval)
-sqlFlagPair :: b
-            -- ^ Default value (must have matching type), ignored in
-            -- queries.
-            -> (a -> b)
-            -- ^ Projection if the parameter is Just.
-            -> Maybe a
-            -- ^ Parameter value.
-            -> (Bool, b)
-sqlFlagPair def _ Nothing  = (True,  def)
-sqlFlagPair _   f (Just v) = (False, f v)
-
-
-syslogTxt :: MonadIO m => Syslog.Priority -> String -> String -> m ()
-syslogTxt p tag msg = syslogJSON p tag ["msg" .= msg]
-
-
-syslogJSON :: MonadIO m => Syslog.Priority -> String -> [Aeson.Pair] -> m ()
-syslogJSON p tag msg = liftIO $ do
-  tid <- myThreadId
-  let msg' = ("tid" .= show tid) : msg
-  let msgBS = L8.concat -- FIXME: escape '%' in messge
-        [L8.pack tag, " ", Aeson.encode $ Aeson.object msg']
-  B.useAsCString (L8.toStrict msgBS)
-    $ flip (Syslog._syslog (toEnum (fromEnum Syslog.User))
-        (toEnum (fromEnum p)))
-            (fromIntegral (L8.length msgBS) :: CInt)
-
-hushExceptions :: (MonadIO m, MonadBaseControl IO m) => String -> m () -> m ()
-hushExceptions tag act = catch act $ \(e :: Ex.SomeException) ->
-  syslogJSON Syslog.Warning tag
-    ["msg" .= Aeson.String "hushed exception"
-    ,"exn" .= Aeson.String (T.pack $ show e)
-    ]
-
-logExceptions :: (MonadIO m, MonadBaseControl IO m) => String -> m a -> m a
-logExceptions tag act = catch act $ \(e :: Ex.SomeException) -> do
-  syslogJSON Syslog.Error tag
-    ["msg" .= Aeson.String "rethrowed exception"
-    ,"exn" .= Aeson.String (T.pack $ show e)
-    ]
-  throw e
-
-
-
-newTextMail
-  :: PG.Connection
-  -> Text -> [Text] -> [Text] -> Text -> Text -> Text -> [Aeson.Pair]
-  -> IO ()
-newTextMail pg = newMail pg "text/plain; charset=utf-8"
-
-
-newHtmlMail
-  :: PG.Connection
-  -> Text -> [Text] -> [Text] -> Text -> Text -> Text -> [Aeson.Pair]
-  -> IO ()
-newHtmlMail pg = newMail pg "text/html; charset=utf-8"
-
-
-newMail
-  :: PG.Connection
-  -> Text -> Text -> [Text] -> [Text] -> Text -> Text -> Text -> [Aeson.Pair]
-  -> IO ()
-newMail pg mime from to cc reply subj body why
-  = do
-    res <- uncurry (PG.query pg)
-        [sql|
-          insert into "Email"
-            ("from", "to", cc, reply, mime, subject, body, status, why)
-            values
-              ($(from)$, $(Vector.fromList to)$ :: text[]
-              ,$(Vector.fromList cc)$ :: text[], $(reply)$
-              ,$(mime)$
-              ,$(subj)$, $(body)$
-              ,'please-send'
-              ,$(Aeson.object why)$ ::json
-              )
-          returning id
-        |]
-
-    syslogJSON Syslog.Info "newMail" ["msgId" .= (res::[[Int]]), "why" .= why]
 
 
 response :: Text -> Value -> Value

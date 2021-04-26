@@ -57,7 +57,10 @@ import qualified Carma.Model.ServiceStatus          as SS
 import qualified Carma.Model.ServiceType            as ST
 
 import           Application
+import           Carma.Utils.Snap
+import           Carma.Utils.Log
 import           Util
+
 
 type RkcM m = (PS.HasPostgres m, MonadBaseControl IO m, MonadFail m)
 

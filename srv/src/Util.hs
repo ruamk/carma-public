@@ -7,8 +7,6 @@ module Util
   module Carma.Utils.Snap
     -- * String helpers
   , upCaseName
-  , bToString
-  , stringToB
   , render
 
     -- * Time and date
@@ -33,18 +31,8 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import qualified Data.Vector as Vector
 
-import Control.Monad.IO.Class
-import qualified Control.Exception as Ex
-import Control.Monad.Trans.Control (MonadBaseControl)
-import Control.Exception.Lifted
-import Control.Concurrent (myThreadId)
-import           Data.ByteString.Char8 (ByteString)
-import qualified Data.ByteString.Lazy.Char8  as L8
-import qualified Data.ByteString.Char8 as B
-
 import           Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
 
 import Data.Time
 import Data.Time.Clock.POSIX
@@ -60,19 +48,10 @@ import qualified Database.PostgreSQL.Simple as PG
 import Database.PostgreSQL.Simple.SqlQQ.Alt
 
 import qualified System.Posix.Syslog as Syslog
-import qualified System.Posix.Syslog.Functions as Syslog
 
-import           Foreign.C.Types (CInt)
 import           Carma.Utils.Snap
+import           Carma.Utils.Log
 
-
--- | Convert UTF-8 encoded BS to Haskell string.
-bToString :: ByteString -> String
-bToString = T.unpack . T.decodeUtf8
-
--- | Inverse of 'bToString'.
-stringToB :: String -> ByteString
-stringToB = T.encodeUtf8 . T.pack
 
 upCaseName :: Text -> Text
 upCaseName = T.unwords . map upCaseWord . T.words
@@ -146,38 +125,6 @@ sqlFlagPair :: b
             -> (Bool, b)
 sqlFlagPair def _ Nothing  = (True,  def)
 sqlFlagPair _   f (Just v) = (False, f v)
-
-
-syslogTxt :: MonadIO m => Syslog.Priority -> String -> String -> m ()
-syslogTxt p tag msg = syslogJSON p tag ["msg" .= msg]
-
-
-syslogJSON :: MonadIO m => Syslog.Priority -> String -> [Aeson.Pair] -> m ()
-syslogJSON p tag msg = liftIO $ do
-  tid <- myThreadId
-  let msg' = ("tid" .= show tid) : msg
-  let msgBS = L8.concat -- FIXME: escape '%' in messge
-        [L8.pack tag, " ", Aeson.encode $ Aeson.object msg']
-  B.useAsCString (L8.toStrict msgBS)
-    $ flip (Syslog._syslog (toEnum (fromEnum Syslog.User))
-        (toEnum (fromEnum p)))
-            (fromIntegral (L8.length msgBS) :: CInt)
-
-hushExceptions :: (MonadIO m, MonadBaseControl IO m) => String -> m () -> m ()
-hushExceptions tag act = catch act $ \(e :: Ex.SomeException) ->
-  syslogJSON Syslog.Warning tag
-    ["msg" .= Aeson.String "hushed exception"
-    ,"exn" .= Aeson.String (T.pack $ show e)
-    ]
-
-logExceptions :: (MonadIO m, MonadBaseControl IO m) => String -> m a -> m a
-logExceptions tag act = catch act $ \(e :: Ex.SomeException) -> do
-  syslogJSON Syslog.Error tag
-    ["msg" .= Aeson.String "rethrowed exception"
-    ,"exn" .= Aeson.String (T.pack $ show e)
-    ]
-  throw e
-
 
 
 newTextMail
