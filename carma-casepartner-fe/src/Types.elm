@@ -122,6 +122,7 @@ emptyServiceDescription =
     , client = ""
     , clientPhone = ""
     , firstAddress = ""
+    , firstAddressComment = ""
     , lastAddress = ""
     , expectedServiceStart = Nothing
     , factServiceStart = Nothing
