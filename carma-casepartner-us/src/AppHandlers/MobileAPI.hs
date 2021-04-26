@@ -118,12 +118,28 @@ instance ToJSON Service where
              { fieldLabelModifier = dropWhile (== '_')}
 
 emptyService :: Service
-emptyService = Service 0 Nothing 0
-                  Nothing Nothing Nothing Nothing Nothing
-                  Nothing Nothing 
-                  Nothing Nothing Nothing
-                  Nothing Nothing Nothing
-                  Nothing Nothing Nothing
+emptyService = Service
+  { serviceId = 0
+  , serviceType = Nothing
+  , caseId = 0
+  , client = Nothing
+  , clientPhone = Nothing
+  , firstAddress = Nothing
+  , firstAddressComment = Nothing
+  , lastAddress = Nothing
+  , firstLocation = Nothing
+  , _lastLocation = Nothing
+  , expectedServiceStart = Nothing
+  , factServiceStart = Nothing
+  , factServiceEnd = Nothing
+  , makeModel = Nothing
+  , plateNum = Nothing
+  , vin = Nothing
+  , payType = Nothing
+  , serviceStatus = Nothing
+  , _driverStatus = Nothing
+  }
+
 
 requestSize :: Word64
 requestSize = 4096
