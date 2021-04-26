@@ -122,7 +122,7 @@ handleApiGetService = checkAuthCasePartner $ do
       , contact_name
       , contact_phone1
       , caseaddress_address
-      , caseaddress_comment
+      , coalesce(caseaddress_comment, ''::text)
       , coalesce(caseAddress_coords, ''::text)
       , "CarMake".label || ' / ' ||
         regexp_replace("CarModel".label, '^([^/]*)/.*','\1')
