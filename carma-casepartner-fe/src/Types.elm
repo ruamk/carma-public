@@ -75,6 +75,7 @@ type alias ServiceDescription =
     , client : String
     , clientPhone : String
     , firstAddress : String
+    , firstAddressComment : String
     , lastAddress : String
     , expectedServiceStart : Maybe Time
     , factServiceStart : Maybe Time

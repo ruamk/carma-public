@@ -1694,7 +1694,7 @@ viewCasePanel model serviceId =
                 _ ->
                     "неизвестен"
 
-        viewTime : List (Html Msg)
+        viewTime : Html Msg
         viewTime =
             let
                 message =
@@ -1726,16 +1726,17 @@ viewCasePanel model serviceId =
                             ]
                         ]
             in
-            [ showButton
-            , if model.isTimeVisible then
-                div []
-                    [ field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
-                    , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
-                    ]
+            div [] 
+                [ showButton
+                , if model.isTimeVisible then
+                    div []
+                        [ field "Факт. время оказания услуг" <| text (formatTime_ c.factServiceStart)
+                        , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
+                        ]
 
-              else
-                div [] []
-            ]
+                else
+                    div [] []
+                ]
     in
     Grid.row [ Row.attrs [ Spacing.p1 ] ]
         (if model.service.caseId == 0 then
@@ -1771,12 +1772,10 @@ viewCasePanel model serviceId =
                         ]
                     , Grid.colBreak []
                     , Grid.col [] <|
-                        List.concat
-                            [ viewAddress c.firstLocation c.firstAddress
-                                |> field "Адрес начала работы"
-                                |> List.singleton
-                            , viewTime
-                            ]
+                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress  
+                        , field "Примечание" <| text c.firstAddressComment
+                        , viewTime
+                        ]
                     , Grid.col []
                         [ if c.serviceType == "Техпомощь" then
                             div [] []
