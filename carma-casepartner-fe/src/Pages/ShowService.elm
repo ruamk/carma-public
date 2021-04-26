@@ -242,6 +242,7 @@ type Msg
     | UploadDropdown Dropdown.State
     | UpdateServiceTick Time.Posix
 
+
 driverSpinnerSize : String
 driverSpinnerSize =
     "2rem"
@@ -1326,7 +1327,6 @@ update global msg model =
             )
 
 
-
 subscriptions : Global.Model -> Model -> Sub Msg
 subscriptions global model =
     Sub.batch
@@ -1726,7 +1726,7 @@ viewCasePanel model serviceId =
                             ]
                         ]
             in
-            div [] 
+            div []
                 [ showButton
                 , if model.isTimeVisible then
                     div []
@@ -1734,7 +1734,7 @@ viewCasePanel model serviceId =
                         , field "Время окончания работы" <| text (formatTime_ c.factServiceEnd)
                         ]
 
-                else
+                  else
                     div [] []
                 ]
     in
@@ -1772,7 +1772,7 @@ viewCasePanel model serviceId =
                         ]
                     , Grid.colBreak []
                     , Grid.col [] <|
-                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress  
+                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress
                         , field "Примечание" <| text c.firstAddressComment
                         , viewTime
                         ]
