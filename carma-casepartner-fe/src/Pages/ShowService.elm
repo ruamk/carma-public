@@ -1099,8 +1099,31 @@ update global msg model =
                     )
 
                 Ok currentCases ->
+                    let 
+                        serviceType c =
+                            case c.cuTypeOfService of
+                                Just tos ->
+                                    case Dict.get tos model.typeOfServiceSynonym of
+                                        Just v ->
+                                            v
+
+                                        Nothing ->
+                                            tos
+
+                                Nothing ->
+                                    ""
+                                    
+                        normalizeSafeStoring : CurrentCaseInfo -> CurrentCaseInfo
+                        normalizeSafeStoring service =
+                            if serviceType service == "Ответственное хранение"
+                            then 
+                                { service | cuAccordTime = "На хранении" }
+                                
+                            else 
+                                service
+                    in
                     ( { model
-                        | currentCases = currentCases
+                        | currentCases = List.map normalizeSafeStoring currentCases
                       }
                     , Cmd.none
                     , Cmd.none
@@ -1376,7 +1399,7 @@ view global model =
                 ]
             }
           <|
-            div []
+            div [ class "container-fluid h-100" ]
                 [ viewCasePanel model global.serviceId
                 , div []
                     [ model.messageToast
@@ -1549,7 +1572,7 @@ viewCasePanel model serviceId =
             Grid.row [ Row.attrs [ Spacing.p1 ] ]
                 [ Grid.col [ Col.sm6 ]
                     [ name <| n ++ ": " ]
-                , Grid.col [ Col.sm5 ]
+                , Grid.col [ Col.sm6 ]
                     [ value v ]
                 ]
 
@@ -1711,7 +1734,7 @@ viewCasePanel model serviceId =
                         [ Grid.col [ Col.sm6 ]
                             [ name <| "Желаемая дата оказания услуг" ++ ": "
                             ]
-                        , Grid.col [ Col.sm5 ]
+                        , Grid.col [ Col.sm6 ]
                             [ div
                                 [ class "value", style "display" "inline" ]
                                 [ text (formatTime_ c.expectedServiceStart) ]
@@ -1725,6 +1748,7 @@ viewCasePanel model serviceId =
                                 ]
                             ]
                         ]
+
             in
             div []
                 [ showButton
@@ -1737,68 +1761,19 @@ viewCasePanel model serviceId =
                   else
                     div [] []
                 ]
-    in
-    Grid.row [ Row.attrs [ Spacing.p1 ] ]
-        (if model.service.caseId == 0 then
-            [ Grid.col [ Col.textAlign Text.alignXsCenter ]
-                [ Ui.viewSpinner "10rem"
-                ]
-            ]
 
-         else
-            [ Grid.col [ Col.sm2 ]
-                [ viewServicesList
-                    model
-                    model.currentCases
-                ]
-            , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.sm7 ]
-                [ h3 [ class "text-center" ]
-                    [ text <|
-                        "Заявка: "
-                            ++ caseId
-                            ++ " | Оплата: "
-                            ++ formatPaymentType (Maybe.withDefault 0 c.payType)
-                    ]
-                , Grid.row []
-                    [ Grid.col []
-                        [ field "Вид помощи" <| text c.serviceType
-                        , field "Клиент" <| text c.client
-                        , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
-                        ]
-                    , Grid.col []
-                        [ field "Марка/Модель" <| text c.makeModel
-                        , field "Гос. номер" <| text c.plateNumber
-                        , field "VIN" <| text <| String.toUpper vin
-                        ]
-                    , Grid.colBreak []
-                    , Grid.col [] <|
-                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress
-                        , field "Примечание" <| text c.firstAddressComment
-                        , viewTime
-                        ]
-                    , Grid.col []
-                        [ if c.serviceType == "Техпомощь" then
-                            div [] []
-
-                          else
-                            optionalField "Адрес доставки" <| c.lastAddress
-                        ]
-                    ]
-                , hr [] []
-                , Grid.row []
-                    [ Grid.col []
-                        [ field "Текущий статус заявки" <|
-                            text <|
-                                c.statusLabel
-                                    ++ " "
-                                    ++ "("
-                                    ++ String.fromInt c.status
-                                    ++ ")"
-                        , driverField
-                        ]
-                    , Grid.col [ Col.attrs [ class "text-center" ] ]
-                        [ div [] [ text "Изменить статус" ]
-                        , let
+        accordTime = 
+            case Dict.get c.serviceType model.typeOfServiceSynonym of
+                Just v ->
+                    v
+            
+                Nothing ->
+                    c.serviceType
+        
+        viewChangeStatusForm = 
+            Grid.col [ Col.attrs [ class "text-center" ] ]
+                [ div [] [ text "Изменить статус" ]
+                , let
                             width : Html.Attribute Msg
                             width =
                                 style "width" "150px"
@@ -1848,6 +1823,70 @@ viewCasePanel model serviceId =
                             , viewModalAlreadyOk model
                             ]
                         ]
+                    
+    in
+    Grid.row [ Row.attrs [] ]
+        (if model.service.caseId == 0 then
+            [ Grid.col [ Col.textAlign Text.alignXsCenter ]
+                [ Ui.viewSpinner "10rem"
+                ]
+            ]
+
+         else
+            [ viewServicesList model
+            , Grid.col [ Col.attrs [ style "background-color" Ui.colors.casesBg ], Col.lg7, Col.md8, Col.sm12 ]
+                [ h3 [ class "text-center" ]
+                    [ text <|
+                        "Заявка: "
+                            ++ caseId
+                            ++ " | Оплата: "
+                            ++ formatPaymentType (Maybe.withDefault 0 c.payType)
+                    ]
+                , Grid.row []
+                    [ Grid.col []
+                        [ field "Вид помощи" <| text c.serviceType
+                        , field "Клиент" <| text c.client
+                        , field "Телефон клиента" <| a [ A.href ("tel:" ++ c.clientPhone) ] [ text c.clientPhone ]
+                        ]
+                    , Grid.col []
+                        [ field "Марка/Модель" <| text c.makeModel
+                        , field "Гос. номер" <| text c.plateNumber
+                        , field "VIN" <| text <| String.toUpper vin
+                        ]
+                    , Grid.colBreak []
+                    , Grid.col [] <|
+                        [ field "Адрес начала работы" <| viewAddress c.firstLocation c.firstAddress
+                        , field "Примечание" <| text c.firstAddressComment
+                        , viewTime
+                        ]
+                    , Grid.col []
+                        [ if c.serviceType == "Техпомощь" then
+                            div [] []
+
+                          else
+                            optionalField "Адрес доставки" <| c.lastAddress
+                        ]
+                    ]
+                , hr [] []
+                , Grid.row []
+                    [ Grid.col []
+                        [ field "Текущий статус заявки" <|
+                            text <|
+                                c.statusLabel
+                                    ++ " "
+                                    ++ "("
+                                    ++ String.fromInt c.status
+                                    ++ ")"
+                        , if (accordTime == "Ответственное хранение")
+                            then 
+                                text ""
+                            
+                            else 
+                                driverField
+                        ]
+                    , if (accordTime == "Ответственное хранение")
+                        then Grid.col [] []
+                        else viewChangeStatusForm
                     ]
                 , hr [] []
                 , Grid.row []
@@ -1901,7 +1940,7 @@ viewCasePanel model serviceId =
                     ]
                 , viewLog model
                 ]
-            , Grid.col [ Col.sm3, Col.attrs [ Spacing.m0 ] ]
+            , Grid.col [ Col.lg3, Col.md4, Col.sm12, Col.attrs [ Spacing.m0 ] ]
                 [ h2 [ class "text-center" ] [ text "Закрыть заявку:" ]
                 , Alert.simpleSuccess []
                     [ text "Закрытие заявки не гарантирует оплату в размере Закрытия. "
@@ -2098,8 +2137,8 @@ viewLog model =
             ]
 
 
-viewServicesList : Model -> List CurrentCaseInfo -> Html Msg
-viewServicesList model ccs =
+viewServicesList : Model -> Column Msg
+viewServicesList model =
     let
         header =
             h2 [ style "text-align" "center" ] [ text "Текущие заявки" ]
@@ -2108,12 +2147,14 @@ viewServicesList model ccs =
             class "d-none d-lg-block"
 
         cases =
-            List.map (viewCard model) (Utils.sortServices ccs)
+            List.map (viewCard model) (Utils.sortServices model.currentCases)
     in
-    div [ hideMobile ]
-        [ header
-        , Card.deck
-            [ Card.customListGroup cases (Card.config [])
+    Grid.col [ Col.lg2, Col.attrs [ hideMobile ] ]
+        [ div []
+            [ header
+            , Card.deck
+                [ Card.customListGroup cases (Card.config [])
+                ]
             ]
         ]
 
@@ -2130,7 +2171,7 @@ viewCard model cci =
         accordTime =
             cci.cuAccordTime
                 |> formatAccordTime
-                |> highlightAccordTime
+                |> highlightAccordTime               
 
         formatAccordTime : String -> String
         formatAccordTime t =
