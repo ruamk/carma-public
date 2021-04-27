@@ -160,18 +160,20 @@ getLongitudeParam name = getDoubleInRange name (-180.0) 180.0
 
 
 getDateParam :: ByteString -> Handler a b (Maybe Day)
-getDateParam =
-  getParam name >>= return . \case
-                      Just d -> parseTimeM False defaultTimeLocale "%Y-%m-%d" $
-                               B.unpack d
-                      _      -> Nothing
+getDateParam name =
+  (\case
+    Just d -> parseTimeM False defaultTimeLocale "%Y-%m-%d" $
+             B.unpack d
+    _      -> Nothing
+  ) <$> getParam name
 
 
 getDateTimeParam :: ByteString -> Handler a b (Maybe UTCTime)
 getDateTimeParam name =
-  getParam name >>= return . \case
-                      Just d -> formatParseM iso8601Format $ B.unpack d
-                      _      -> Nothing
+  (\case
+    Just d -> formatParseM iso8601Format $ B.unpack d
+    _      -> Nothing
+  ) <$> getParam name
 
 
 withLens :: MonadState s (Handler b v')
