@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Carma.Utils.Snap
     ( bToString
     , getDateParam
@@ -9,12 +10,9 @@ module Carma.Utils.Snap
     , getLongitudeParam
     , getParamT
     , handleError
-    , mbreadDouble
-    , mbreadInt
     , mkMap
     , parseMayParam
     , quote
-    , readDouble
     , readJSON
     , readJSONfromLBS
     , stringToB
@@ -38,7 +36,6 @@ import           Data.Maybe                       (fromMaybe)
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
 import qualified Data.Text.Encoding               as T
-import qualified Data.Text.Read                   as T
 import           Data.Time                        (Day)
 import           Data.Time.Clock                  (UTCTime)
 import           Data.Time.Format                 (defaultTimeLocale,
@@ -95,22 +92,6 @@ writeJSON :: ToJSON v => v -> Snap.Handler a b ()
 writeJSON v = do
   modifyResponse $ setContentType "application/json"
   writeLBS $ encode v
-
-
-mbreadInt :: Text -> Maybe Int
-mbreadInt s = case T.decimal s of
-  Right (i, "") -> Just i
-  _             -> Nothing
-
-
-mbreadDouble :: Text -> Maybe Double
-mbreadDouble s =  case T.double s of
-  Right (i,"") -> Just i
-  _            -> Nothing
-
-
-readDouble :: Text -> Double
-readDouble = fromMaybe 0 . mbreadDouble
 
 
 handleError :: MonadSnap m => Int -> m ()
@@ -179,20 +160,18 @@ getLongitudeParam name = getDoubleInRange name (-180.0) 180.0
 
 
 getDateParam :: ByteString -> Handler a b (Maybe Day)
-getDateParam name =
-  getParam name >>= \v ->
-      return $ case v of
-                 Just d -> parseTimeM False defaultTimeLocale "%Y-%m-%d" $
-                          B.unpack d
-                 _      -> Nothing
+getDateParam =
+  getParam name >>= return . \case
+                      Just d -> parseTimeM False defaultTimeLocale "%Y-%m-%d" $
+                               B.unpack d
+                      _      -> Nothing
 
 
 getDateTimeParam :: ByteString -> Handler a b (Maybe UTCTime)
 getDateTimeParam name =
-  getParam name >>= \v ->
-      return $ case v of
-                 Just d -> formatParseM iso8601Format $ B.unpack d
-                 _      -> Nothing
+  getParam name >>= return . \case
+                      Just d -> formatParseM iso8601Format $ B.unpack d
+                      _      -> Nothing
 
 
 withLens :: MonadState s (Handler b v')
