@@ -6,7 +6,6 @@ module Util
   (
   module Carma.Utils.Snap
     -- * String helpers
-  , upCaseName
   , render
 
     -- * Time and date
@@ -51,12 +50,6 @@ import qualified System.Posix.Syslog as Syslog
 
 import           Carma.Utils.Snap
 import           Carma.Utils.Log
-
-
-upCaseName :: Text -> Text
-upCaseName = T.unwords . map upCaseWord . T.words
-  where
-    upCaseWord w = T.concat [T.toUpper $ T.take 1 w, T.toLower $ T.drop 1 w]
 
 
 -- | Simple templater (extracted from SMS module)
