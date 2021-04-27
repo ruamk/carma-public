@@ -17,6 +17,8 @@ dependencies:
   - containers
   - hsyslog
   - lens
+  - lifted-base
+  - monad-control
   - monad-logger
   - mtl
   - persistent
@@ -30,8 +32,9 @@ dependencies:
   - vector
 
 default-extensions:
-  - OverloadedStrings
   - FlexibleContexts
+  - OverloadedStrings
+  - ScopedTypeVariables
 
 ghc-options:
   - -Wall
