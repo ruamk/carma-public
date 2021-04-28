@@ -47,14 +47,17 @@ import           Types                              (Latitude, Longitude)
 
 
 data Driver = Driver
-    { _id        :: Int
-    , _partnerId :: Int
-    , _phone     :: String
-    , _password  :: String
-    , _name      :: String
-    , _plateNum  :: Maybe String
-    , _isActive  :: Bool
-    , _serviceId :: Maybe Int -- услуга, над которой работает водитель
+    { _id                   :: Int
+    , _partnerId            :: Int
+    , _phone                :: String
+    , _password             :: String
+    , _name                 :: String
+    , _plateNum             :: Maybe String
+    , _isActive             :: Bool
+    , serviceId             :: Maybe Int -- услуга, над которой работает водитель
+    , _trackLocation        :: Maybe Int
+    , _locationKeepInterval :: Int
+    , _carInfo              :: Value
     } deriving (Show, Generic)
 
 instance FromRow Driver where
@@ -66,10 +69,14 @@ instance FromRow Driver where
                      <*> field
                      <*> field
                      <*> field
+                     <*> field
+                     <*> field
+                     <*> field
 
 instance ToJSON Driver where
     toJSON = genericToJSON defaultOptions
              { fieldLabelModifier = dropWhile (== '_')}
+
 
 instance ToJSON (Only Int) where
     toJSON (Only i) = Number $ fromIntegral i
@@ -162,8 +169,17 @@ getDrivers = checkAuthCasePartner $ do
   let Just (Ident partnerId) = Patch.get user Usermeta.ident
 
   drivers :: [Driver] <- query [sql|
-    SELECT id, partner, phone, coalesce(password, ''::text)
-         , name, plateNum, isActive, null
+    SELECT id
+         , partner
+         , phone
+         , coalesce(password, ''::text)
+         , name
+         , plateNum
+         , isActive
+         , null
+         , trackLocation
+         , locationKeepInterval
+         , carInfo
       FROM "CasePartnerDrivers"
      WHERE partner = ?
      ORDER BY name
@@ -178,10 +194,10 @@ getDrivers = checkAuthCasePartner $ do
        AND closed IS NULL
   |] $ Only partnerId
 
-  writeJSON $ map (\driver@(Driver i _ _ _ _ _ _ _) ->
+  writeJSON $ map (\driver@(Driver i _ _ _ _ _ _ _ _ _ _) ->
                        case find (\s -> fst s == i) services of
                          Just (_driverId, serviceId) ->
-                             driver {_serviceId = Just serviceId}
+                             driver {serviceId = Just serviceId}
                          Nothing      -> driver
                   ) drivers
 

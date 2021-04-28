@@ -160,7 +160,7 @@ getLongitudeParam name = getDoubleInRange name (-180.0) 180.0
 
 
 getDateParam :: ByteString -> Handler a b (Maybe Day)
-getDateParam =
+getDateParam name =
   getParam name >>= return . \case
                       Just d -> parseTimeM False defaultTimeLocale "%Y-%m-%d" $
                                B.unpack d
