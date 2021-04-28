@@ -120,6 +120,7 @@ mainMenu { navbarMsg, logoutMsg, settingsMsg, usermenuMsg, navbarState, usermenu
         |> Navbar.withAnimation
         |> Navbar.attrs [ class "sticky-top" ]
         |> Navbar.primary
+        |> Navbar.collapseMedium
         |> Navbar.brand
             [ style "background-color" "yellow"
             , style "font-weight" "800"

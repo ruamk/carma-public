@@ -98,6 +98,7 @@ data Service = Service
     , client               :: Maybe Text
     , clientPhone          :: Maybe Text
     , firstAddress         :: Maybe Text
+    , firstAddressComment  :: Maybe Text
     , lastAddress          :: Maybe Text
     , firstLocation        :: Maybe Location
     , _lastLocation        :: Maybe Location
@@ -117,12 +118,28 @@ instance ToJSON Service where
              { fieldLabelModifier = dropWhile (== '_')}
 
 emptyService :: Service
-emptyService = Service 0 Nothing 0
-                  Nothing Nothing Nothing Nothing
-                  Nothing Nothing
-                  Nothing Nothing Nothing
-                  Nothing Nothing Nothing
-                  Nothing Nothing Nothing
+emptyService = Service
+  { serviceId = 0
+  , serviceType = Nothing
+  , caseId = 0
+  , client = Nothing
+  , clientPhone = Nothing
+  , firstAddress = Nothing
+  , firstAddressComment = Nothing
+  , lastAddress = Nothing
+  , firstLocation = Nothing
+  , _lastLocation = Nothing
+  , expectedServiceStart = Nothing
+  , factServiceStart = Nothing
+  , factServiceEnd = Nothing
+  , makeModel = Nothing
+  , plateNum = Nothing
+  , vin = Nothing
+  , payType = Nothing
+  , serviceStatus = Nothing
+  , _driverStatus = Nothing
+  }
+
 
 requestSize :: Word64
 requestSize = 4096
@@ -250,11 +267,12 @@ order = checkDriver $ \driverId -> do
 
       case hasService of
         Just serviceId -> do
-          [( client, clientPhone, firstAddress, firstLonLat, makeModel
+          [( client, clientPhone, firstAddress, firstAddressComment, firstLonLat, makeModel
            , plateNum, vin, caseId)] <- query [sql|
             SELECT contact_name
                  , contact_phone1
                  , caseAddress_address
+                 , caseAddress_comment
                  , coalesce(caseAddress_coords, ''::text)
                  , make.label || ' / ' ||
                    regexp_replace(model.label, '^([^/]*)/.*','\1')
@@ -307,6 +325,7 @@ order = checkDriver $ \driverId -> do
                                 , client = client
                                 , clientPhone = clientPhone
                                 , firstAddress = firstAddress
+                                , firstAddressComment = firstAddressComment
                                 , firstLocation = firstLocation
                                 , lastAddress = lastAddress
                                 , expectedServiceStart = expectedServiceStart
