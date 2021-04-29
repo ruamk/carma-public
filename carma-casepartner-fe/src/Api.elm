@@ -8,6 +8,7 @@ module Api exposing
     , createDriver
     , decodeSession
     , deleteDriver
+    , getDriverLocations
     , getDrivers
     , getLatenessReasons
     , getLatestClosingCases
@@ -26,7 +27,6 @@ module Api exposing
     , statusInPlace
     , statusServicePerformed
     , updateDriver
-    , getDriverLocations
     )
 
 import File
@@ -53,6 +53,7 @@ import Json.Decode as D
         , succeed
         )
 import Json.Decode.Pipeline exposing (optional, required)
+import Json.Encode as E
 import Maybe
 import Types
     exposing
@@ -779,6 +780,19 @@ getDrivers message =
                 |> required "plateNum" (nullable string)
                 |> required "isActive" bool
                 |> required "serviceId" (nullable int)
+                |> required "trackLocation" (nullable int)
+                |> required "locationKeepInterval" (nullable int)
+                |> required "carInfo" (nullable carInfoDecoder)
+
+        emptyCarInfo =
+            { color = ""
+            , model = ""
+            }
+
+        carInfoDecoder =
+            succeed Types.CarInfo
+                |> optional "color" string ""
+                |> optional "model" string ""
     in
     HttpBuilder.get apiGetDrivers
         |> HttpBuilder.withExpect (Http.expectJson message driversDecoder)
@@ -807,6 +821,12 @@ createDriver driver message =
 
                 else
                     "false"
+              )
+            , ( "trackLocation"
+              , Maybe.withDefault "null" (Maybe.map String.fromInt driver.trackLocation)
+              )
+            , ( "locationKeepInterval"
+              , Maybe.withDefault "null" (Maybe.map String.fromInt driver.locationKeepInterval)
               )
             ]
 
@@ -897,6 +917,19 @@ updateDriver driver message =
     let
         putBody : List ( String, String )
         putBody =
+            let
+                carInfo =
+                    case driver.carInfo of
+                        Just ci ->
+                            E.encode 0 <|
+                                E.object
+                                    [ ( "color", E.string ci.color )
+                                    , ( "model", E.string ci.model )
+                                    ]
+
+                        Nothing ->
+                            E.encode 0 (E.object [])
+            in
             [ ( "name", driver.name )
             , ( "phone", driver.phone )
             , ( "password", driver.password )
@@ -914,6 +947,15 @@ updateDriver driver message =
 
                 else
                     "false"
+              )
+            , ( "trackLocation"
+              , Maybe.withDefault "null" (Maybe.map String.fromInt driver.trackLocation)
+              )
+            , ( "locationKeepInterval"
+              , Maybe.withDefault "null" (Maybe.map String.fromInt driver.locationKeepInterval)
+              )
+            , ( "carInfo"
+              , carInfo
               )
             ]
 
@@ -1037,6 +1079,7 @@ savePhoto serviceId photo photoType message =
         , body = Http.multipartBody body
         , expect = Http.expectJson message decoder
         }
+
 
 getDriverLocations : (Result Http.Error (List Types.DriverLocation) -> msg) -> Cmd msg
 getDriverLocations message =
