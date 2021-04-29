@@ -202,6 +202,9 @@ type alias Driver =
     , plateNum : Maybe String
     , isActive : Bool
     , serviceId : Maybe Int
+    , trackLocation : Maybe Int
+    , locationKeepInterval : Maybe Int
+    , carInfo : Maybe CarInfo
     }
 
 
