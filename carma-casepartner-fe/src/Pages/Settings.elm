@@ -17,6 +17,7 @@ import Bootstrap.Text as Text
 import Bootstrap.Utilities.Flex as Flex
 import Bootstrap.Utilities.Spacing as Spacing
 import Char exposing (isDigit)
+import Dict
 import FontAwesome.Attributes as Icon
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
@@ -36,6 +37,7 @@ import Html.Attributes
         , class
         , style
         , target
+        , title
         )
 import Html.Events exposing (onCheck, onClick, onInput)
 import Http
@@ -45,6 +47,7 @@ import Page exposing (Document, Page)
 import Set
 import Types exposing (Driver)
 import Ui
+import Utils
 
 
 spinnerSize : String
@@ -55,6 +58,23 @@ spinnerSize =
 driverDialogSpinnerSize : String
 driverDialogSpinnerSize =
     "2rem"
+
+
+availableColorsDict : Dict.Dict Int String
+availableColorsDict =
+    let
+        colors =
+            [ "#FF0000"
+            , "#FF8000"
+            , "#FFFF00"
+            , "#00FF00"
+            , "#7F00FF"
+            , "#000000"
+            ]
+    in
+    colors
+        |> List.indexedMap Tuple.pair
+        |> Dict.fromList
 
 
 type alias Flags =
@@ -68,6 +88,29 @@ type alias DriverForm =
     , password : String
     , plateNum : String
     , isActive : Bool
+    }
+
+
+type alias DriverMapForm =
+    { alwaysTrack : Bool
+    , trackingInterval : { min : Int, sec : Int }
+    , locationKeepInterval : Int
+    , color : String -- string hex color like #AABBCC
+    , currentColorIndex : Int -- index in the color dict `availableColors`
+    , carName : String
+    }
+
+
+defaultDriverMapSettings =
+    { alwaysTrack = False
+    , trackingInterval =
+        { min = 0
+        , sec = 50
+        }
+    , locationKeepInterval = 14
+    , color = "#FF0000"
+    , currentColorIndex = 0
+    , carName = ""
     }
 
 
@@ -85,6 +128,7 @@ type alias Model =
     , messageToast : MessageToast Msg
     , navbarState : Navbar.State
     , usermenuState : Dropdown.State
+    , driverMapSettings : DriverMapForm
     }
 
 
@@ -116,6 +160,12 @@ type Msg
     | UsermenuMsg Dropdown.State
     | Settings
     | DriversMap
+    | EditDriverMapAlwaysTrackCheck Bool
+    | InputTrackingIntervalMin String
+    | InputTrackingIntervalSec String
+    | ChooseDriverColor Int
+    | InputLocationKeepInterval String
+    | InputCarName String
 
 
 page : Page Flags Model Msg
@@ -158,6 +208,7 @@ init _ _ =
                 }
       , navbarState = navbarState
       , usermenuState = Dropdown.initialState
+      , driverMapSettings = defaultDriverMapSettings
       }
     , navbarCmd
     , Cmd.none
@@ -202,7 +253,19 @@ update global msg model =
                                     , plateNum = Just model.driverForm.plateNum
                                     , isActive = model.driverForm.isActive
                                     , serviceId = Nothing
+                                    , trackLocation =
+                                        Just <| formatTrackingInterval model.driverMapSettings.trackingInterval
+                                    , locationKeepInterval = Just model.driverMapSettings.locationKeepInterval
+                                    , carInfo =
+                                        Just <|
+                                            { color = model.driverMapSettings.color
+                                            , model = model.driverMapSettings.carName
+                                            }
                                     }
+
+                                formatTrackingInterval : { min : Int, sec : Int } -> Int
+                                formatTrackingInterval { min, sec } =
+                                    min * 60 + sec
                               in
                               Api.createDriver driver DriverAdded
                             )
@@ -352,7 +415,19 @@ update global msg model =
                                             Just model.driverForm.plateNum
                                     , isActive = model.driverForm.isActive
                                     , serviceId = Nothing
+                                    , trackLocation =
+                                        Just <| formatTrackingInterval model.driverMapSettings.trackingInterval
+                                    , locationKeepInterval = Just model.driverMapSettings.locationKeepInterval
+                                    , carInfo =
+                                        Just <|
+                                            { color = model.driverMapSettings.color
+                                            , model = model.driverMapSettings.carName
+                                            }
                                     }
+
+                                formatTrackingInterval : { min : Int, sec : Int } -> Int
+                                formatTrackingInterval { min, sec } =
+                                    min * 60 + sec
                               in
                               Api.updateDriver driver DriverUpdated
                             )
@@ -516,6 +591,30 @@ update global msg model =
                     , plateNum = withDefault "" driver.plateNum
                     , isActive = driver.isActive
                     }
+                , driverMapSettings =
+                    let
+                        need =
+                            Maybe.map2
+                                (\a b -> ( a, b ))
+                                driver.trackLocation
+                                driver.locationKeepInterval
+                    in
+                    case need of
+                        Just ( trackLocation, locationKeepInterval ) ->
+                            { alwaysTrack = True
+                            , trackingInterval = { min = 0, sec = trackLocation }
+                            , locationKeepInterval = locationKeepInterval
+                            , color =
+                                Maybe.map .color driver.carInfo
+                                    |> Maybe.withDefault "#FF0000"
+                            , currentColorIndex = 0
+                            , carName =
+                                Maybe.map .model driver.carInfo
+                                    |> Maybe.withDefault ""
+                            }
+
+                        Nothing ->
+                            defaultDriverMapSettings
                 , driverSpinnerVisible = False
               }
             , Cmd.none
@@ -546,6 +645,135 @@ update global msg model =
             , Global.driversMap
             )
 
+        EditDriverMapAlwaysTrackCheck b ->
+            let
+                setAlwaysTrack : Bool -> DriverMapForm -> DriverMapForm
+                setAlwaysTrack track form =
+                    { form | alwaysTrack = track }
+            in
+            ( { model
+                | driverMapSettings =
+                    setAlwaysTrack b model.driverMapSettings
+              }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        InputTrackingIntervalMin minString ->
+            case String.toInt minString of
+                Just min ->
+                    let
+                        setTrackingInterval : { min : Int, sec : Int } -> DriverMapForm -> DriverMapForm
+                        setTrackingInterval interval form =
+                            { form | trackingInterval = setMin min interval }
+
+                        setMin : Int -> { min : Int, sec : Int } -> { min : Int, sec : Int }
+                        setMin min_ interval =
+                            { interval | min = min_ }
+                    in
+                    ( { model
+                        | driverMapSettings =
+                            setTrackingInterval
+                                (setMin min model.driverMapSettings.trackingInterval)
+                                model.driverMapSettings
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+        InputTrackingIntervalSec secString ->
+            case String.toInt secString of
+                Just sec ->
+                    let
+                        setTrackingInterval : { min : Int, sec : Int } -> DriverMapForm -> DriverMapForm
+                        setTrackingInterval interval form =
+                            { form | trackingInterval = setSec sec interval }
+
+                        setSec : Int -> { min : Int, sec : Int } -> { min : Int, sec : Int }
+                        setSec sec_ interval =
+                            { interval | sec = sec_ }
+                    in
+                    ( { model
+                        | driverMapSettings =
+                            setTrackingInterval
+                                (setSec sec model.driverMapSettings.trackingInterval)
+                                model.driverMapSettings
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+        ChooseDriverColor colorIx ->
+            let
+                setColor : String -> DriverMapForm -> DriverMapForm
+                setColor newColor form =
+                    { form | color = newColor }
+
+                setColorIx : Int -> DriverMapForm -> DriverMapForm
+                setColorIx newColorIx form =
+                    { form | currentColorIndex = newColorIx }
+
+                getColor : Int -> String
+                getColor ix =
+                    availableColorsDict
+                        |> Dict.get ix
+                        |> Maybe.withDefault "#000000"
+            in
+            ( { model
+                | driverMapSettings =
+                    model.driverMapSettings
+                        |> setColor (getColor colorIx)
+                        |> setColorIx colorIx
+              }
+            , Cmd.none
+            , Cmd.none
+            )
+
+        InputLocationKeepInterval s ->
+            case String.toInt s of
+                Just days ->
+                    let
+                        setKeep : Int -> DriverMapForm -> DriverMapForm
+                        setKeep keepInterval form =
+                            { form | locationKeepInterval = keepInterval }
+                    in
+                    ( { model
+                        | driverMapSettings = setKeep days model.driverMapSettings
+                      }
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model
+                    , Cmd.none
+                    , Cmd.none
+                    )
+
+        InputCarName name ->
+            let
+                setCarName : String -> DriverMapForm -> DriverMapForm
+                setCarName carName form =
+                    { form | carName = carName }
+            in
+            ( { model
+                | driverMapSettings = setCarName name model.driverMapSettings
+              }
+            , Cmd.none
+            , Cmd.none
+            )
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
@@ -725,105 +953,191 @@ viewDialog :
     -> Html Msg
 viewDialog visibility title body footer =
     Modal.config CloseDialog
-        |> Modal.small
+        |> Modal.scrollableBody True
         |> Modal.hideOnBackdropClick True
         |> Modal.h5 [] [ text title ]
-        |> Modal.body [] body
+        |> Modal.body [ style "overflow-x" "hidden" ] body
         |> Modal.footer [] footer
         |> Modal.view visibility
 
 
 driverForm : Model -> List (Html Msg)
 driverForm model =
-    [ Grid.row
-        [ Row.attrs [ Spacing.pb2 ] ]
-        [ Grid.col
-            [ Col.sm4, Col.attrs [ Flex.alignSelfCenter ] ]
-            [ text "ФИО:" ]
-        , Grid.col
-            []
-            [ Input.text
-                [ Input.attrs [ onInput InputName ]
-                , Input.value model.driverForm.name
+    let
+        field : String -> Html Msg -> Html Msg
+        field n v =
+            Grid.row [ Row.attrs [ Spacing.pb3 ] ]
+                [ Grid.col [ Col.sm5, Col.attrs [ class "align-self-center" ] ]
+                    [ text <| n ++ ": " ]
+                , Grid.col []
+                    [ v ]
                 ]
-            ]
-        ]
-    , Grid.row
-        [ Row.attrs [ Spacing.pb2 ] ]
-        [ Grid.col
-            [ Col.sm4, Col.attrs [ Flex.alignSelfCenter ] ]
-            [ text "Телефон:" ]
-        , Grid.col
-            []
-            [ Input.text
-                [ Input.attrs [ onInput InputPhone ]
-                , Input.value model.driverForm.phone
-                ]
-            ]
-        ]
-    , Grid.row
-        [ Row.attrs [ Spacing.pb2 ] ]
-        [ Grid.col
-            [ Col.sm4, Col.attrs [ Flex.alignSelfCenter ] ]
-            [ text "Пароль:" ]
-        , Grid.col
-            []
-            [ Input.text
-                [ Input.attrs [ onInput InputPassword ]
-                , Input.value model.driverForm.password
-                ]
-            ]
-        ]
-    , Grid.row
-        [ Row.attrs [ Spacing.pb2 ] ]
-        [ Grid.col
-            [ Col.sm4, Col.attrs [ Flex.alignSelfCenter ] ]
-            [ text "Гос. номер:" ]
-        , Grid.col
-            []
-            [ Input.text
-                [ Input.attrs [ onInput InputPlateNum ]
-                , Input.value model.driverForm.plateNum
-                ]
-            ]
-        ]
-    , Grid.row
-        [ Row.attrs [ Spacing.pb2 ] ]
-        [ Grid.col
-            [ Col.sm4, Col.attrs [ Flex.alignSelfCenter ] ]
-            [ text "Активен? " ]
-        , Grid.col
-            []
-            [ Checkbox.checkbox
-                [ Checkbox.checked model.driverForm.isActive
-                , Checkbox.attrs [ onCheck InputIsActive ]
-                ]
-                ""
-            ]
-        ]
-    , Grid.row
-        [ Row.attrs [ style "height" driverDialogSpinnerSize ] ]
-        [ Grid.col
-            [ Col.sm12, Col.textAlign Text.alignXsCenter ]
-            [ if model.driverSpinnerVisible then
-                Ui.viewSpinner driverDialogSpinnerSize
 
-              else
-                text ""
-            ]
-        ]
-    , Grid.row
-        [ Row.attrs [ Spacing.pb2 ] ]
-        [ Grid.col
-            [ Col.sm12 ]
-            [ if String.isEmpty model.driverFormError then
-                text ""
+        mapSettings =
+            let
+                showOnMapCheckBox =
+                    Checkbox.checkbox
+                        [ Checkbox.id "always-track"
+                        , Checkbox.checked model.driverMapSettings.alwaysTrack
+                        , Checkbox.onCheck EditDriverMapAlwaysTrackCheck
+                        ]
+                        ""
 
-              else
-                Alert.simpleDanger [] [ text model.driverFormError ]
+                viewTrackingIntervalField =
+                    div [ style "display" "flex" ]
+                        [ Input.text
+                            [ Input.attrs [ onInput InputTrackingIntervalMin ]
+                            , Input.value (String.fromInt <| model.driverMapSettings.trackingInterval.min)
+                            ]
+                        , div
+                            [ class "name"
+                            , style "margin-left" "2px"
+                            , style "margin-right" "2px"
+                            , style "font-size" "16px"
+                            ]
+                            [ text ":"
+                            ]
+                        , Input.text
+                            [ Input.attrs [ onInput InputTrackingIntervalSec ]
+                            , Input.value (String.fromInt <| model.driverMapSettings.trackingInterval.sec)
+                            ]
+                        ]
+
+                chooseColor =
+                    let
+                        nextColor =
+                            let
+                                end ix =
+                                    ix == (Dict.size availableColorsDict - 1)
+                            in
+                            if end model.driverMapSettings.currentColorIndex then
+                                0
+
+                            else
+                                model.driverMapSettings.currentColorIndex + 1
+                    in
+                    div [ onClick (ChooseDriverColor nextColor), style "display" "flex" ]
+                        [ Utils.viewColoredMarker 25 model.driverMapSettings.color
+                        , div
+                            [ class "value"
+                            , style "font-size" "10px"
+                            , style "margin-left" "2px"
+                            , title "Нажмите на иконку чтобы изменить цвет"
+                            ]
+                            [ text "(?)"
+                            ]
+                        ]
+
+                viewLocationKeepIntervalInput =
+                    Input.text
+                        [ Input.attrs [ onInput InputLocationKeepInterval ]
+                        , Input.value (String.fromInt <| model.driverMapSettings.locationKeepInterval)
+                        ]
+
+                viewCarNameInput =
+                    Input.text
+                        [ Input.attrs [ onInput InputCarName ]
+                        , Input.value model.driverMapSettings.carName
+                        ]
+            in
+            field "Отслеживать постоянно?" showOnMapCheckBox
+                :: (if model.driverMapSettings.alwaysTrack then
+                        [ field "Название машины" viewCarNameInput
+                        , field "Цвет иконки на карте" chooseColor
+                        , field "Интервал обновления (мин:сек)" viewTrackingIntervalField
+                        , field "Хранение логов (дни)" viewLocationKeepIntervalInput
+                        ]
+
+                    else
+                        []
+                   )
+
+        driverSettings =
+            [ Grid.row
+                [ Row.attrs [ Spacing.pb2 ] ]
+                [ Grid.col
+                    [ Col.sm5, Col.attrs [ Flex.alignSelfCenter ] ]
+                    [ text "ФИО:" ]
+                , Grid.col
+                    []
+                    [ Input.text
+                        [ Input.attrs [ onInput InputName ]
+                        , Input.value model.driverForm.name
+                        ]
+                    ]
+                ]
+            , Grid.row
+                [ Row.attrs [ Spacing.pb2 ] ]
+                [ Grid.col
+                    [ Col.sm5, Col.attrs [ Flex.alignSelfCenter ] ]
+                    [ text "Телефон:" ]
+                , Grid.col
+                    []
+                    [ Input.text
+                        [ Input.attrs [ onInput InputPhone ]
+                        , Input.value model.driverForm.phone
+                        ]
+                    ]
+                ]
+            , Grid.row
+                [ Row.attrs [ Spacing.pb2 ] ]
+                [ Grid.col
+                    [ Col.sm5, Col.attrs [ Flex.alignSelfCenter ] ]
+                    [ text "Пароль:" ]
+                , Grid.col
+                    []
+                    [ Input.text
+                        [ Input.attrs [ onInput InputPassword ]
+                        , Input.value model.driverForm.password
+                        ]
+                    ]
+                ]
+            , Grid.row
+                [ Row.attrs [ Spacing.pb2 ] ]
+                [ Grid.col
+                    [ Col.sm5, Col.attrs [ Flex.alignSelfCenter ] ]
+                    [ text "Гос. номер:" ]
+                , Grid.col
+                    []
+                    [ Input.text
+                        [ Input.attrs [ onInput InputPlateNum ]
+                        , Input.value model.driverForm.plateNum
+                        ]
+                    ]
+                ]
+            , Grid.row
+                [ Row.attrs [ Spacing.pb2 ] ]
+                [ Grid.col
+                    [ Col.sm5, Col.attrs [ Flex.alignSelfCenter ] ]
+                    [ text "Активен? " ]
+                , Grid.col
+                    []
+                    [ Checkbox.checkbox
+                        [ Checkbox.checked model.driverForm.isActive
+                        , Checkbox.attrs [ onCheck InputIsActive ]
+                        ]
+                        ""
+                    ]
+                ]
             ]
-        ]
-    ]
+
+        errorPanel =
+            Grid.row
+                [ Row.attrs [ Spacing.pb2 ] ]
+                [ Grid.col
+                    [ Col.sm12 ]
+                    [ if String.isEmpty model.driverFormError then
+                        text ""
+
+                      else
+                        Alert.simpleDanger [] [ text model.driverFormError ]
+                    ]
+                ]
+    in
+    driverSettings
+        ++ mapSettings
+        ++ [ Html.hr [] [] ]
+        ++ [ errorPanel ]
 
 
 viewAddDriverDialog : Model -> Html Msg
