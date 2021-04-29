@@ -21,15 +21,14 @@ import Http
 import LeafletMap
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
+import Time
 import Types
 import Ui
-import Time
 
 
 updateLocationsRateSec : Float
-updateLocationsRateSec = 
+updateLocationsRateSec =
     60
-
 
 
 type alias Flags =
@@ -84,7 +83,7 @@ init _ _ =
       , drivers = []
       , panelState = False
       }
-    , Cmd.batch 
+    , Cmd.batch
         [ navbarCmd
         , Api.getDriverLocations GotDriverLocations
         ]
@@ -143,22 +142,22 @@ update _ msg model =
             , Cmd.none
             , Cmd.none
             )
-        
+
         GotDriverLocations result ->
-            case result of 
+            case result of
                 Err error ->
                     ( model
                     , Cmd.none
                     , Cmd.none
                     )
-                
+
                 Ok drivers ->
                     ( { model | drivers = drivers }
                     , Cmd.none
                     , Cmd.none
                     )
-        
-        UpdateLocationsTick _ -> 
+
+        UpdateLocationsTick _ ->
             ( model
             , Api.getDriverLocations GotDriverLocations
             , Cmd.none
@@ -189,7 +188,7 @@ view global model =
                 [ ( False, Services, "Текущие заявки" )
                 , ( False, NavbarMsg model.navbarState, "Поиск заявок" )
                 , ( False, Settings, "Настройки" )
-                , ( True, DriversMap, "Карта водителей"  )
+                , ( True, DriversMap, "Карта водителей" )
                 ]
             }
           <|
