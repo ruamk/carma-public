@@ -3,12 +3,17 @@ module Utils exposing
     , formatTime
     , fromUrl
     , sortServices
+    , viewColoredMarker
     )
 
 import Generated.Route as Route exposing (Route)
+import Html exposing (Attribute, Html, div)
 import ISO8601 exposing (Time)
-import Url exposing (Url)
+import Svg exposing (circle, svg)
+import Svg.Attributes exposing (color, cx, cy, fill, height, r, viewBox, width)
 import Types exposing (CurrentCaseInfo)
+import Url exposing (Url)
+
 
 fromUrl : Url -> Route
 fromUrl =
@@ -41,13 +46,16 @@ formatDate nt =
     String.join "." (f [ .day, .month, .year ])
 
 
+
 -- drop down the services with status `in progress`
+
+
 sortServices : List CurrentCaseInfo -> List CurrentCaseInfo
 sortServices cs =
     let
         ( inProgress, others ) =
             List.partition (\c -> c.cuAccordTime == "В работе") cs
-        
+
         sortByCallDate : List CurrentCaseInfo -> List CurrentCaseInfo
         sortByCallDate xs =
             let
@@ -71,10 +79,26 @@ sortServices cs =
                     compare
                         (ISO8601.toTime <| time a)
                         (ISO8601.toTime <| time b)
-                        
             in
             List.sortWith rule xs
     in
     List.append
         (sortByCallDate others)
         (sortByCallDate inProgress)
+
+
+viewColoredMarker : Int -> String -> Html msg
+viewColoredMarker rad color =
+    svg
+        [ width <| String.fromInt rad
+        , height <| String.fromInt rad
+        , viewBox "0 0 120 120"
+        ]
+        [ circle
+            [ fill color
+            , r "50%"
+            , cx "50%"
+            , cy "50%"
+            ]
+            []
+        ]
