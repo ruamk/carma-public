@@ -91,7 +91,7 @@
     "redux-thunk": "^2.2.0",
     "spin.js": "^2.3.2",
     "typeahead.js": "^0.11.1",
-    "underscore": "~1.6.0",
+    "underscore": "~1.12.1",
     "whatwg-fetch": "^2.0.4"
   }
 }
