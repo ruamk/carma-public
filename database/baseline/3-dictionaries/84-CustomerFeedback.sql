@@ -60,7 +60,7 @@ begin
   insert into "Sms"(caseRef, msgtext, phone, status)
     select
       _caseId,
-      'Пожалуйста оцените нашу работу: https://feedback.ruamc.ru#' || _urlKey,
+      'Пожалуйста оцените нашу работу: https://feedback.ruamc.ru?' || _urlKey,
       c.contact_phone1, 'please-send'
       from casetbl c
       where c.id = _caseId
@@ -110,7 +110,7 @@ as $$
         and ctime > now() - interval '25 hours'
         and urlKey = _urlKey
     returning id
-$$ language sql stable;
+$$ language sql volatile;
 
 
 create or replace view "CustomerFeedback_view" as

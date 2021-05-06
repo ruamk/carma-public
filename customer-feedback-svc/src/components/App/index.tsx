@@ -13,7 +13,7 @@ export const App = () => {
   const [errorMessage, setErrorMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
-  const key = window.location.hash.replace('#', '')
+  const key = window.location.search.replace('?', '')
   const apiUrl = `/api/${key}`
 
   const loadFormData = async () => {
