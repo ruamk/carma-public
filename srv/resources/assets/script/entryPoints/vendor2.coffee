@@ -1,11 +1,3 @@
-require "bootstrap"
-require "bootstrap-datepicker"
-require "bootstrap-datepicker.ru"
-require "bootstrap-daterangepicker"
-require "bootstrap.jasny"
-require "bootstrap.wysihtml5"
-require "bootstrap.wysihtml5.ru-RU"
-
 require "oldLegacy3p/d3-v3.5.17"
 
 require "oldLegacy3p/date/core"
