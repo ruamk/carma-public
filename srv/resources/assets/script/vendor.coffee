@@ -102,13 +102,6 @@ OpenLayers.Util.getImageLocation = (img) ->
     else
       throw new Error "Unexpected requested OpenLayers image: '#{img}'"
 
-# TODO maybe replace it with the moment library?
-require "oldLegacy3p/date/core"
-require "oldLegacy3p/date/ru-RU.js"
-require "oldLegacy3p/date/extras.js"
-require "oldLegacy3p/date/parser.js"
-require "oldLegacy3p/date/sugarpak.js"
-
 module.exports = {
   $
   _
