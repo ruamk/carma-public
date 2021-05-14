@@ -1,21 +1,23 @@
-module Carma.Model.Service.Towage where
+module Carma.Model.Service.Towage
+    where
 
-import Data.Text
-import Data.Time
-import Data.Typeable
-import Data.Aeson((.=), object)
-import Data.Scientific
 
-import Data.Model
-import Data.Model.Types
-import Data.Model.View
-import Carma.Model.Types()
-import Carma.Model.LegacyTypes
-import Carma.Model.Partner (Partner)
-import Carma.Model.Service (Service)
-import Carma.Model.Search as S
-import Carma.Model.TowSort (TowSort)
-import Carma.Model.TowType (TowType)
+import           Data.Aeson              (object, (.=))
+import           Data.Scientific
+import           Data.Text
+import           Data.Time
+import           Data.Typeable
+
+import           Carma.Model.LegacyTypes
+import           Carma.Model.Partner     (Partner)
+import           Carma.Model.Search      as S
+import           Carma.Model.Service     (Service)
+import           Carma.Model.TowSort     (TowSort)
+import           Carma.Model.TowType     (TowType)
+import           Carma.Model.Types       ()
+import           Data.Model
+import           Data.Model.Types
+import           Data.Model.View
 
 data Towage = Towage
   { ident                    :: PK Int Towage ""
@@ -76,6 +78,21 @@ data Towage = Towage
   , suburbanMilage           :: F (Maybe Scientific) "suburbanMilage" "Пробег за городом"
   , totalMilage              :: F (Maybe Scientific) "totalMilage" "Километраж по тахометру"
   , partnerWarnedInTime      :: F (Maybe Bool) "partnerWarnedInTime" "Партнёр предупредил вовремя"
+  , towcheck01               :: F (Maybe Checkbox) "towcheck01" "towcheck01"
+  , towcheck02               :: F (Maybe Checkbox) "towcheck02" "towcheck02"
+  , towcheck03               :: F (Maybe Checkbox) "towcheck03" "towcheck03"
+  , towcheck04               :: F (Maybe Checkbox) "towcheck04" "towcheck04"
+  , towcheck05               :: F (Maybe Checkbox) "towcheck05" "towcheck05"
+  , towcheck06               :: F (Maybe Checkbox) "towcheck06" "towcheck06"
+  , towcheck07               :: F (Maybe Checkbox) "towcheck07" "towcheck07"
+  , towcheck08               :: F (Maybe Checkbox) "towcheck08" "towcheck08"
+  , towcheck09               :: F (Maybe Checkbox) "towcheck09" "towcheck09"
+  , towcheck10               :: F (Maybe Checkbox) "towcheck10" "towcheck10"
+  , towcheck11               :: F (Maybe Checkbox) "towcheck11" "towcheck11"
+  , towcheck12               :: F (Maybe Checkbox) "towcheck12" "towcheck12"
+  , towcheck13               :: F (Maybe Checkbox) "towcheck13" "towcheck13"
+  , towcheck14               :: F (Maybe Checkbox) "towcheck14" "towcheck14"
+  , towcheck15               :: F (Maybe Checkbox) "towcheck15" "towcheck15"
   }
   deriving Typeable
 
