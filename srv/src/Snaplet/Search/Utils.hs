@@ -25,7 +25,7 @@ import           Snap
 import           Snaplet.Auth.PGUsers (currentUserRoles)
 import           Snaplet.Search.Types
 import           Carma.Model.Search
-import           Util (readJSONfromLBS, withLens)
+import           Carma.Utils.Snap (readJSONfromLBS, withLens)
 
 
 class ParamPred m where

@@ -1,5 +1,25 @@
+{-# LANGUAGE LambdaCase #-}
 module Carma.Utils.Snap
-    where
+    ( bToString
+    , getDateParam
+    , getDateTimeParam
+    , getDoubleParam
+    , getIntParam
+    , getJSONBody
+    , getLatitudeParam
+    , getLongitudeParam
+    , getParamT
+    , handleError
+    , mkMap
+    , parseMayParam
+    , quote
+    , readJSON
+    , readJSONfromLBS
+    , stringToB
+    , withLens
+    , writeJSON
+    ) where
+
 
 import qualified Control.Exception                as Ex
 import           Control.Monad.State.Class
@@ -16,7 +36,6 @@ import           Data.Maybe                       (fromMaybe)
 import           Data.Text                        (Text)
 import qualified Data.Text                        as T
 import qualified Data.Text.Encoding               as T
-import qualified Data.Text.Read                   as T
 import           Data.Time                        (Day)
 import           Data.Time.Clock                  (UTCTime)
 import           Data.Time.Format                 (defaultTimeLocale,
@@ -75,22 +94,6 @@ writeJSON v = do
   writeLBS $ encode v
 
 
-mbreadInt :: Text -> Maybe Int
-mbreadInt s = case T.decimal s of
-  Right (i, "") -> Just i
-  _             -> Nothing
-
-
-mbreadDouble :: Text -> Maybe Double
-mbreadDouble s =  case T.double s of
-  Right (i,"") -> Just i
-  _            -> Nothing
-
-
-readDouble :: Text -> Double
-readDouble = fromMaybe 0 . mbreadDouble
-
-
 handleError :: MonadSnap m => Int -> m ()
 handleError err = do
     modifyResponse $ setResponseCode err
@@ -99,6 +102,15 @@ handleError err = do
 
 quote :: ByteString -> String
 quote x = "'" ++ (T.unpack $ T.replace "'" "''" $ T.decodeUtf8 x) ++ "'"
+
+
+-- | Convert UTF-8 encoded BS to Haskell string.
+bToString :: ByteString -> String
+bToString = T.unpack . T.decodeUtf8
+
+-- | Inverse of 'bToString'.
+stringToB :: String -> ByteString
+stringToB = T.encodeUtf8 . T.pack
 
 
 mkMap :: [Text] -> [[Maybe Text]] -> [Map Text Text]
@@ -116,7 +128,7 @@ getIntParam name = do
 
 
 getDoubleParam :: ByteString -> Handler a b (Maybe Double)
-getDoubleParam name = parseMayParam Atto8.double name
+getDoubleParam = parseMayParam Atto8.double
 
 
 getDoubleInRange :: ByteString
@@ -130,7 +142,7 @@ getDoubleInRange name minValue maxValue = do
                                               , " is not specified"
                                               ]
                   Just val' -> if val' >= minValue && val' <= maxValue
-                              then Right $ val'
+                              then Right val'
                               else Left $ T.concat [ T.pack $ B.unpack name
                                                    , " is out of range "
                                                    , T.pack $ show minValue
@@ -149,19 +161,17 @@ getLongitudeParam name = getDoubleInRange name (-180.0) 180.0
 
 getDateParam :: ByteString -> Handler a b (Maybe Day)
 getDateParam name =
-  getParam name >>= \v ->
-      return $ case v of
-                 Just d -> parseTimeM False defaultTimeLocale "%Y-%m-%d" $
-                          B.unpack d
-                 _      -> Nothing
+  getParam name >>= return . \case
+                      Just d -> parseTimeM False defaultTimeLocale "%Y-%m-%d" $
+                               B.unpack d
+                      _      -> Nothing
 
 
 getDateTimeParam :: ByteString -> Handler a b (Maybe UTCTime)
 getDateTimeParam name =
-  getParam name >>= \v ->
-      return $ case v of
-                 Just d -> formatParseM iso8601Format $ B.unpack d
-                 _      -> Nothing
+  getParam name >>= return . \case
+                      Just d -> formatParseM iso8601Format $ B.unpack d
+                      _      -> Nothing
 
 
 withLens :: MonadState s (Handler b v')
