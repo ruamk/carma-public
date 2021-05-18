@@ -145,3 +145,17 @@ updateFactServiceStartTime cookie serviceId = do
                        ( Patch.empty
                        & Patch.put Service.times_factServiceStart (Just now)
                        )
+
+
+partnerIsDone
+    :: (MonadIO (m b v)
+      , MonadSnaplet m
+      )
+    => String
+    -> IdentI Service
+    -> m b v (Patch Service)
+partnerIsDone cookie serviceId = carma cookie $
+  updateInstance serviceId
+                 ( Patch.empty
+                 & Patch.put Service.partnerIsDone True
+                 )

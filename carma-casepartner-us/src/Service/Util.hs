@@ -188,7 +188,8 @@ setStatusInPlace serviceId = do
 setStatusPerformed :: Int -> String -> AppHandler (M.Map Text Text)
 setStatusPerformed serviceId comment = do
   Just caseId <- caseForService serviceId
-  _ <- carmaPostComment caseId comment
+  void $ carmaPostComment caseId comment
+  void $ withCookie $ \cookie -> CarmaApi.partnerIsDone cookie (Ident serviceId)
   return servicePerformed
 
 
