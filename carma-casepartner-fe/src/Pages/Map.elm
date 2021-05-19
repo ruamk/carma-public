@@ -2,6 +2,7 @@ module Pages.Map exposing (Flags, Model, Msg, page)
 
 import Api
 import Bootstrap.Dropdown as Dropdown
+import Bootstrap.Form.Checkbox as Checkbox
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Navbar as Navbar
@@ -18,12 +19,13 @@ import Html
 import Html.Attributes as A
 import Html.Events exposing (onClick)
 import Http
-import LeafletMap
+import Lib.LeafletMap as LeafletMap
 import MessageToast exposing (MessageToast)
 import Page exposing (Document, Page)
 import Time
 import Types
 import Ui
+import Utils
 
 
 updateLocationsRateSec : Float
@@ -40,6 +42,7 @@ type alias Model =
     , usermenuState : Dropdown.State
     , messageToast : MessageToast Msg
     , drivers : List Types.DriverLocation
+    , hiddenDrivers : List Types.DriverLocation
     , panelState : Bool
     }
 
@@ -55,6 +58,7 @@ type Msg
     | PanelButton Bool
     | GotDriverLocations (Result Http.Error (List Types.DriverLocation))
     | UpdateLocationsTick Time.Posix
+    | DriverVisibility Types.DriverLocation Bool
 
 
 page : Page Flags Model Msg
@@ -81,6 +85,7 @@ init _ _ =
                 , toastsToShow = 10
                 }
       , drivers = []
+      , hiddenDrivers = []
       , panelState = False
       }
     , Cmd.batch
@@ -93,6 +98,18 @@ init _ _ =
 
 update : Global.Model -> Msg -> Model -> ( Model, Cmd Msg, Cmd Global.Msg )
 update _ msg model =
+    let
+        showError : String -> Model
+        showError e =
+            let
+                messageToast : MessageToast Msg
+                messageToast =
+                    model.messageToast
+                        |> MessageToast.danger
+                        |> MessageToast.withMessage e
+            in
+            { model | messageToast = messageToast }
+    in
     case msg of
         -- Entry point
         NavbarMsg state ->
@@ -146,7 +163,7 @@ update _ msg model =
         GotDriverLocations result ->
             case result of
                 Err error ->
-                    ( model
+                    ( showError "Не могу получить список водителей от сервера"
                     , Cmd.none
                     , Cmd.none
                     )
@@ -162,6 +179,23 @@ update _ msg model =
             , Api.getDriverLocations GotDriverLocations
             , Cmd.none
             )
+
+        DriverVisibility driver visibility ->
+            if visibility then
+                ( { model
+                    | hiddenDrivers = List.filter (\d -> d.id /= driver.id) model.hiddenDrivers
+                  }
+                , Cmd.none
+                , Cmd.none
+                )
+
+            else
+                ( { model
+                    | hiddenDrivers = driver :: model.hiddenDrivers
+                  }
+                , Cmd.none
+                , Cmd.none
+                )
 
 
 subscriptions : Global.Model -> Model -> Sub Msg
@@ -201,6 +235,7 @@ view global model =
                             [ A.style "top" "60px"
                             , A.style "bottom" "auto"
                             , A.style "right" "20px"
+                            , A.style "z-index" "9999"
                             ]
                         |> MessageToast.view
                     ]
@@ -215,7 +250,7 @@ viewContent model =
         desktop =
             Grid.row []
                 [ Grid.col [ Col.sm3 ]
-                    [ viewDriversTable model.drivers
+                    [ viewDriversTable model
                     ]
                 , Grid.col [ Col.sm9 ]
                     [ viewMap model
@@ -225,7 +260,7 @@ viewContent model =
         mobile =
             div []
                 [ if model.panelState then
-                    viewDriversTable model.drivers
+                    viewDriversTable model
 
                   else
                     viewMap model
@@ -242,60 +277,66 @@ viewMap : Model -> Html Msg
 viewMap model =
     let
         driverMarker driver =
-            ( "marker"
-            , LeafletMap.marker
-                [ LeafletMap.iconUrl "driver.svg"
-                , LeafletMap.iconHeight 32
+            let
+                markerHTML =
+                    Utils.viewColoredMarkerRawHTML 32 (unpackCarColor driver.carInfo)
+            in
+            LeafletMap.marker
+                [ LeafletMap.iconHeight 32
                 , LeafletMap.iconWidth 32
                 , LeafletMap.latitude driver.latitude
                 , LeafletMap.longitude driver.longitude
+                , LeafletMap.html markerHTML
+                , LeafletMap.className "divIconNoBorderNoBackground"
                 ]
                 [ text driver.name
                 ]
-            )
+
+        withoutHidden : List Types.DriverLocation -> List Types.DriverLocation
+        withoutHidden drivers =
+            List.filter (\driver -> not <| List.member driver model.hiddenDrivers) model.drivers
     in
     LeafletMap.view
         [ A.style "width" "100%"
-        , A.style "height" "100vh"
+        , A.style "height" "83vh"
         , A.style "position" "relative"
         , A.style "display" "block"
         , LeafletMap.latitude 55.758222
         , LeafletMap.longitude 37.622142
-        , LeafletMap.scale 13
-        , LeafletMap.tileLayer "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        , LeafletMap.zoom 13
         ]
-        (List.map driverMarker model.drivers)
+        (List.map driverMarker <| withoutHidden model.drivers)
 
 
-viewDriversTable : List Types.DriverLocation -> Html Msg
-viewDriversTable drivers =
+viewDriversTable : Model -> Html Msg
+viewDriversTable model =
     let
         options =
             []
 
         head =
             Table.simpleThead
-                [ Table.th [] [ text "Иконка" ]
+                [ Table.th [] [ text "Отображать?" ]
                 , Table.th [] [ text "Имя" ]
+                , Table.th [] [ text "Иконка" ]
                 ]
 
         body =
-            Table.tbody [] (List.map driverTableRow drivers)
+            Table.tbody [] (List.map driverTableRow model.drivers)
 
         driverTableRow driver =
             Table.tr
                 []
-                [ Table.td [] [ viewIcon "driver.svg" ]
+                [ Table.td []
+                    [ Checkbox.checkbox
+                        [ Checkbox.checked (not <| List.member driver.id <| List.map .id model.hiddenDrivers)
+                        , Checkbox.onCheck (DriverVisibility driver)
+                        ]
+                        ""
+                    ]
                 , Table.td [] [ text driver.name ]
+                , Table.td [] [ Utils.viewColoredMarker 25 (unpackCarColor driver.carInfo) ]
                 ]
-
-        viewIcon src =
-            Html.img
-                [ A.src src
-                , A.style "width" "32px"
-                , A.style "height" "32px"
-                ]
-                []
     in
     Table.table
         { options = options
@@ -338,3 +379,20 @@ viewTableFoldingButton model =
           else
             svgList
         ]
+
+
+unpackCarInfo : Maybe Types.CarInfo -> Types.CarInfo
+unpackCarInfo mbCarInfo =
+    case mbCarInfo of
+        Just carInfo ->
+            carInfo
+
+        Nothing ->
+            { color = "#ff0000"
+            , model = ""
+            }
+
+
+unpackCarColor : Maybe Types.CarInfo -> String
+unpackCarColor mbCarInfo =
+    (unpackCarInfo mbCarInfo).color
