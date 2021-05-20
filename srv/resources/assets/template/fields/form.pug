@@ -857,6 +857,12 @@ mixin caseFilesList
                   | Результат:&nbsp;
                 span(data-bind=`text: actionresult`)
               // /ko
+              // ko if: $data.clientcancelreason
+              div
+                b
+                  | Почему не оказано:&nbsp;
+                span(data-bind=`text: clientcancelreason`)
+              // /ko
               // ko if: $data.servicelabel
               div
                 b

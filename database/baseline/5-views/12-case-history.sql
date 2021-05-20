@@ -26,6 +26,7 @@ CREATE VIEW "CaseHistory" AS
             actiontbl.comment AS actionComment,
             s.id AS serviceId,
             "ServiceType".label AS serviceLabel,
+            s.clientCancelReason as clientCancelReason,
             (select (e.patch->'tasks')::json from "Event" e
                 where e.modelid = actiontbl.serviceid
                   and e.modelname = 'AverageCommissioner'
