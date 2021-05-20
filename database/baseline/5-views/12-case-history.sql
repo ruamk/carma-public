@@ -157,12 +157,15 @@ CREATE VIEW "CaseHistory" AS
             "ServiceType".label AS serviceLabel,
             partnertbl.name AS partnername,
             delayminutes,
+            "PartnerDelay_Reason".label as delayreason,
+            delayreasoncomment,
             "PartnerDelay_Confirmed".label as delayconfirmed
         FROM "PartnerDelay"
           JOIN servicetbl ON (servicetbl.id = serviceid)
           JOIN "ServiceType" ON ("ServiceType".id = servicetbl.type)
           JOIN partnertbl ON (partnertbl.id = partnerid)
           JOIN "PartnerDelay_Confirmed" ON ("PartnerDelay_Confirmed".id = delayconfirmed)
+          JOIN "PartnerDelay_Reason" ON ("PartnerDelay_Reason".id = delayreason)
         ) row
 
     UNION ALL

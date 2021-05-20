@@ -927,6 +927,16 @@ mixin caseFilesList
                 span(data-bind=`text: delayminutes`)
               div
                 b
+                  | Причина опоздания:&nbsp;
+                span(data-bind=`text: delayreason`)
+              // /ko
+              // ko if: $data.delayreasoncomment
+              div
+                b
+                  | Пояснение к опозданию:&nbsp;
+                span(data-bind=`text: delayreasoncomment`)
+              div
+                b
                   | Опоздание согласовано:&nbsp;
                 span(data-bind=`text: delayconfirmed`)
               // /ko
