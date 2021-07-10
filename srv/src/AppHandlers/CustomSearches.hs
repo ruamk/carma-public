@@ -40,7 +40,6 @@ import           Data.Aeson as A hiding (json)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
 import           Data.Map as M (Map, (!), delete, fromList)
-import           Data.String (fromString)
 import           Data.Maybe (fromMaybe, isJust)
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -345,16 +344,16 @@ relevantCases :: AppHandler ()
 relevantCases = do
   Just c <- getParam "caseId"
   rows <- query ([sql|
-    SELECT
-      c2.id::text,
-      to_char(c2.callDate, 'YYYY-MM-DD HH24:MI')
-    FROM casetbl c1, casetbl c2
-    WHERE c1.id = ?
-      AND c2.id <> c1.id
-      AND lower(c1.contractIdentifier) = lower(c2.contractIdentifier)
-      AND length(c2.contractIdentifier) > 4
-    ORDER BY c2.callDate DESC
-    LIMIT 25
+    WITH c1 AS (
+      SELECT
+        c2.id::text,
+        to_char(c2.callDate, 'YYYY-MM-DD HH24:MI') calldate
+      FROM casetbl c1, casetbl c2
+      WHERE c1.id = ?
+        AND c2.id <> c1.id
+        AND lower(c1.contractIdentifier) = lower(c2.contractIdentifier)
+        AND length(c2.contractIdentifier) > 4
+    )
     |]) [c]
   writeJSON $ mkMap ["caseId", "caseDate"] rows
 
@@ -405,21 +404,24 @@ findSameContract = do
   num  <- getParam "cardNumber"
   cid  <- getParam "id"
 
-  case cid of
-    Nothing  -> finishWithError 403 "need id param"
-    Just id' -> do
-      rows <- query_ $ fromString
-        $  " SELECT c.id::text, to_char(c.ctime, 'YYYY-MM-DD HH24:MI')"
-        ++ " FROM \"Contract\" c, \"Contract\" same"
-        ++ " WHERE c.dixi AND c.ctime > now() - interval '30 days'"
-        ++ " AND c.id != " ++ quote id'
-        ++ " AND same.id = " ++ quote id'
-        ++ " AND c.subprogram = same.subprogram"
-        ++ " AND (false "
-        ++ (maybe "" (\x -> " OR c.vin = "        ++ quote x) cvin)
-        ++ (maybe "" (\x -> " OR c.cardNumber = " ++ quote x) num)
-        ++ ")"
-      writeJSON $ mkMap ["id", "ctime"] rows
+  when (cid == Nothing)
+    $ finishWithError 403 "Need 'id' param"
+  when (num == Nothing && cvin == Nothing)
+    $ finishWithError 403 "Both vin and cardNumber params are missing"
+
+  rows <- query [sql|
+    SELECT c.id::text, to_char(c.ctime, 'YYYY-MM-DD HH24:MI')
+      FROM "Contract" c, "Contract" same
+      WHERE c.dixi
+        AND c.ctime > now() - interval '30 days'
+        AND c.id != same.id
+        AND same.id = ?
+        AND c.subprogram = same.subprogram
+        AND ((? IS NOT NULL AND c.fts_key ~* ? AND c.vin = ?)
+          OR (? IS NOT NULL AND c.fts_key ~* ? AND c.cardNumber = ?))
+    |]
+    [cid, cvin, cvin, cvin, num, num, num]
+  writeJSON $ mkMap ["id", "ctime"] rows
 
 
 suspendedServices :: AppHandler ()

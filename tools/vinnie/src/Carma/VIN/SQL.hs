@@ -607,7 +607,7 @@ installFunctions =
          IF $1 ~ '^\+7\d{10}$' THEN
              RETURN $1;
          END IF;
-         
+
          IF $1 ~ '^8\d{10}$' THEN
              RETURN '+7' || substring($1, 2);
          END IF;
@@ -616,7 +616,7 @@ installFunctions =
      END;
      $$ LANGUAGE plpgsql;
      |] >>
-    
+
     execute
     [sql|
      CREATE OR REPLACE FUNCTION pg_temp.checkmakemodel(integer, integer)
@@ -682,6 +682,11 @@ createQueueTable =
      WHEN (NEW.? IS NOT NULL
            AND NEW.? IS NULL)
      EXECUTE PROCEDURE fillCheckPeriod();
+
+     CREATE TRIGGER "vinnie_queue_fts_trigger" BEFORE INSERT OR UPDATE
+     ON vinnie_queue
+     FOR EACH ROW
+     EXECUTE PROCEDURE "Contract_fts_key_update"();
      |] (()
          :* contractTable
          :* cfn C.subprogram
@@ -836,20 +841,17 @@ deleteDupes :: Connection -> IO Int64
 deleteDupes conn =
     PG.execute conn
     [sql|
-     DELETE FROM vinnie_queue q
-     WHERE EXISTS
-     (SELECT 1 FROM "?" c
-       WHERE ? AND c.fts_key = upper(?) AND c.isactive AND c.dixi
-     )
+     DELETE FROM vinnie_queue q USING "?" c
+       WHERE ?
+         AND c.fts_key = q.fts_key
+         AND c.isactive
+         AND c.dixi
      |] ( contractTable
         , PT $ T.intercalate " AND " $
           map (\f -> T.concat [ "((q.", f, " = ","c.", f
                               , ") OR ("
                               , "q.", f, " IS NULL AND c.", f, " IS NULL))"])
           contractFields
-        , PT $ T.intercalate " || '\\0' || " $
-          map (\f -> T.concat ["coalesce(q.", f, ", '')"])
-          C.identifierNames
         )
 
 
